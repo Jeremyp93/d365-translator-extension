@@ -1,0 +1,120 @@
+/* glow around translatable controls */
+.d365-translate-target {
+  outline: 2px solid #5a8cff !important;
+  outline-offset: 2px !important;
+  cursor: help !important;
+}
+
+/* simple tooltip panel */
+.d365-translate-tooltip {
+  position: fixed;
+  z-index: 999999;
+  max-width: 480px;
+  background: #111;
+  color: #fff;
+  font: 13px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  padding: 10px 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  max-height: 70vh;      /* prevent overflow */
+  overflow: auto;        /* scroll if needed */
+}
+.d365-translate-tooltip h4 {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+}
+
+/* Table base */
+.d365-translate-tooltip .d365-tip-table {
+  width: 100%;
+  border-collapse: separate;     /* allows rounded header corners */
+  border-spacing: 0;
+  table-layout: fixed;           /* predictable column widths */
+}
+
+/* Sticky header */
+.d365-translate-tooltip .d365-tip-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(2px);
+}
+
+/* Header cells */
+.d365-translate-tooltip .d365-tip-table th {
+  color: #dbe2ea !important;
+  font-weight: 600 !important;
+  text-align: left;
+  padding: 6px 8px !important;
+  border-bottom: 1px solid rgba(255,255,255,0.12) !important;
+}
+
+/* Body cells */
+.d365-translate-tooltip .d365-tip-table td {
+  padding: 6px 8px !important;
+  vertical-align: top !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  color: #f6f8fa !important;
+  word-break: break-word;        /* wrap long words gracefully */
+}
+
+/* Column sizing */
+.d365-translate-tooltip .d365-tip-table th:nth-child(1),
+.d365-translate-tooltip .d365-tip-table td:nth-child(1) {
+  width: 160px;                /* was 72px */
+  white-space: normal;         /* allow wrapping for long names */
+  overflow-wrap: anywhere;     /* break long tokens if needed */
+  color: #c9d1d9 !important;
+  opacity: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+
+.d365-translate-tooltip .d365-tip-table th:nth-child(2),
+.d365-translate-tooltip .d365-tip-table td:nth-child(2),
+.d365-translate-tooltip .d365-tip-table th:nth-child(3),
+.d365-translate-tooltip .d365-tip-table td:nth-child(3) {
+  width: auto;
+}
+
+/* Zebra striping + hover */
+.d365-translate-tooltip .d365-tip-table tbody tr:nth-child(odd) td {
+  background: rgba(255,255,255,0.03);
+}
+.d365-translate-tooltip .d365-tip-table tbody tr:hover td {
+  background: rgba(56,139,253,0.12);
+}
+
+/* Empty values styling */
+.d365-translate-tooltip .d365-tip-table td em {
+  color: #9aa4ad;
+  font-style: italic;
+}
+
+/* Rounded corners for the very top header row */
+.d365-translate-tooltip .d365-tip-table thead th:first-child {
+  border-top-left-radius: 8px;
+}
+.d365-translate-tooltip .d365-tip-table thead th:last-child {
+  border-top-right-radius: 8px;
+}
+
+/* current LCID row background */
+.d365-tip-table tbody tr.is-current-row {
+  background: rgba(31, 111, 235, 0.15) !important;
+}
+
+/* winning source column emphasis (only applied on current row) */
+.d365-tip-table tbody td.hl-col {
+  background: rgba(245, 5, 45, 0.28) !important;
+}
+
+/* Compact mode on very narrow tooltips */
+@media (max-width: 360px) {
+  .d365-translate-tooltip .d365-tip-table th,
+  .d365-translate-tooltip .d365-tip-table td {
+    padding: 4px 6px;
+  }
+}
+

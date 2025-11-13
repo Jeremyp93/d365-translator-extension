@@ -1,0 +1,22 @@
+{
+    "manifest_version": 3,
+    "name": "D365 Field Translator",
+    "version": "0.0.1",
+    "description": "Highlight fields on a Dynamics 365 form and show their display-name translations in all languages.",
+    "action": {
+        "default_title": "D365 Field Translator",
+        "default_popup": "src/popup/index.html"
+    },
+    "icons": {
+        "128": "icon128.png"
+    },
+    "permissions": [
+        "scripting",
+        "activeTab",
+        "tabs"
+    ],
+    "host_permissions": [
+        "https://*.dynamics.com/*"
+    ],
+    "background": { "service_worker": "background.js" }
+}
