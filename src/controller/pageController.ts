@@ -776,6 +776,55 @@ function toLabelMap(labels: { languageCode: number; label: string }[]) {
   return m;
 }
 
+// safe attribute selector escape
+function cssEscapeAttr(v: string) {
+  return String(v).replace(/["\\]/g, (m) => `\\${m}`);
+}
+
+/** Read systemform + parse and return the <cell id> that hosts the control for `attribute` on the active tab */
+async function getCellLabelIdOnActiveTab(
+  clientUrl: string,
+  formId: string,
+  attributeLogicalName: string,
+  activeTabName?: string,
+  activeTabId?: string
+): Promise<string | null> {
+  if (!clientUrl || !formId) return null;
+
+  // 1) Read the formxml
+  const sysformUrl = `${clientUrl.replace(/\/+$/, '')}/api/data/v9.2/systemforms(${formId})?$select=formxml`;
+  const j = await fetchJson(sysformUrl);
+  const xml = String(j?.formxml || '');
+  if (!xml) return null;
+
+  // 2) Parse and focus the active <tab>
+  const doc = new DOMParser().parseFromString(xml, 'text/xml');
+
+  // Try to match by name (preferred), then by id
+  let tabEl: Element | null = null;
+  if (activeTabName) {
+    tabEl = doc.querySelector(`tab[name="${cssEscapeAttr(activeTabName)}"]`);
+  }
+  if (!tabEl && activeTabId) {
+    tabEl = doc.querySelector(`tab[id="${cssEscapeAttr(activeTabId)}"]`);
+  }
+  // If still not found, fallback to the first tab
+  if (!tabEl) tabEl = doc.querySelector('tab');
+  if (!tabEl) return null;
+
+  // 3) Inside the active tab, find the cell whose control has datafieldname=attribute
+  const sel = `cell > control[datafieldname="${cssEscapeAttr(attributeLogicalName)}"]`;
+  const control = tabEl.querySelector(sel) as Element | null;
+  if (!control) return null;
+
+  const cell = control.closest('cell') as Element | null;
+  if (!cell) return null;
+
+  // 4) For field labels, UpdateLocLabels expects the enclosing <cell id> as LabelId
+  const labelId = (cell.getAttribute('id') || '').replace(/[{}]/g, '').toLowerCase();
+  return labelId || null;
+}
+
 function buildRowsAllLanguages(
   allLcids: number[],
   entityLabels: { languageCode: number; label: string }[],
@@ -917,11 +966,33 @@ const X = (window as any).Xrm;
     //   });
     // }
     if (btn) {
-      btn.addEventListener("click", (e) => {
+      btn.addEventListener("click", async (e) => {
         e.stopPropagation();
         const clientUrl =
-          (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.() ||
-          "";
+      (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.() || "";
+
+    const formId =
+      (window as any).Xrm?.Page?.ui?.formSelector?.getCurrentItem?.()?.getId?.() ||
+      (window as any).Xrm?.Page?.ui?.formSelector?.getId?.() || "";
+
+    const tabs = (window as any).Xrm?.Page?.ui?.tabs?.get?.() || [];
+    const activeTab = tabs.find((t: any) => t?.getDisplayState?.() === "expanded");
+    const activeTabName = activeTab?.getName?.() || "";
+    const activeTabId = activeTab?.getId?.() ? activeTab.getId() : activeTab?.getId;
+
+      let labelId: string | null = null;
+      try {
+        labelId = await getCellLabelIdOnActiveTab(
+          clientUrl,
+          formId,
+          attribute,
+          activeTabName,
+          activeTabId
+        );
+      } catch (err) {
+        // optional: swallow and proceed without labelId
+        console.warn('Could not resolve labelId:', err);
+      }
         // Ask the relay (content world) → background to open a new tab
         window.postMessage(
           {
@@ -931,6 +1002,8 @@ const X = (window as any).Xrm;
               clientUrl,
               entity: entityLogicalName, // you already have this in scope
               attribute, // existing param
+              formId,
+              labelId,
             },
           },
           "*"

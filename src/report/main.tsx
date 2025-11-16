@@ -1,163 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// /* eslint-disable @typescript-eslint/no-explicit-any */
-// import React, { useEffect, useMemo, useState } from 'react'
-// import { createRoot } from 'react-dom/client'
-
-// interface Label { languageCode: number; label: string }
-// interface FormOverride { formName: string; labels: Label[] }
-
-// const qs = new URLSearchParams(location.search)
-// const clientUrl = qs.get('clientUrl') || ''
-// const entity = qs.get('entity') || ''
-// const attribute = qs.get('attribute') || ''
-
-// function App() {
-//   const [entityLabels, setEntityLabels] = useState<Label[] | null>(null)
-//   const [formOverrides, setFormOverrides] = useState<FormOverride[] | null>(null)
-//   const [error, setError] = useState<string | null>(null)
-
-//   const safeClientUrl = useMemo(() => clientUrl.replace(/\/+$/, ''), [])
-
-//   useEffect(() => {
-//     (async () => {
-//       try {
-//         const [labels, overrides] = await Promise.all([
-//           getAttributeLabelTranslations(safeClientUrl, entity, attribute),
-//           getFormLabelOverrides(safeClientUrl, entity, attribute),
-//         ])
-//         setEntityLabels(labels)
-//         setFormOverrides(overrides)
-//       } catch (e: any) {
-//         setError(e?.message ?? String(e))
-//       }
-//     })()
-//   }, [safeClientUrl])
-
-//   return (
-//     <div style={{ font: '14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif', color: '#111', margin: 24 }}>
-//       <h1 style={{ fontSize: 18, margin: 0 }}>Translations report</h1>
-//       <div style={{ margin: '8px 0 16px' }}>
-//         Entity: <code>{entity}</code> • Attribute: <code>{attribute}</code>
-//       </div>
-
-//       {error && <div style={{ color: '#b00020', marginBottom: 12 }}>Error: {error}</div>}
-
-//       <section>
-//         <h2 style={{ fontSize: 16, margin: '16px 0 8px' }}>Entity DisplayName labels</h2>
-//         {entityLabels ? (
-//           entityLabels.length ? (
-//             <Table rows={entityLabels} />
-//           ) : (
-//             <div>No labels returned.</div>
-//           )
-//         ) : (
-//           <div>Loading…</div>
-//         )}
-//       </section>
-
-//       <section>
-//         <h2 style={{ fontSize: 16, margin: '16px 0 8px' }}>Form label overrides</h2>
-//         {formOverrides ? (
-//           formOverrides.length ? (
-//             formOverrides.map((f) => (
-//               <div key={f.formName} style={{ marginTop: 12 }}>
-//                 <h3 style={{ fontSize: 14, margin: '0 0 6px' }}>{f.formName || '(unnamed form)'}</h3>
-//                 <Table rows={f.labels} />
-//               </div>
-//             ))
-//           ) : (
-//             <div>No form-specific labels found.</div>
-//           )
-//         ) : (
-//           <div>Loading…</div>
-//         )}
-//       </section>
-//     </div>
-//   )
-// }
-
-// function Table({ rows }: { rows: Label[] }) {
-//   return (
-//     <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-//       <thead>
-//         <tr>
-//           <th style={th}>LCID</th>
-//           <th style={th}>Label</th>
-//         </tr>
-//       </thead>
-//       <tbody>
-//         {rows.map((r, i) => (
-//           <tr key={i}>
-//             <td style={td}>{r.languageCode}</td>
-//             <td style={td}>{r.label || <em>(empty)</em>}</td>
-//           </tr>
-//         ))}
-//       </tbody>
-//     </table>
-//   )
-// }
-
-// const th: React.CSSProperties = { background: '#f6f8fa', textAlign: 'left', border: '1px solid #ddd', padding: '6px 8px' }
-// const td: React.CSSProperties = { border: '1px solid #ddd', padding: '6px 8px' }
-
-// /* ---- data helpers ---- */
-
-// async function fetchJson(url: string) {
-//   const r = await fetch(url, {
-//     headers: {
-//       Accept: 'application/json',
-//       'OData-MaxVersion': '4.0',
-//       'OData-Version': '4.0',
-//     },
-//     credentials: 'include', // send Dynamics cookies
-//   })
-//   if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text().catch(() => '')}`)
-//   return r.json()
-// }
-
-// const enc = encodeURIComponent
-
-// async function getAttributeLabelTranslations(clientUrl: string, entityLogicalName: string, attributeLogicalName: string): Promise<Label[]> {
-//   const url =
-//     `${clientUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${enc(entityLogicalName)}')` +
-//     `/Attributes(LogicalName='${enc(attributeLogicalName)}')?$select=DisplayName`
-//   const j = await fetchJson(url)
-//   const arr = toArray(j?.DisplayName?.LocalizedLabels)
-//   return arr.map((l: any) => ({ languageCode: l.LanguageCode, label: l.Label }))
-// }
-
-// async function getFormLabelOverrides(clientUrl: string, entityLogicalName: string, attributeLogicalName: string): Promise<FormOverride[]> {
-//   const url =
-//     `${clientUrl}/api/data/v9.2/systemforms?$select=name,formxml,type&$filter=` +
-//     enc(`type eq 2 and objecttypecode eq '${entityLogicalName}'`)
-//   const j = await fetchJson(url)
-//   const out: FormOverride[] = []
-//   for (const f of j?.value ?? []) {
-//     const xml = f?.formxml as string
-//     if (!xml) continue
-//     const doc = new DOMParser().parseFromString(xml, 'text/xml')
-//     const controls = Array.from(doc.querySelectorAll(`control[datafieldname="${attributeLogicalName}"]`))
-//     for (const c of controls) {
-//       const labels = Array.from(c.querySelectorAll('labels > label')).map((l) => ({
-//         languageCode: Number(l.getAttribute('languagecode') || '0'),
-//         label: l.getAttribute('description') || '',
-//       }))
-//       if (labels.length) out.push({ formName: f?.name || '(unnamed form)', labels })
-//     }
-//   }
-//   return out
-// }
-
-// function toArray(v: any): any[] {
-//   if (!v) return []
-//   if (Array.isArray(v)) return v
-//   if (typeof v.get === 'function') { try { return v.get() } catch { /* ignore */ } }
-//   if (typeof v === 'object') return Object.values(v)
-//   return []
-// }
-
-// createRoot(document.getElementById('root')!).render(<App />)
-
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -170,20 +10,23 @@ const qs = new URLSearchParams(location.search);
 const clientUrl = (qs.get('clientUrl') || '').replace(/\/+$/, '');
 const entity = qs.get('entity') || '';
 const attribute = qs.get('attribute') || '';
+const formId = (qs.get('formId') || '').replace(/[{}]/g, '').toLowerCase(); // <- new (needed for form labels)
+const labelId = (qs.get('labelId') || '').replace(/[{}]/g, '').toLowerCase();
 
 /* ───────────── React App ───────────── */
 
 function App(): JSX.Element {
   const [entityLabels, setEntityLabels] = useState<Label[] | null>(null);
   const [langs, setLangs] = useState<number[] | null>(null);
-  const [values, setValues] = useState<Editable>({});
+  const [values, setValues] = useState<Editable>({});            // entity attribute values
+  const [formValues, setFormValues] = useState<Editable>({});     // form label values (per LCID)
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
   const langList = useMemo(() => (langs ?? []).slice().sort((a, b) => a - b), [langs]);
 
-  // Initial load
+  // Initial load for entity DisplayName editor
   useEffect(() => {
     (async () => {
       try {
@@ -195,11 +38,9 @@ function App(): JSX.Element {
           getProvisionedLanguages(clientUrl),
         ]);
 
-        // Fallback: if org returns no provisioned languages, use LCIDs from labels
         const fallbackLangs = Array.from(
           new Set((labels ?? []).map((l) => Number(l.languageCode)).filter((n) => Number.isFinite(n)))
         );
-
         const finalLangs = (provisioned && provisioned.length ? provisioned : fallbackLangs).sort((a, b) => a - b);
 
         setEntityLabels(labels ?? []);
@@ -222,6 +63,9 @@ function App(): JSX.Element {
 
   const onChange = (lcid: number, v: string) => {
     setValues((prev) => ({ ...prev, [lcid]: v }));
+  };
+  const onFormChange = (lcid: number, v: string) => {
+    setFormValues((prev) => ({ ...prev, [lcid]: v }));
   };
 
   const onSave = async () => {
@@ -256,11 +100,50 @@ function App(): JSX.Element {
     }
   };
 
+  // ───── New: Form Labels (no-solution) ─────
+
+  const onLoadFormLabels = async () => {
+    try {
+      if (!formId) throw new Error('Missing formId in query string (?formId=<guid>).');
+      if (!langs?.length) throw new Error('Provisioned languages not loaded yet.');
+      setInfo('Reading form labels for all languages…');
+      setError(null);
+
+      const results = await readFormFieldLabelsAllLcids(clientUrl, formId, attribute, langs);
+      const newValues: Record<number, string> = {};
+      for (const { lcid, label } of results) newValues[lcid] = label ?? '';
+      setFormValues(newValues);
+
+      setInfo('Form labels loaded.');
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+      setInfo(null);
+    }
+  };
+
+  const onSaveFormLabels = async () => {
+    try {
+      if (!formId) throw new Error('Missing formId in query string (?formId=<guid>).');
+      setInfo('Saving form labels per language…');
+      setError(null);
+
+      // Only update LCIDs that are in the current formValues map
+      for (const lcid of Object.keys(formValues).map(Number)) {
+        await saveFormFieldLabelForLcid(clientUrl, formId, attribute, lcid, formValues[lcid] ?? '');
+      }
+
+      setInfo('Form labels saved. If the app still shows old text, hard refresh (Ctrl/Cmd+Shift+R).');
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+      setInfo(null);
+    }
+  };
+
   return (
     <div style={page}>
       <h1 style={h1}>Translations editor</h1>
       <div style={{ margin: '8px 0 4px' }}>
-        Entity: <code>{entity}</code> • Attribute: <code>{attribute}</code>
+        Entity: <code>{entity}</code> • Attribute: <code>{attribute}</code> • FormId: <code>{formId || '(none)'}</code>
       </div>
       <div style={{ color: '#6a737d', marginBottom: 8, fontSize: 12 }}>
         langs: {langs?.length ?? 0} • labels: {entityLabels?.length ?? 0}
@@ -269,8 +152,9 @@ function App(): JSX.Element {
       {error && <div style={errorBox}>Error: {error}</div>}
       {info && !error && <div style={infoBox}>{info}</div>}
 
+      {/* ENTITY DISPLAYNAME */}
       <section>
-        <h2 style={h2}>DisplayName labels</h2>
+        <h2 style={h2}>DisplayName labels (Entity metadata)</h2>
         {langs && entityLabels ? (
           <table style={tbl}>
             <thead>
@@ -298,14 +182,59 @@ function App(): JSX.Element {
         ) : (
           <div>Loading…</div>
         )}
+
+        <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+          <button onClick={onSave} disabled={saving || !langs} style={btnPrimary}>
+            {saving ? 'Saving…' : 'Save & Publish'}
+          </button>
+          <button onClick={onVerify} style={btnGhost}>Verify</button>
+        </div>
       </section>
 
-      <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-        <button onClick={onSave} disabled={saving || !langs} style={btnPrimary}>
-          {saving ? 'Saving…' : 'Save & Publish'}
-        </button>
-        <button onClick={onVerify} style={btnGhost}>Verify</button>
-      </div>
+      {/* FORM LABELS */}
+      <section>
+        <h2 style={h2}>Form labels (no solution, per LCID)</h2>
+        {!formId && (
+          <div style={infoBox}>
+            Add <code>?formId=&lt;guid&gt;</code> to the URL to enable this section.
+          </div>
+        )}
+        {langs ? (
+          <table style={tbl}>
+            <thead>
+              <tr>
+                <th style={th}>LCID</th>
+                <th style={th}>Label</th>
+              </tr>
+            </thead>
+            <tbody>
+              {langList.map((lcid) => (
+                <tr key={lcid}>
+                  <td style={td}>{lcid}</td>
+                  <td style={td}>
+                    <input
+                      value={formValues[lcid] ?? ''}
+                      onChange={(e) => onFormChange(lcid, e.target.value)}
+                      placeholder="(empty)"
+                      style={inp}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div>Loading languages…</div>
+        )}
+        <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+          <button onClick={onLoadFormLabels} disabled={!langs || !formId} style={btnGhost}>
+            Load Form Labels (all LCIDs)
+          </button>
+          <button onClick={onSaveFormLabels} disabled={!langs || !formId} style={btnPrimary}>
+            Save Form Labels (all LCIDs)
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -430,7 +359,243 @@ async function publishEntityViaWebApi(baseUrl: string, entityLogicalName: string
   });
 }
 
-/* ───────────── SOAP helpers for UpdateAttribute ───────────── */
+/* ───────────── No-solution Form Labels helpers ───────────── */
+
+async function fetchJsonNoCache(url: string, init?: RequestInit) {
+  const r = await fetch(url, {
+    credentials: 'include',
+    cache: 'no-store', // tell the browser
+    headers: {
+      'Accept': 'application/json',
+      'OData-MaxVersion': '4.0',
+      'OData-Version': '4.0',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      ...(init?.headers || {}),
+    },
+    ...init,
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text().catch(() => '')}`);
+  const ct = r.headers.get('content-type') || '';
+  return ct.includes('application/json') ? r.json() : null;
+}
+
+function formatGuidFilter(id: string): string {
+  const clean = id.replace(/[{}]/g, '').toLowerCase();
+  return `${clean}`;
+}
+
+/** WhoAmI → SystemUserId */
+async function whoAmI(baseUrl: string): Promise<string> {
+  const j = await fetchJson(`${baseUrl}/api/data/v9.2/WhoAmI()`);
+  const id = j?.UserId;
+  if (!id) throw new Error('WhoAmI failed to return UserId');
+  return String(id).replace(/[{}]/g, '').toLowerCase();
+}
+
+/** usersettings row for current user */
+async function getUserSettingsRow(baseUrl: string, systemUserId: string): Promise<{
+  uilanguageid: number; helplanguageid: number; localeid: number;
+}> {
+  const url =
+    `${baseUrl}/api/data/v9.2/usersettingscollection(${formatGuidFilter(systemUserId)})` +
+    `?$select=uilanguageid,helplanguageid,localeid`;
+  const j = await fetchJson(url);
+  if (!j?.systemuserid) throw new Error('Could not resolve usersettings row for current user.');
+  return {
+    uilanguageid: Number(j.uilanguageid),
+    helplanguageid: Number(j.helplanguageid),
+    localeid: Number(j.localeid),
+  };
+}
+
+async function setUserUiLanguage(baseUrl: string, systemUserId: string, lcid: number): Promise<void> {
+  const url = `${baseUrl}/api/data/v9.2/usersettingscollection(${systemUserId})`;
+  await fetchJson(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    body: JSON.stringify({ uilanguageid: lcid, helplanguageid: lcid, localeid: lcid }),
+  });
+}
+
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+async function getFormXml(baseUrl: string, formId: string): Promise<string> {
+  const url = `${baseUrl}/api/data/v9.2/systemforms(${formatGuid(formId)})?$select=formxml`;
+  const j = await fetchJsonNoCache(url);
+  const xml = j?.formxml || j?.FormXml || '';
+  if (!xml) throw new Error('systemform.formxml not found');
+  return String(xml);
+}
+
+async function getFormXmlWithEtag(baseUrl: string, formId: string): Promise<{ xml: string; etag: string | null }> {
+  const url = `${baseUrl}/api/data/v9.2/systemforms(${formatGuid(formId)})?$select=formxml`;
+  const r = await fetch(url, {
+    credentials: 'include',
+    cache: 'no-store',
+    headers: {
+      'Accept': 'application/json',
+      'OData-MaxVersion': '4.0',
+      'OData-Version': '4.0',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    },
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text().catch(()=> '')}`);
+  const etag = r.headers.get('ETag');
+  const j = await r.json();
+  return { xml: j?.formxml || j?.FormXml || '', etag };
+  
+}
+async function patchFormXmlStrict(baseUrl: string, formId: string, formxml: string, etag?: string): Promise<void> {
+  const url = `${baseUrl}/api/data/v9.2/systemforms(${formatGuid(formId)})`;
+  await fetchJson(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      ...(etag ? { 'If-Match': etag } : {}),
+    },
+    body: JSON.stringify({ formxml }),
+  });
+}
+
+function formatGuid(id: string): string {
+  const clean = id.replace(/[{}]/g, '').toLowerCase();
+  return clean.startsWith('guid\'') ? clean : clean;
+}
+
+/** Wait until the language switch “applies” (best effort) */
+async function waitForLanguageToApply(baseUrl: string, formId: string, timeoutMs = 5000, intervalMs = 400): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const xml = await getFormXml(baseUrl, formId);
+      if (xml && xml.length > 0) return;
+    } catch { /* ignore transient */ }
+    await sleep(intervalMs);
+  }
+}
+
+/** Find the first <cell> that hosts our attribute’s control */
+function findCellsForAttribute(doc: Document, attributeLogicalName: string): Element[] {
+  const cells: Element[] = [];
+  const cellEls = Array.from(doc.getElementsByTagName('cell'));
+  for (const cell of cellEls) {
+    const controls = Array.from(cell.getElementsByTagName('control'));
+    const hasMatch = controls.some((c) => (c.getAttribute('datafieldname') || '').toLowerCase() === attributeLogicalName.toLowerCase());
+    if (hasMatch) cells.push(cell);
+  }
+  return cells;
+}
+
+function readCurrentLcidFormLabel(
+  formxml: string,
+  attributeLogicalName: string,
+  labelId: string
+): string {
+  const doc = new DOMParser().parseFromString(formxml, 'text/xml');
+  const cells = findCellsForAttribute(doc, attributeLogicalName);
+
+  const wanted = (labelId || '').replace(/[{}]/g, '').toLowerCase();
+  if (!wanted) return '';
+
+  for (const cell of cells) {
+    if (cell.id.replace(/[{}]/g, '').toLowerCase() !== wanted) continue;
+    const labelsNode = cell.getElementsByTagName('labels')[0];
+    if (!labelsNode) continue;
+
+    const labelEls = labelsNode.getElementsByTagName('label');
+    for (const lbl of Array.from(labelEls)) {
+        return lbl.getAttribute('description') || '';
+    }
+  }
+  return '';
+}
+
+function setCurrentLcidFormLabel(
+  formxml: string,
+  attributeLogicalName: string,
+  newText: string,
+  labelId: string
+): string {
+  const doc = new DOMParser().parseFromString(formxml, 'text/xml');
+  const cells = findCellsForAttribute(doc, attributeLogicalName);
+
+  const wanted = (labelId || '').replace(/[{}]/g, '').toLowerCase();
+  if (!wanted) return formxml; // nothing to do
+
+  for (const cell of cells) {
+    if (cell.id.replace(/[{}]/g, '').toLowerCase() !== wanted) continue;
+    const labels = cell.getElementsByTagName('labels')[0];
+    if (!labels) continue;
+
+    const labelEls = Array.from(labels.getElementsByTagName('label'));
+    for (const lbl of labelEls) {
+        lbl.setAttribute('description', newText ?? '');
+    }
+  }
+
+  return new XMLSerializer().serializeToString(doc);
+}
+
+/**
+ * Read labels for ALL requested LCIDs by temporarily switching the current user’s UI language.
+ * Returns a flat list: [{ lcid, label }]
+ */
+async function readFormFieldLabelsAllLcids(
+  baseUrl: string,
+  formId: string,
+  attributeLogicalName: string,
+  lcids: number[]
+): Promise<Array<{ lcid: number; label: string }>> {
+  const userId = await whoAmI(baseUrl);
+  const us = await getUserSettingsRow(baseUrl, userId);
+  const original = { uilanguageid: us.uilanguageid, helplanguageid: us.helplanguageid, localeid: us.localeid };
+
+  const out: Array<{ lcid: number; label: string }> = [];
+
+  try {
+    for (const lcid of lcids) {
+      await setUserUiLanguage(baseUrl, userId, lcid);
+      await waitForLanguageToApply(baseUrl, formId);
+      const xml = await getFormXml(baseUrl, formId);
+      const val = readCurrentLcidFormLabel(xml, attributeLogicalName, labelId);
+      out.push({ lcid, label: val });
+    }
+  } finally {
+    try { await setUserUiLanguage(baseUrl, userId, original.uilanguageid); } catch {}
+  }
+  return out;
+}
+
+/**
+ * Save one LCID’s text by switching the user to that LCID, modifying the formxml, then PATCHing it back.
+ */
+async function saveFormFieldLabelForLcid(
+  baseUrl: string,
+  formId: string,
+  attributeLogicalName: string,
+  lcid: number,
+  newText: string
+): Promise<void> {
+  const userId = await whoAmI(baseUrl);
+  const us = await getUserSettingsRow(baseUrl, userId);
+  const original = { uilanguageid: us.uilanguageid };
+
+  try {
+    await setUserUiLanguage(baseUrl, userId, lcid);
+    await waitForLanguageToApply(baseUrl, formId);
+    const { xml, etag } = await getFormXmlWithEtag(baseUrl, formId);
+    const updated = setCurrentLcidFormLabel(xml, attributeLogicalName, newText, labelId);
+    await patchFormXmlStrict(baseUrl, formId, updated, etag ?? undefined);
+  } finally {
+    try { await setUserUiLanguage(baseUrl, userId, original.uilanguageid); } catch {}
+  }
+}
+
+/* ───────────── SOAP helpers for UpdateAttribute (entity) ───────────── */
 
 function soapUrl(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, '') + '/XRMServices/2011/Organization.svc/web';
@@ -512,7 +677,6 @@ function buildUpdateAttributeEnvelopeWithId(
   _baseLabel: string,
   attributeLogicalName?: string
 ): string {
-  // Put base LCID first; keep only minimal fields (Label, LanguageCode)
   const ordered = (localized ?? [])
     .slice()
     .sort((a, b) => (a.LanguageCode === baseLcid ? -1 : b.LanguageCode === baseLcid ? 1 : 0))
@@ -587,20 +751,16 @@ async function updateAttributeLabelsViaSoap(
   attributeLogicalName: string,
   labels: { LanguageCode: number; Label: string }[]
 ): Promise<void> {
-  // Normalize incoming list
   const edited = labels.map((l) => ({ languageCode: Number(l.LanguageCode), label: String(l.Label ?? '') }));
 
-  // Merge with current + enforce base-language non-empty
   const [current, baseLcid] = await Promise.all([
     getCurrentDisplayNameLabels(baseUrl, entityLogicalName, attributeLogicalName),
     getOrgBaseLanguageCode(baseUrl),
   ]);
   const { list: mergedLocalized, baseLabel } = buildMergedLabels(edited, current, baseLcid, attributeLogicalName);
 
-  // Resolve MetadataId + concrete type
   const { metadataId, soapTypeName } = await getAttributeSoapBasics(baseUrl, entityLogicalName, attributeLogicalName);
 
-  // Execute SOAP UpdateAttribute
   const env = buildUpdateAttributeEnvelopeWithId(
     entityLogicalName,
     metadataId,
