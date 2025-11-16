@@ -7,6 +7,7 @@ import {
   getUserSettingsRow,
   setUserUiLanguage,
 } from '../services/d365Api';
+import { getProvisionedLanguagesCached } from '../services/languageService';
 
 export function useLanguages(clientUrl: string) {
   const [langs, setLangs] = useState<number[] | null>(null);
@@ -18,9 +19,10 @@ export function useLanguages(clientUrl: string) {
       try {
         setError(null);
         const [provisioned, base] = await Promise.all([
-          getProvisionedLanguages(clientUrl),
+          getProvisionedLanguagesCached(clientUrl),
           getOrgBaseLanguageCode(clientUrl),
         ]);
+        console.log('Provisioned languages:', provisioned, 'Base LCID:', base);
         setLangs(provisioned);
         setBaseLcid(base);
       } catch (e: any) {

@@ -1,6 +1,15 @@
-import * as React from 'react';
-import { Spinner, Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow, Text } from '@fluentui/react-components';
-import TextInput from './ui/TextInput';
+import * as React from "react";
+import {
+  Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+  Text,
+} from "@fluentui/react-components";
+import TextInput from "./ui/TextInput";
 
 export interface TranslationsTableProps {
   lcids: number[];
@@ -24,11 +33,21 @@ export default function TranslationsTable({
   placeholder,
 }: TranslationsTableProps): JSX.Element {
   // Stable sort just in case
-  const ordered = React.useMemo(() => (lcids ?? []).slice().sort((a, b) => a - b), [lcids]);
+  const ordered = React.useMemo(
+    () => (lcids ?? []).slice().sort((a, b) => a - b),
+    [lcids]
+  );
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "8px 0",
+        }}
+      >
         <Spinner />
         <Text>Loading translations…</Text>
       </div>
@@ -36,14 +55,19 @@ export default function TranslationsTable({
   }
 
   return (
-    <div style={{ opacity: disabled ? 0.6 : 1, pointerEvents: disabled ? 'none' as const : 'auto' }}>
+    <div
+      style={{
+        opacity: disabled ? 0.6 : 1,
+        pointerEvents: disabled ? ("none" as const) : "auto",
+      }}
+    >
       {title && (
-        <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
+        <Text weight="semibold" style={{ display: "block", marginBottom: 8 }}>
           {title}
         </Text>
       )}
 
-      <Table aria-label={title ?? 'Translations'}>
+      <Table aria-label={title ?? "Translations"}>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>LCID</TableHeaderCell>
@@ -54,12 +78,19 @@ export default function TranslationsTable({
         <TableBody>
           {ordered.map((lcid) => (
             <TableRow key={lcid}>
-              <TableCell style={{ width: 120, fontVariantNumeric: 'tabular-nums' }}>{lcid}</TableCell>
+              <TableCell
+                style={{ width: 120, fontVariantNumeric: "tabular-nums" }}
+              >
+                {lcid}
+              </TableCell>
               <TableCell>
                 <TextInput
-                  value={values[lcid] ?? ''}
-                  onChange={(e) => onChange(lcid, (e.target as HTMLInputElement).value)}
+                  value={values[lcid] ?? ""}
+                  onChange={(e) =>
+                    onChange(lcid, (e.target as HTMLInputElement).value)
+                  }
                   placeholder={placeholder}
+                  style={{width: "100%"}}
                 />
               </TableCell>
             </TableRow>

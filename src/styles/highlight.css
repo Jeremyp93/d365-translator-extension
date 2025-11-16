@@ -1,7 +1,7 @@
 /* glow around translatable controls */
 .d365-translate-target {
   outline: 2px solid #5a8cff !important;
-  outline-offset: 2px !important;
+  outline-offset: -2px !important;
   cursor: help !important;
 }
 

@@ -1,0 +1,46 @@
+// services/languageService.ts
+import { getProvisionedLanguages as getProvisionedLanguagesLive, getOrgBaseLanguageCode } from './d365Api';
+import { storageGet, storageRemove, storageSet } from './storageCache';
+
+type LangCache = { when: number; langs: number[] };
+const TTL_MS_DEFAULT = 6 * 60 * 60 * 1000; // 6h
+
+/** Cached provisioned languages. Falls back to live if cache missing/stale. */
+export async function getProvisionedLanguagesCached(
+  baseUrl: string,
+  opts: { ttlMs?: number } = {}
+): Promise<number[]> {
+  const ttlMs = opts.ttlMs ?? TTL_MS_DEFAULT;
+  const key = 'provLangs';
+
+  const cached = await storageGet<LangCache>(baseUrl, key);
+  if (cached && Array.isArray(cached.langs) && Date.now() - cached.when < ttlMs) {
+    return cached.langs.slice();
+  }
+
+  const live = await getProvisionedLanguagesLive(baseUrl);
+  await storageSet<LangCache>(baseUrl, key, { when: Date.now(), langs: live });
+  return live;
+}
+
+/** Warm the cache proactively (optional). */
+export async function warmProvisionedLanguagesCache(baseUrl: string, ttlMs?: number): Promise<number[]> {
+  return getProvisionedLanguagesCached(baseUrl, { ttlMs });
+}
+
+/** Clear cached provisioned languages (e.g., after enabling a new language). */
+export async function clearProvisionedLanguagesCache(baseUrl: string, key: string): Promise<void> {
+  await storageRemove(baseUrl, key);
+}
+
+/** Convenience: returns { langs, baseLcid } together (langs cached, base live). */
+export async function getLanguagesBundle(
+  baseUrl: string,
+  opts?: { ttlMs?: number }
+): Promise<{ langs: number[]; baseLcid: number }> {
+  const [langs, baseLcid] = await Promise.all([
+    getProvisionedLanguagesCached(baseUrl, opts),
+    getOrgBaseLanguageCode(baseUrl),
+  ]);
+  return { langs, baseLcid };
+}

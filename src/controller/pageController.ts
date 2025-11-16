@@ -1,3 +1,6 @@
+import { getProvisionedLanguagesCached } from "../services/languageService";
+import { storageGet } from "../services/storageCache";
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 (function () {
   const w = window as any;
@@ -740,9 +743,33 @@ const LCID_NAMES: Record<number, string> = {
 function lcidToName(lcid: number): string {
   return LCID_NAMES[lcid] ?? `Language ${lcid}`;
 }
+const TTL_MS_DEFAULT = 6 * 60 * 60 * 1000; // 6h
+async function getProvisionedLanguagesCached(
+  baseUrl: string,
+  opts: { ttlMs?: number } = {}
+): Promise<number[]> {
+  const ttlMs = opts.ttlMs ?? TTL_MS_DEFAULT;
+  const key = 'provLangs';
+
+  const cached = localStorage.getItem(`d365x:${key}:${(baseUrl || '').replace(/\/+$/, '').toLowerCase()}`);
+  const { langs, when } = cached ? await JSON.parse(cached) : {};
+  if (cached && Array.isArray(langs) && Date.now() - when < ttlMs) {
+    return langs.slice();
+  }
+
+  const live = await getProvisionedLanguageLcids(baseUrl);
+  localStorage.setItem(`d365x:${key}:${(baseUrl || '').replace(/\/+$/, '').toLowerCase()}`, JSON.stringify({ langs: live, when: Date.now() }));
+  return live;
+}
 
 async function getProvisionedLanguageLcids(clientUrl: string): Promise<number[]> {
   // Try the unbound Web API function first
+  try {
+    
+    console.log((localStorage.getItem("d365x:provLangs:https://org77b6bb32.crm4.dynamics.com")));
+  } catch (error) {
+    console.error("Error fetching provisioned languages from cache:", error);
+  }
   try {
     const r = await fetch(`${clientUrl}/api/data/v9.2/RetrieveProvisionedLanguages()`, {
       method: "GET",
@@ -862,7 +889,7 @@ const X = (window as any).Xrm;
     X?.Utility?.getGlobalContext?.().getClientUrl?.() || "";
 
     // 1) Get full language list
-  const provisioned = await getProvisionedLanguageLcids(clientUrl);
+  const provisioned = await getProvisionedLanguagesCached(clientUrl);
 
   // 2) Build rows for ALL languages (fill missing with empty)
   const rows = buildRowsAllLanguages(provisioned, entityLabels, formLabels);

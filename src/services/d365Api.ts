@@ -65,10 +65,10 @@ export const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 export async function getProvisionedLanguages(baseUrl: string): Promise<number[]> {
   const url = `${baseUrl}/api/data/v9.2/RetrieveProvisionedLanguages()`;
   const j = await fetchJson(url);
-  const raw = Array.isArray((j as any)?.value)
-    ? (j as any).value
-    : Array.isArray((j as any)?.Values)
-    ? (j as any).Values
+  const raw = Array.isArray((j as any)?.RetrieveProvisionedLanguages)
+    ? (j as any).RetrieveProvisionedLanguages
+    : Array.isArray((j as any)?.Value)
+    ? (j as any).Value
     : [];
   return raw.map((x: any) => Number(x)).filter((n: number) => Number.isFinite(n));
 }
