@@ -25,7 +25,6 @@ export default defineConfig({
         popup: resolve(__dirname, 'src/popup/index.html'),
 
         // scripts that need to be emitted as standalone files
-        content: resolve(__dirname, 'src/content/content.ts'),
         pageController: resolve(__dirname, 'src/controller/pageController.ts'),
         relay: resolve(__dirname, 'src/relay/relay.ts'),
         background: resolve(__dirname, 'src/background.ts'),
@@ -40,7 +39,6 @@ export default defineConfig({
       output: {
         entryFileNames: (assetInfo) => {
           const name = assetInfo.name || '';
-          if (name.includes('content')) return 'assets/content.js';
           if (name.includes('pageController')) return 'assets/pageController.js';
           if (name.includes('relay')) return 'assets/relay.js';
           if (name.includes('background')) return 'background.js';

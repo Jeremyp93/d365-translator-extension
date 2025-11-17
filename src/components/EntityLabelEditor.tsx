@@ -5,7 +5,6 @@ import {
   Card,
   CardHeader,
   makeStyles,
-  shorthands,
 } from "@fluentui/react-components";
 import TranslationsTable from "../components/TranslationsTable";
 import Button from "./ui/Button";

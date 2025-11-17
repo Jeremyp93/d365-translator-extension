@@ -5,7 +5,6 @@ import {
   Text,
   Divider,
   makeStyles,
-  shorthands,
 } from "@fluentui/react-components";
 import Button from "./ui/Button";
 import { Info, ErrorBox } from "./ui/Notice";

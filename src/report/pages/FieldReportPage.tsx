@@ -7,7 +7,6 @@ import {
   CardHeader,
   Divider,
   makeStyles,
-  shorthands,
 } from "@fluentui/react-components";
 
 import { Info, ErrorBox } from "../../components/ui/Notice";
