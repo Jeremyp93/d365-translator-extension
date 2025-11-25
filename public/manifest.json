@@ -13,7 +13,9 @@
     "permissions": [
         "scripting",
         "activeTab",
-        "tabs"
+        "tabs",
+        "browsingData",
+        "storage"
     ],
     "host_permissions": [
         "https://*.dynamics.com/*"

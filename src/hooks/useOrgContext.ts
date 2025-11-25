@@ -11,6 +11,7 @@ export interface OrgContext {
   tabId?: string;
   sectionId?: string;
   page?: 'field' | 'form';
+  apiVersion?: string;
 }
 
 function cleanGuid(v?: string | null): string | undefined {
@@ -47,9 +48,11 @@ export function useOrgContext(): OrgContext {
     const tabId = cleanGuid(qs.get('tabId'));
     const sectionId = cleanGuid(qs.get('sectionId'));
 
+    const apiVersion = qs.get('apiVersion') || undefined;
+
     const pageParam = (qs.get('page') || '').toLowerCase();
     const page = pageParam === 'field' || pageParam === 'form' ? (pageParam as 'field' | 'form') : undefined;
 
-    return { clientUrl, entity, attribute, formId, labelId, tabId, sectionId, page };
+    return { clientUrl, entity, attribute, formId, labelId, tabId, sectionId, page, apiVersion };
   }, [routerLoc.search, routerLoc.hash]);
 }
