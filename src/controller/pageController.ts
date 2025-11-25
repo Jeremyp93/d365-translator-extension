@@ -1,3 +1,6 @@
+import { getProvisionedLanguagesCached } from "../services/languageService";
+import { storageGet } from "../services/storageCache";
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 (function () {
   const w = window as any;
@@ -268,6 +271,45 @@
     return null;
   }
 
+  function buildWrapperSelectors(
+    controlName: string,
+    attribute: string
+  ): string[] {
+    return [
+      // exact common containers
+      `[data-id="${controlName}.fieldControl"]`,
+      `[data-id="${controlName}-field"]`,
+      `[data-id="${attribute}-FieldSectionItemContainer"]`, // <<< NEW (exact hit from your DOM)
+      // data-lp-id tokenized/contains
+      `[data-lp-id*="|${attribute}|"]`, // e.g., MscrmControls.Containers.FieldSectionItem|elia_day|...
+      `[data-lp-id*="${attribute}.fieldControl"]`, // e.g., PowerApps.CoreControls.TextInput|elia_day.fieldControl|...
+      // relaxed fallbacks
+      `[id*="-${attribute}-FieldSectionItemContainer"]`,
+      `[data-id*="${attribute}"]`,
+    ];
+  }
+
+  function buildLabelSelectors(
+    controlName: string,
+    attribute: string,
+    labelText: string
+  ): string[] {
+    const safeText = cssEscape(labelText);
+    return [
+      // most reliable in your DOM:
+      `[data-attribute="${attribute}"]`, // <<< NEW (your label has this)
+      `label[id$="${attribute}-field-label"]`, // ends-with on id
+      `[id*="-${attribute}-field-label"]`,
+      // older guesses you had
+      `[data-lp-id="${controlName}.label"]`,
+      `[data-id="${controlName}-label"]`,
+      `label[for="${controlName}"]`,
+      `span[title="${safeText}"]`,
+      // very generic fallback inside wrapper
+      'label, [role="heading"] span, [data-element="label"]',
+    ];
+  }
+
   function getFields(page: any): Field[] {
     const out: Field[] = [];
     const attributes = page.data.entity.attributes.get?.() ?? [];
@@ -276,28 +318,14 @@
       attr.controls.get().forEach((ctrl: any) => {
         const controlName = ctrl.getName();
         const labelText: string = ctrl.getLabel?.() ?? "";
-
         // Wrapper selectors: narrow the search scope to the field container
-        const wrapperSelectors = [
-          `[data-id="${controlName}.fieldControl"]`,
-          `[data-id="${controlName}-field"]`,
-          // common container fallbacks in UCI:
-          `[data-lp-id^="${controlName}"]`,
-          `[aria-label][data-id*="${controlName}"]`,
-          `[data-id="${controlName}"]`,
-        ];
-
+        const wrapperSelectors = buildWrapperSelectors(controlName, attribute);
         // Label selectors: look for label nodes inside the wrapper
-        const labelSelectors = [
-          `[data-lp-id="${controlName}.label"]`,
-          `[data-id="${controlName}-label"]`,
-          `label[for="${controlName}"]`,
-          // some themes render label as a span with matching title
-          `span[title="${cssEscape(labelText)}"]`,
-          // generic label class fallback (scoped by wrapper)
-          '.label, [role="heading"] span, [data-element="label"]',
-        ];
-
+        const labelSelectors = buildLabelSelectors(
+          controlName,
+          attribute,
+          labelText
+        );
         out.push({
           attribute,
           controlName,
@@ -349,19 +377,16 @@
     wrapper: HTMLElement,
     f: Field
   ): HTMLElement | null {
-    // 1) Try selector list
     for (const sel of f.labelSelectors) {
       const node = wrapper.querySelector<HTMLElement>(sel);
       if (node) return node;
     }
-    // 2) Fallback: text match inside wrapper (trimmed, case-insensitive)
     if (f.labelText) {
-      const labelTextNorm = normalizeText(f.labelText);
-      // Check a few likely nodes
-      const candidates =
-        wrapper.querySelectorAll<HTMLElement>("label, span, div");
-      for (const el of Array.from(candidates)) {
-        if (normalizeText(el.textContent || "") === labelTextNorm) return el;
+      const want = normalizeText(f.labelText);
+      for (const el of Array.from(
+        wrapper.querySelectorAll<HTMLElement>("label, span, div")
+      )) {
+        if (normalizeText(el.textContent || "") === want) return el;
       }
     }
     return null;
@@ -643,109 +668,41 @@
   }
 
   /**
- * Returns the label currently shown to the user and whether it comes from the form (override) or the entity.
- */
-async function getDisplayedLabelInfo(
-  entityLogicalName: string,
-  attributeLogicalName: string
-): Promise<{ lcid: number; shown: string; source: "form" | "entity"; entityLabel?: string; formLabel?: string; }> {
-  const X = (window as any).Xrm;
-  const fc = X?.Page;
+   * Returns the label currently shown to the user and whether it comes from the form (override) or the entity.
+   */
+  async function getDisplayedLabelInfo(
+    entityLogicalName: string,
+    attributeLogicalName: string
+  ): Promise<{
+    lcid: number;
+    shown: string;
+    source: "form" | "entity";
+    entityLabel?: string;
+    formLabel?: string;
+  }> {
+    const X = (window as any).Xrm;
+    const fc = X?.Page;
 
-  // 1) Get the label actually rendered on the page
-  const ctrl = fc?.getControl?.(attributeLogicalName) 
-            ?? fc?.ui?.controls?.get?.().find((c: any) => c?.getName?.() === attributeLogicalName);
-  const shown = ctrl?.getLabel?.() ?? "";
+    // 1) Get the label actually rendered on the page
+    const ctrl =
+      fc?.getControl?.(attributeLogicalName) ??
+      fc?.ui?.controls
+        ?.get?.()
+        .find((c: any) => c?.getName?.() === attributeLogicalName);
+    const shown = ctrl?.getLabel?.() ?? "";
 
-  // 2) Determine user LCID
-  const lcid = X?.Utility?.getGlobalContext?.().userSettings?.languageId ?? 1033;
+    // 2) Determine user LCID
+    const lcid =
+      X?.Utility?.getGlobalContext?.().userSettings?.languageId ?? 1033;
 
-  // 3) Fetch the entity DisplayName for this attribute (for comparison)
-  const clientUrl = X?.Utility?.getGlobalContext?.().getClientUrl?.();
-  const url = `${clientUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')?$select=DisplayName`;
-  const r = await fetch(url, {
-    headers: { Accept: "application/json", "OData-MaxVersion": "4.0", "OData-Version": "4.0" },
-    credentials: "same-origin"
-  });
-  const j = r.ok ? await r.json() : {};
-  const entityLabel = (j?.DisplayName?.LocalizedLabels || []).find((x: any) => x.LanguageCode === lcid)?.Label || "";
-
-  // 4) Get the form override (if any) by asking the control itself
-  // If a control label is set on the form for this LCID, getLabel() returns it.
-  // If no override exists, many orgs return the entity label here.
-  const formLabel = shown;
-
-  // 5) Decide the source
-  const source: "form" | "entity" =
-    formLabel && formLabel !== entityLabel ? "form" : "entity";
-
-  return { lcid, shown, source, entityLabel, formLabel };
-}
-
-  async function getTooltipHighlightContext(
-  entityLogicalName: string,
-  attributeLogicalName: string
-): Promise<{ userLcid: number; source: "form" | "entity" }> {
-  const X = (window as any).Xrm;
-  const userLcid =
-    X?.Utility?.getGlobalContext?.().userSettings?.languageId ?? 1033;
-
-  const { source } = await getDisplayedLabelInfo(
-    entityLogicalName,
-    attributeLogicalName
-  );
-
-  return { userLcid, source };
-}
-
-const LCID_NAMES: Record<number, string> = {
-  1025: "Arabic (Saudi Arabia)",
-  1028: "Chinese (Traditional, Taiwan)",
-  1030: "Danish (Denmark)",
-  1031: "German (Germany)",
-  1032: "Greek (Greece)",
-  1033: "English (United States)",
-  1034: "Spanish (Spain - Traditional)",
-  1035: "Finnish (Finland)",
-  1036: "French (France)",
-  1037: "Hebrew (Israel)",
-  1038: "Hungarian (Hungary)",
-  1040: "Italian (Italy)",
-  1041: "Japanese (Japan)",
-  1042: "Korean (Korea)",
-  1043: "Dutch (Netherlands)",
-  1044: "Norwegian Bokmål (Norway)",
-  1045: "Polish (Poland)",
-  1046: "Portuguese (Brazil)",
-  1048: "Romanian (Romania)",
-  1049: "Russian (Russia)",
-  1050: "Croatian (Croatia)",
-  1051: "Slovak (Slovakia)",
-  1053: "Swedish (Sweden)",
-  1055: "Turkish (Türkiye)",
-  1057: "Indonesian (Indonesia)",
-  1058: "Ukrainian (Ukraine)",
-  1060: "Slovenian (Slovenia)",
-  1061: "Estonian (Estonia)",
-  1062: "Latvian (Latvia)",
-  1063: "Lithuanian (Lithuania)",
-  2052: "Chinese (Simplified, PRC)",
-  2057: "English (United Kingdom)",
-  2060: "French (Belgium)",
-  2067: "Dutch (Belgium)",
-  2070: "Portuguese (Portugal)",
-  3082: "Spanish (Spain - Modern)"
-};
-
-function lcidToName(lcid: number): string {
-  return LCID_NAMES[lcid] ?? `Language ${lcid}`;
-}
-
-async function getProvisionedLanguageLcids(clientUrl: string): Promise<number[]> {
-  // Try the unbound Web API function first
-  try {
-    const r = await fetch(`${clientUrl}/api/data/v9.2/RetrieveProvisionedLanguages()`, {
-      method: "GET",
+    // 3) Fetch the entity DisplayName for this attribute (for comparison)
+    const clientUrl = X?.Utility?.getGlobalContext?.().getClientUrl?.();
+    const url = `${clientUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(
+      entityLogicalName
+    )}')/Attributes(LogicalName='${encodeURIComponent(
+      attributeLogicalName
+    )}')?$select=DisplayName`;
+    const r = await fetch(url, {
       headers: {
         Accept: "application/json",
         "OData-MaxVersion": "4.0",
@@ -753,97 +710,263 @@ async function getProvisionedLanguageLcids(clientUrl: string): Promise<number[]>
       },
       credentials: "same-origin",
     });
-    if (r.ok) {
-      const j = await r.json();
-      // Dataverse returns something like: { "LocaleIds": [1033, 1036, 1043, ...] }
-      const ids = (j?.RetrieveProvisionedLanguages ?? j?.localeids ?? j?.value) as number[] | undefined;
-      if (Array.isArray(ids) && ids.length) return Array.from(new Set(ids)).sort((a,b)=>a-b);
+    const j = r.ok ? await r.json() : {};
+    const entityLabel =
+      (j?.DisplayName?.LocalizedLabels || []).find(
+        (x: any) => x.LanguageCode === lcid
+      )?.Label || "";
+
+    // 4) Get the form override (if any) by asking the control itself
+    // If a control label is set on the form for this LCID, getLabel() returns it.
+    // If no override exists, many orgs return the entity label here.
+    const formLabel = shown;
+
+    // 5) Decide the source
+    const source: "form" | "entity" =
+      formLabel && formLabel !== entityLabel ? "form" : "entity";
+
+    return { lcid, shown, source, entityLabel, formLabel };
+  }
+
+  async function getTooltipHighlightContext(
+    entityLogicalName: string,
+    attributeLogicalName: string
+  ): Promise<{ userLcid: number; source: "form" | "entity" }> {
+    const X = (window as any).Xrm;
+    const userLcid =
+      X?.Utility?.getGlobalContext?.().userSettings?.languageId ?? 1033;
+
+    const { source } = await getDisplayedLabelInfo(
+      entityLogicalName,
+      attributeLogicalName
+    );
+
+    return { userLcid, source };
+  }
+
+  const LCID_NAMES: Record<number, string> = {
+    1025: "Arabic (Saudi Arabia)",
+    1028: "Chinese (Traditional, Taiwan)",
+    1030: "Danish (Denmark)",
+    1031: "German (Germany)",
+    1032: "Greek (Greece)",
+    1033: "English (United States)",
+    1034: "Spanish (Spain - Traditional)",
+    1035: "Finnish (Finland)",
+    1036: "French (France)",
+    1037: "Hebrew (Israel)",
+    1038: "Hungarian (Hungary)",
+    1040: "Italian (Italy)",
+    1041: "Japanese (Japan)",
+    1042: "Korean (Korea)",
+    1043: "Dutch (Netherlands)",
+    1044: "Norwegian Bokmål (Norway)",
+    1045: "Polish (Poland)",
+    1046: "Portuguese (Brazil)",
+    1048: "Romanian (Romania)",
+    1049: "Russian (Russia)",
+    1050: "Croatian (Croatia)",
+    1051: "Slovak (Slovakia)",
+    1053: "Swedish (Sweden)",
+    1055: "Turkish (Türkiye)",
+    1057: "Indonesian (Indonesia)",
+    1058: "Ukrainian (Ukraine)",
+    1060: "Slovenian (Slovenia)",
+    1061: "Estonian (Estonia)",
+    1062: "Latvian (Latvia)",
+    1063: "Lithuanian (Lithuania)",
+    2052: "Chinese (Simplified, PRC)",
+    2057: "English (United Kingdom)",
+    2060: "French (Belgium)",
+    2067: "Dutch (Belgium)",
+    2070: "Portuguese (Portugal)",
+    3082: "Spanish (Spain - Modern)",
+  };
+
+  function lcidToName(lcid: number): string {
+    return LCID_NAMES[lcid] ?? `Language ${lcid}`;
+  }
+  const TTL_MS_DEFAULT = 6 * 60 * 60 * 1000; // 6h
+  async function getProvisionedLanguagesCached(
+    baseUrl: string,
+    opts: { ttlMs?: number } = {}
+  ): Promise<number[]> {
+    const ttlMs = opts.ttlMs ?? TTL_MS_DEFAULT;
+    const key = "provLangs";
+
+    const cached = localStorage.getItem(
+      `d365x:${key}:${(baseUrl || "").replace(/\/+$/, "").toLowerCase()}`
+    );
+    const { langs, when } = cached ? await JSON.parse(cached) : {};
+    if (cached && Array.isArray(langs) && Date.now() - when < ttlMs) {
+      return langs.slice();
     }
-  } catch {
-    /* fall through */
+
+    const live = await getProvisionedLanguageLcids(baseUrl);
+    localStorage.setItem(
+      `d365x:${key}:${(baseUrl || "").replace(/\/+$/, "").toLowerCase()}`,
+      JSON.stringify({ langs: live, when: Date.now() })
+    );
+    return live;
   }
-  // Fallback: empty array → caller will union with whatever labels we already have
-  return [];
-}
 
-interface LabelRow { lcid: number; entity?: string; form?: string }
-
-function toLabelMap(labels: { languageCode: number; label: string }[]) {
-  const m = new Map<number, string>();
-  for (const l of labels) {
-    if (Number.isFinite(l.languageCode)) m.set(l.languageCode, l.label ?? "");
+  async function getProvisionedLanguageLcids(
+    clientUrl: string
+  ): Promise<number[]> {
+    // Try the unbound Web API function first
+    try {
+      console.log(
+        localStorage.getItem(
+          "d365x:provLangs:https://org77b6bb32.crm4.dynamics.com"
+        )
+      );
+    } catch (error) {
+      console.error("Error fetching provisioned languages from cache:", error);
+    }
+    try {
+      const r = await fetch(
+        `${clientUrl}/api/data/v9.2/RetrieveProvisionedLanguages()`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "OData-MaxVersion": "4.0",
+            "OData-Version": "4.0",
+          },
+          credentials: "same-origin",
+        }
+      );
+      if (r.ok) {
+        const j = await r.json();
+        // Dataverse returns something like: { "LocaleIds": [1033, 1036, 1043, ...] }
+        const ids = (j?.RetrieveProvisionedLanguages ??
+          j?.localeids ??
+          j?.value) as number[] | undefined;
+        if (Array.isArray(ids) && ids.length)
+          return Array.from(new Set(ids)).sort((a, b) => a - b);
+      }
+    } catch {
+      /* fall through */
+    }
+    // Fallback: empty array → caller will union with whatever labels we already have
+    return [];
   }
-  return m;
-}
 
-// safe attribute selector escape
-function cssEscapeAttr(v: string) {
-  return String(v).replace(/["\\]/g, (m) => `\\${m}`);
-}
+  interface LabelRow {
+    lcid: number;
+    entity?: string;
+    form?: string;
+  }
 
-/** Read systemform + parse and return the <cell id> that hosts the control for `attribute` on the active tab */
-async function getCellLabelIdOnActiveTab(
+  function toLabelMap(labels: { languageCode: number; label: string }[]) {
+    const m = new Map<number, string>();
+    for (const l of labels) {
+      if (Number.isFinite(l.languageCode)) m.set(l.languageCode, l.label ?? "");
+    }
+    return m;
+  }
+
+  // safe attribute selector escape
+  function cssEscapeAttr(v: string) {
+    return String(v).replace(/["\\]/g, (m) => `\\${m}`);
+  }
+
+  /** Header: <header><rows><row><cell id=..><control datafieldname="..."/></cell> */
+async function getCellLabelIdInHeader(
   clientUrl: string,
   formId: string,
-  attributeLogicalName: string,
-  activeTabName?: string,
-  activeTabId?: string
+  attributeLogicalName: string
 ): Promise<string | null> {
-  if (!clientUrl || !formId) return null;
-
-  // 1) Read the formxml
   const sysformUrl = `${clientUrl.replace(/\/+$/, '')}/api/data/v9.2/systemforms(${formId})?$select=formxml`;
   const j = await fetchJson(sysformUrl);
   const xml = String(j?.formxml || '');
   if (!xml) return null;
 
-  // 2) Parse and focus the active <tab>
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
+  const header = doc.querySelector('header');
+  if (!header) return null;
 
-  // Try to match by name (preferred), then by id
-  let tabEl: Element | null = null;
-  if (activeTabName) {
-    tabEl = doc.querySelector(`tab[name="${cssEscapeAttr(activeTabName)}"]`);
-  }
-  if (!tabEl && activeTabId) {
-    tabEl = doc.querySelector(`tab[id="${cssEscapeAttr(activeTabId)}"]`);
-  }
-  // If still not found, fallback to the first tab
-  if (!tabEl) tabEl = doc.querySelector('tab');
-  if (!tabEl) return null;
-
-  // 3) Inside the active tab, find the cell whose control has datafieldname=attribute
   const sel = `cell > control[datafieldname="${cssEscapeAttr(attributeLogicalName)}"]`;
-  const control = tabEl.querySelector(sel) as Element | null;
-  if (!control) return null;
+  const ctrl = header.querySelector(sel) as Element | null;
+  if (!ctrl) return null;
 
-  const cell = control.closest('cell') as Element | null;
-  if (!cell) return null;
-
-  // 4) For field labels, UpdateLocLabels expects the enclosing <cell id> as LabelId
-  const labelId = (cell.getAttribute('id') || '').replace(/[{}]/g, '').toLowerCase();
+  const cell = ctrl.closest('cell') as Element | null;
+  const labelId = (cell?.getAttribute('id') || '').replace(/[{}]/g, '').toLowerCase();
   return labelId || null;
 }
 
-function buildRowsAllLanguages(
-  allLcids: number[],
-  entityLabels: { languageCode: number; label: string }[],
-  formLabels: { languageCode: number; label: string }[]
-): LabelRow[] {
-  const ent = toLabelMap(entityLabels);
-  const frm = toLabelMap(formLabels);
+  /** Read systemform + parse and return the <cell id> that hosts the control for `attribute` on the active tab */
+  async function getCellLabelIdOnActiveTab(
+    clientUrl: string,
+    formId: string,
+    attributeLogicalName: string,
+    activeTabName?: string,
+    activeTabId?: string
+  ): Promise<string | null> {
+    if (!clientUrl || !formId) return null;
 
-  // If RetrieveProvisionedLanguages() failed, ensure we still show every LCID we observed
-  const lcidSet = new Set<number>(allLcids);
-  for (const k of ent.keys()) lcidSet.add(k);
-  for (const k of frm.keys()) lcidSet.add(k);
+    // 1) Read the formxml
+    const sysformUrl = `${clientUrl.replace(
+      /\/+$/,
+      ""
+    )}/api/data/v9.2/systemforms(${formId})?$select=formxml`;
+    const j = await fetchJson(sysformUrl);
+    const xml = String(j?.formxml || "");
+    if (!xml) return null;
 
-  return Array.from(lcidSet).sort((a,b)=>a-b).map((lcid) => ({
-    lcid,
-    entity: ent.get(lcid) ?? "",  // empty means show "—"
-    form:   frm.get(lcid) ?? ""
-  }));
-}
+    // 2) Parse and focus the active <tab>
+    const doc = new DOMParser().parseFromString(xml, "text/xml");
+
+    // Try to match by name (preferred), then by id
+    let tabEl: Element | null = null;
+    if (activeTabName) {
+      tabEl = doc.querySelector(`tab[name="${cssEscapeAttr(activeTabName)}"]`);
+    }
+    if (!tabEl && activeTabId) {
+      tabEl = doc.querySelector(`tab[id="${cssEscapeAttr(activeTabId)}"]`);
+    }
+    // If still not found, fallback to the first tab
+    if (!tabEl) tabEl = doc.querySelector("tab");
+    if (!tabEl) return null;
+
+    // 3) Inside the active tab, find the cell whose control has datafieldname=attribute
+    const sel = `cell > control[datafieldname="${cssEscapeAttr(
+      attributeLogicalName
+    )}"]`;
+    const control = tabEl.querySelector(sel) as Element | null;
+    if (!control) return null;
+
+    const cell = control.closest("cell") as Element | null;
+    if (!cell) return null;
+
+    // 4) For field labels, UpdateLocLabels expects the enclosing <cell id> as LabelId
+    const labelId = (cell.getAttribute("id") || "")
+      .replace(/[{}]/g, "")
+      .toLowerCase();
+    return labelId || null;
+  }
+
+  function buildRowsAllLanguages(
+    allLcids: number[],
+    entityLabels: { languageCode: number; label: string }[],
+    formLabels: { languageCode: number; label: string }[]
+  ): LabelRow[] {
+    const ent = toLabelMap(entityLabels);
+    const frm = toLabelMap(formLabels);
+
+    // If RetrieveProvisionedLanguages() failed, ensure we still show every LCID we observed
+    const lcidSet = new Set<number>(allLcids);
+    for (const k of ent.keys()) lcidSet.add(k);
+    for (const k of frm.keys()) lcidSet.add(k);
+
+    return Array.from(lcidSet)
+      .sort((a, b) => a - b)
+      .map((lcid) => ({
+        lcid,
+        entity: ent.get(lcid) ?? "", // empty means show "—"
+        form: frm.get(lcid) ?? "",
+      }));
+  }
 
   async function showTranslationsTooltip(
     targetEl: HTMLElement,
@@ -857,16 +980,15 @@ function buildRowsAllLanguages(
       getCurrentFormOverrideLabels(attributeLogicalName),
     ]);
 
-const X = (window as any).Xrm;
-  const clientUrl =
-    X?.Utility?.getGlobalContext?.().getClientUrl?.() || "";
+    const X = (window as any).Xrm;
+    const clientUrl = X?.Utility?.getGlobalContext?.().getClientUrl?.() || "";
 
     // 1) Get full language list
-  const provisioned = await getProvisionedLanguageLcids(clientUrl);
+    const provisioned = await getProvisionedLanguagesCached(clientUrl);
 
-  // 2) Build rows for ALL languages (fill missing with empty)
-  const rows = buildRowsAllLanguages(provisioned, entityLabels, formLabels);
-  console.log(rows);
+    // 2) Build rows for ALL languages (fill missing with empty)
+    const rows = buildRowsAllLanguages(provisioned, entityLabels, formLabels);
+    console.log(rows);
 
     //const rows = buildEntityVsFormRows(entityLabels, formLabels);
 
@@ -885,27 +1007,31 @@ const X = (window as any).Xrm;
     //   .forEach((n) => n.remove());
 
     // figure out current LCID + source column
-  const { userLcid, source } = await getTooltipHighlightContext(
-    entityLogicalName,
-    attribute
-  );
+    const { userLcid, source } = await getTooltipHighlightContext(
+      entityLogicalName,
+      attribute
+    );
 
-  const htmlRows = rows
-    .map((r) => {
-      const isCurrent = r.lcid === userLcid;
-      // apply column highlight only on the current LCID row
-      const entityClass = isCurrent && source === "entity" ? " hl-col" : "";
-      const formClass   = isCurrent && source === "form"   ? " hl-col" : "";
-      const rowClass    = isCurrent ? " is-current-row" : "";
+    const htmlRows = rows
+      .map((r) => {
+        const isCurrent = r.lcid === userLcid;
+        // apply column highlight only on the current LCID row
+        const entityClass = isCurrent && source === "entity" ? " hl-col" : "";
+        const formClass = isCurrent && source === "form" ? " hl-col" : "";
+        const rowClass = isCurrent ? " is-current-row" : "";
 
-      return `
+        return `
         <tr class="${rowClass}">
           <td class="lcid-cell">${lcidToName(r.lcid)} (${r.lcid})</td>
-          <td class="entity-cell${entityClass}">${r.entity ? escapeHtml(r.entity) : "<em>—</em>"}</td>
-          <td class="form-cell${formClass}">${r.form ? escapeHtml(r.form) : "<em>—</em>"}</td>
+          <td class="entity-cell${entityClass}">${
+          r.entity ? escapeHtml(r.entity) : "<em>—</em>"
+        }</td>
+          <td class="form-cell${formClass}">${
+          r.form ? escapeHtml(r.form) : "<em>—</em>"
+        }</td>
         </tr>`;
-    })
-    .join("");
+      })
+      .join("");
 
     const tip = document.createElement("div");
     tip.className = "d365-translate-tooltip";
@@ -965,34 +1091,52 @@ const X = (window as any).Xrm;
     //     openTranslationReport(entityLogicalName, attribute);
     //   });
     // }
+    const clickedRegion: 'header' | 'footer' | 'tab' = isInHeader(targetEl)
+    ? 'header'
+    : 'tab';
     if (btn) {
       btn.addEventListener("click", async (e) => {
         e.stopPropagation();
         const clientUrl =
-      (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.() || "";
+          (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.() ||
+          "";
 
-    const formId =
-      (window as any).Xrm?.Page?.ui?.formSelector?.getCurrentItem?.()?.getId?.() ||
-      (window as any).Xrm?.Page?.ui?.formSelector?.getId?.() || "";
+        const formId =
+          (window as any).Xrm?.Page?.ui?.formSelector
+            ?.getCurrentItem?.()
+            ?.getId?.() ||
+          (window as any).Xrm?.Page?.ui?.formSelector?.getId?.() ||
+          "";
 
-    const tabs = (window as any).Xrm?.Page?.ui?.tabs?.get?.() || [];
-    const activeTab = tabs.find((t: any) => t?.getDisplayState?.() === "expanded");
-    const activeTabName = activeTab?.getName?.() || "";
-    const activeTabId = activeTab?.getId?.() ? activeTab.getId() : activeTab?.getId;
-
-      let labelId: string | null = null;
-      try {
-        labelId = await getCellLabelIdOnActiveTab(
-          clientUrl,
-          formId,
-          attribute,
-          activeTabName,
-          activeTabId
+        const tabs = (window as any).Xrm?.Page?.ui?.tabs?.get?.() || [];
+        const activeTab = tabs.find(
+          (t: any) => t?.getDisplayState?.() === "expanded"
         );
-      } catch (err) {
-        // optional: swallow and proceed without labelId
-        console.warn('Could not resolve labelId:', err);
+        const activeTabName = activeTab?.getName?.() || "";
+        const activeTabId = activeTab?.getId?.()
+          ? activeTab.getId()
+          : activeTab?.getId;
+
+        let labelId: string | null = null;
+    try {
+      // Try best resolver based on where the click happened
+      if (clickedRegion === 'header') {
+        labelId = await getCellLabelIdInHeader(clientUrl, formId, attribute);
+        if (!labelId) {
+          // fallback to tab if header didn’t have a distinct cell/label
+          labelId = await getCellLabelIdOnActiveTab(clientUrl, formId, attribute, activeTabName, activeTabId);
+        }
+      } else {
+        // default: active tab
+        labelId = await getCellLabelIdOnActiveTab(clientUrl, formId, attribute, activeTabName, activeTabId);
+        if (!labelId) {
+          // fallback to header/footer in case the field is placed there
+          labelId = await getCellLabelIdInHeader(clientUrl, formId, attribute)
+        }
       }
+    } catch (err) {
+      console.warn("Could not resolve labelId:", err);
+    }
         // Ask the relay (content world) → background to open a new tab
         window.postMessage(
           {
@@ -1011,6 +1155,21 @@ const X = (window as any).Xrm;
       });
     }
   }
+
+  function elClosest(el: HTMLElement | null, sel: string): HTMLElement | null {
+  return el ? (el.closest(sel) as HTMLElement | null) : null;
+}
+
+/** Heuristic: is the clicked label inside the sticky form header area? */
+function isInHeader(el: HTMLElement): boolean {
+  // Common patterns in UCI header DOM
+  if (elClosest(el, '[data-id$="-header"], [data-id*="header"]')) return true;
+  if (elClosest(el, '[data-lp-id*="Header"], [data-lp-id*="header"]')) return true;
+  if (elClosest(el, '[id*="-header"], [id^="header"], [id$="-header"]')) return true;
+  // Last resort: header containers often have aria attributes or role hints
+  if (elClosest(el, '[role="banner"]')) return true;
+  return false;
+}
 
   function escapeHtml(s: string): string {
     return String(s ?? "").replace(
