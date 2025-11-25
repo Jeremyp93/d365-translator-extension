@@ -1,4 +1,5 @@
 // src/pages/FieldReportPage.tsx
+import { useEffect } from "react";
 import {
   Title3,
   Text,
@@ -38,6 +39,11 @@ export default function FieldReportPage(): JSX.Element {
   const styles = useStyles();
 
   const { clientUrl, entity, attribute, formId, labelId } = useOrgContext();
+
+  // Set document title
+  useEffect(() => {
+    document.title = 'Field Labels - D365 Translator';
+  }, []);
 
   // Simple inline validation
   const problems: string[] = [];
