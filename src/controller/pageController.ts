@@ -30,7 +30,7 @@ import { storageGet } from "../services/storageCache";
     enabled: false,
 
     async openFormReportPage() {
-      if (ctl.enabled) return;
+      //if (ctl.enabled) return;
 
       const X = (window as any).Xrm;
       if (!X) {

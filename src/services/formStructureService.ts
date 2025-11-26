@@ -9,6 +9,7 @@ import {
   waitForLanguageToApply,
 } from './d365Api';
 import { getProvisionedLanguagesCached } from './languageService';
+import { isEditableControlType } from '../utils/controlClassIds';
 
 /**
  * Retrieve formXml for all provisioned languages and merge labels
@@ -346,7 +347,10 @@ function updateLabelsInXml(formxml: string, structure: FormStructure, targetLcid
             const controlElements = Array.from(cellEl.getElementsByTagName('control'));
             if (controlElements.length > 0 && controlIdx < section.controls.length) {
               const control = section.controls[controlIdx];
-              updateElementLabels(cellEl, control.labels, targetLcid);
+              // Only update labels for editable control types (skip sub-grids, quick views, etc.)
+              if (isEditableControlType(control.classId)) {
+                updateElementLabels(cellEl, control.labels, targetLcid);
+              }
               controlIdx++;
             }
           }

@@ -38,6 +38,7 @@ import { useFormStructure } from "../../hooks/useFormStructure";
 import { getDisplayLabel, buildPath, saveFormStructure } from "../../services/formStructureService";
 import { publishEntityViaWebApi } from "../../services/d365Api";
 import { getLanguageDisplayName } from "../../utils/languageNames";
+import { getControlTypeName, isEditableControlType } from "../../utils/controlClassIds";
 import TranslationsTable from "../../components/TranslationsTable";
 import type { FormTab, FormSection, FormControl, Label } from "../../types";
 
@@ -961,10 +962,18 @@ function ControlDetails({
             </tr>
             <tr className={styles.labelTableRow}>
               <td className={styles.labelTableCell}>
+                <Caption1>Label ID (Cell ID)</Caption1>
+              </td>
+              <td className={styles.labelTableCell}>
+                <code>{control.cellId || "(none)"}</code>
+              </td>
+            </tr>
+            <tr className={styles.labelTableRow}>
+              <td className={styles.labelTableCell}>
                 <Caption1>Class ID</Caption1>
               </td>
               <td className={styles.labelTableCell}>
-                <code>{control.classId || "(none)"}</code>
+                <code>{getControlTypeName(control.classId)}</code>
               </td>
             </tr>
             <tr className={styles.labelTableRow}>
@@ -982,8 +991,8 @@ function ControlDetails({
           </tbody>
         </table>
       </Card>
-
-      <LabelsList 
+      {isEditableControlType(control.classId) && (
+        <LabelsList 
         labels={control.labels} 
         isSaving={isSaving} 
         onUpdateLabel={onUpdateLabel}
@@ -993,6 +1002,7 @@ function ControlDetails({
         attribute={control.datafieldname}
         cellId={control.cellId}
       />
+      )}
     </>
   );
 }
