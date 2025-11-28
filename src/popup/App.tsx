@@ -1,63 +1,147 @@
 import * as React from "react";
 import {
   FluentProvider,
-  webDarkTheme,
-  Card,
-  CardHeader,
-  CardPreview,
-  //Button,
   Text,
-  Divider,
-  Caption1,
-  Body1,
   Badge,
   makeStyles,
   shorthands,
   tokens,
-  Tooltip,
+  Button,
+  Divider,
 } from "@fluentui/react-components";
-import Button from "../components/ui/Button";
+import {
+  PaintBrush24Regular,
+  EyeOff24Regular,
+  Eye24Regular,
+  ArrowClockwise24Regular,
+  DocumentTable24Regular,
+  Sparkle24Regular,
+  WeatherMoon20Regular,
+  WeatherSunny20Regular,
+} from "@fluentui/react-icons";
+import { useSharedStyles, spacing } from "../styles/theme";
+import { useTheme } from "../context/ThemeContext";
 
 const useStyles = makeStyles({
   popup: {
-    // Typical Chrome popup sizing
-    width: "300px",
-    ...shorthands.padding("12px"),
-    boxSizing: "border-box",
+    width: "360px",
+    minHeight: "500px",
+    display: "flex",
+    flexDirection: "column",
+    backgroundColor: tokens.colorNeutralBackground1,
   },
-  card: {
-    backgroundColor: "var(--colorNeutralBackgroundStatic)",
-  },
-  actions: {
-    display: "grid !important",
-    gridTemplateColumns: "1fr !important",
-    rowGap: "8px !important",
-    marginTop: "8px !important",
-  },
-  footerNote: {
-    marginTop: "8px !important",
-    color: tokens.colorNeutralForeground3,
-    padding: "8px !important",
-  },
-  row: {
-    display: "flex !important",
-    alignItems: "center !important",
-    gap: "8px !important",
-  },
-  grow: { flex: 1 },
-  error: {
-    background: tokens.colorStatusDangerBackground2,
-    color: tokens.colorStatusDangerForeground2,
-    borderRadius: tokens.borderRadiusMedium,
-    padding: '6px 8px !important',
-    marginTop: '8px !important',
-  },
-  info: {
-    background: tokens.colorBrandBackground2,
+  header: {
+    ...shorthands.padding(spacing.lg),
+    backgroundColor: tokens.colorBrandBackground,
     color: tokens.colorNeutralForegroundOnBrand,
-    borderRadius: tokens.borderRadiusMedium,
-    padding: '6px 8px !important',
-    marginTop: '8px !important',
+    display: "flex",
+    alignItems: "center",
+    ...shorthands.gap(spacing.md),
+    boxShadow: tokens.shadow8,
+  },
+  headerIcon: {
+    fontSize: "32px",
+    display: "flex",
+    alignItems: "center",
+  },
+  headerText: {
+    flex: 1,
+  },
+  title: {
+    fontSize: tokens.fontSizeBase500,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForegroundOnBrand,
+    marginBottom: spacing.xs,
+  },
+  subtitle: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForegroundOnBrand,
+    opacity: 0.9,
+  },
+  content: {
+    flex: 1,
+    ...shorthands.padding(spacing.lg),
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap(spacing.md),
+  },
+  statusCard: {
+    ...shorthands.padding(spacing.md),
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    backgroundColor: tokens.colorNeutralBackground2,
+    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke2),
+    display: "flex",
+    alignItems: "center",
+    ...shorthands.gap(spacing.md),
+  },
+  section: {
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap(spacing.sm),
+  },
+  sectionTitle: {
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground2,
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    marginBottom: spacing.xs,
+  },
+  buttonGroup: {
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap(spacing.sm),
+  },
+  actionButton: {
+    justifyContent: "flex-start",
+    height: "48px",
+    ...shorthands.padding(spacing.md),
+  },
+  tooltipArea: {
+    minHeight: "48px",
+    ...shorthands.padding(spacing.md),
+    ...shorthands.borderTop("1px", "solid", tokens.colorNeutralStroke2),
+    backgroundColor: tokens.colorNeutralBackground3,
+    display: "flex",
+    alignItems: "center",
+  },
+  tooltipText: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground2,
+    lineHeight: "1.4",
+  },
+  footer: {
+    ...shorthands.padding(spacing.md, spacing.lg),
+    ...shorthands.borderTop("1px", "solid", tokens.colorNeutralStroke2),
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
+  footerText: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    lineHeight: "1.4",
+  },
+  message: {
+    ...shorthands.padding(spacing.sm, spacing.md),
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    fontSize: tokens.fontSizeBase200,
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap(spacing.xs),
+  },
+  errorMessage: {
+    backgroundColor: tokens.colorPaletteRedBackground2,
+    color: tokens.colorPaletteRedForeground1,
+    ...shorthands.border("1px", "solid", tokens.colorPaletteRedBorder2),
+  },
+  infoMessage: {
+    backgroundColor: tokens.colorBrandBackground,
+    color: tokens.colorNeutralForegroundOnBrand,
+    ...shorthands.border("1px", "solid", tokens.colorBrandStroke1),
+  },
+  warningMessage: {
+    backgroundColor: tokens.colorPaletteYellowBackground2,
+    color: tokens.colorPaletteYellowForeground2,
+    ...shorthands.border("1px", "solid", tokens.colorPaletteYellowBorder2),
   },
 });
 
@@ -72,6 +156,82 @@ function useD365Controller() {
   const [busy, setBusy] = React.useState(false);
   const [info, setInfo] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [isValidContext, setIsValidContext] = React.useState<boolean>(true);
+  const [contextChecking, setContextChecking] = React.useState<boolean>(true);
+
+  // Check if we're on a valid Dynamics 365 form page
+  React.useEffect(() => {
+    const checkContext = async () => {
+      try {
+        const [tab] = await chrome.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
+        
+        if (!tab?.url) {
+          setIsValidContext(false);
+          setContextChecking(false);
+          return;
+        }
+
+        // Check if URL is a Dynamics 365 domain and contains form indicators
+        const url = new URL(tab.url);
+        const isDynamicsDomain = url.hostname.includes('.dynamics.com');
+        const isFormPage = url.pathname.includes('/main.aspx') && 
+                          url.searchParams.get('pagetype') === 'entityrecord';
+
+        setIsValidContext(isDynamicsDomain && isFormPage);
+        setContextChecking(false);
+      } catch (e) {
+        console.error("Failed to check context:", e);
+        setIsValidContext(false);
+        setContextChecking(false);
+      }
+    };
+    checkContext();
+  }, []);
+
+  // Load active state from storage on mount
+  React.useEffect(() => {
+    const loadState = async () => {
+      try {
+        const [tab] = await chrome.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
+        if (!tab?.id) return;
+
+        const storageKey = `highlightActive_${tab.id}`;
+        const result = await chrome.storage.session.get(storageKey);
+        if (result[storageKey] === true) {
+          setActive(true);
+        }
+      } catch (e) {
+        console.error("Failed to load highlight state:", e);
+      }
+    };
+    loadState();
+  }, []);
+
+  // Save active state to storage
+  const saveActiveState = React.useCallback(async (isActive: boolean) => {
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (!tab?.id) return;
+
+      const storageKey = `highlightActive_${tab.id}`;
+      if (isActive) {
+        await chrome.storage.session.set({ [storageKey]: true });
+      } else {
+        await chrome.storage.session.remove(storageKey);
+      }
+    } catch (e) {
+      console.error("Failed to save highlight state:", e);
+    }
+  }, []);
 
   const withGuard = React.useCallback(
     async (fn: (tabId: number, frameId: number) => Promise<void>) => {
@@ -186,6 +346,7 @@ function useD365Controller() {
       await insertHighlightCss(tabId, frameId);
       await callController(tabId, frameId, "enable");
       setActive(true);
+      await saveActiveState(true);
       setInfo("Highlight enabled.");
     });
     setBusy(false);
@@ -198,6 +359,7 @@ function useD365Controller() {
       await callController(tabId, frameId, "disable");
       await removeHighlightCss(tabId, frameId);
       setActive(false);
+      await saveActiveState(false);
       setInfo("Highlight removed.");
     });
     setBusy(false);
@@ -274,109 +436,184 @@ function useD365Controller() {
     showAllFields,
     clearCacheAndHardRefresh,
     openFormReportPage,
+    isValidContext,
+    contextChecking,
+    setInfo,
   };
 }
 
 export default function App(): JSX.Element {
   const styles = useStyles();
-  const { active, busy, info, error, activate, deactivate, showAllFields, clearCacheAndHardRefresh, openFormReportPage } =
+  const sharedStyles = useSharedStyles();
+  const { theme, mode, toggleTheme } = useTheme();
+  const { active, busy, info, error, activate, deactivate, showAllFields, clearCacheAndHardRefresh, openFormReportPage, isValidContext, contextChecking, setInfo } =
     useD365Controller();
 
+  const [hoveredButton, setHoveredButton] = React.useState<string | null>(null);
+
+  // Auto-dismiss info messages after 3 seconds
+  React.useEffect(() => {
+    if (info && !error) {
+      const timer = setTimeout(() => {
+        setInfo(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [info, error, setInfo]);
+
+  const buttonDescriptions: Record<string, string> = {
+    showAllFields: "Temporarily reveal all hidden controls and fields on the current form",
+    clearCache: "Clear browser cache and perform a hard refresh of the current page",
+    highlight: "Highlight all translatable fields on the form. Click any highlighted field to open its translation editor.",
+    removeHighlight: "Remove field highlighting and disable the translation overlay",
+    formTranslations: "Open the comprehensive form translations editor in a new tab",
+  };
+
   return (
-    <FluentProvider theme={webDarkTheme}>
+    <FluentProvider theme={theme}>
       <div className={styles.popup}>
-        <Card className={styles.card}>
-          <CardHeader
-            header={<Text weight="semibold">D365 Field Translator</Text>}
-            description={
-              <div className={styles.row}>
-                <Caption1>Control highlighter & quick tools</Caption1>
-                <div className={styles.grow} />
-                <Badge
-                  appearance={active ? "filled" : "tint"}
-                  color={active ? "brand" : "informative"}
-                >
-                  {active ? "Active" : "Idle"}
-                </Badge>
-              </div>
-            }
+        {/* Header */}
+        <div className={styles.header}>
+          <div className={styles.headerIcon}>
+            <Sparkle24Regular />
+          </div>
+          <div className={styles.headerText}>
+            <div className={styles.title}>D365 Translator</div>
+            <div className={styles.subtitle}>Field & Form Translation Tools</div>
+          </div>
+          <Button
+            appearance="subtle"
+            icon={mode === "dark" ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />}
+            onClick={toggleTheme}
+            title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            style={{ color: tokens.colorNeutralForegroundOnBrand }}
           />
-          <CardPreview>
-            <Divider />
-            <div className={styles.actions}>
-              <Tooltip
-                content="Temporarily show all controls/fields on the form"
-                relationship="label"
-              >
-                <Button
-                  appearance="secondary"
-                  onClick={showAllFields}
-                  disabled={busy}
-                >
-                  Show all fields
-                </Button>
-              </Tooltip>
+          <Badge
+            appearance={active ? "filled" : "tint"}
+            color={active ? "success" : "informative"}
+            size="large"
+          >
+            {active ? "Active" : "Idle"}
+          </Badge>
+        </div>
 
-              <Tooltip
-                content="Clear cache of the browser and refresh the form"
-                relationship="label"
-              >
-                <Button
-                  appearance="secondary"
-                  onClick={clearCacheAndHardRefresh}
-                  disabled={busy}
-                >
-                  Clear cache + Hard refresh
-                </Button>
-              </Tooltip>
-
-              <Divider />
-              <Tooltip
-                content="Highlight translatable controls. Click a control to open the report."
-                relationship="label"
-              >
-                <Button appearance="primary" onClick={activate} disabled={busy}>
-                  Highlight translatable fields
-                </Button>
-              </Tooltip>
-
-              <Tooltip
-                content="Turn off highlight and remove overlay CSS"
-                relationship="label"
-              >
-                <Button
-                  appearance="primary"
-                  onClick={deactivate}
-                  disabled={busy}
-                >
-                  Remove highlight
-                </Button>
-              </Tooltip>
-              <Divider />
-              <Tooltip
-                content="Manage all form translations in a dedicated report page"
-                relationship="label"
-              >
-                <Button appearance="primary" onClick={openFormReportPage} disabled={busy}>
-                  Form Translations
-                </Button>
-              </Tooltip>
+        {/* Content */}
+        <div className={styles.content}>
+          {/* Context Warning */}
+          {!contextChecking && !isValidContext && (
+            <div className={`${styles.message} ${styles.warningMessage}`}>
+              <Text weight="semibold">⚠️ Not on a Dynamics 365 Form</Text>
+              <Text>This extension only works on Dynamics 365 form pages. Please navigate to a form to use the translation tools.</Text>
             </div>
+          )}
 
-            {error && (
-              <div className={styles.error}>
-                <Body1>{error}</Body1>
-              </div>
-            )}
-
-            <div className={styles.footerNote}>
-              <Caption1>
-                Tip: click a highlighted control to open the translations report
-                page.
-              </Caption1>
+          {/* Status messages */}
+          {error && (
+            <div className={`${styles.message} ${styles.errorMessage}`}>
+              <Text weight="semibold">Error:</Text>
+              <Text>{error}</Text>
             </div>
-          </CardPreview>
-        </Card>
+          )}
+          
+          {info && !error && (
+            <div className={`${styles.message} ${styles.infoMessage}`}>
+              <Text>{info}</Text>
+            </div>
+          )}
+
+          {/* Quick Actions Section */}
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>Quick Actions</div>
+            <div className={styles.buttonGroup}>
+              <Button
+                appearance="secondary"
+                size="large"
+                icon={<Eye24Regular />}
+                onClick={showAllFields}
+                disabled={busy || !isValidContext || contextChecking}
+                className={styles.actionButton}
+                onMouseEnter={() => setHoveredButton("showAllFields")}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                Show All Fields
+              </Button>
+
+              <Button
+                appearance="secondary"
+                size="large"
+                icon={<ArrowClockwise24Regular />}
+                onClick={clearCacheAndHardRefresh}
+                disabled={busy || !isValidContext || contextChecking}
+                className={styles.actionButton}
+                onMouseEnter={() => setHoveredButton("clearCache")}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                Clear Cache & Refresh
+              </Button>
+            </div>
+          </div>
+
+          <Divider />
+
+          {/* Translation Tools Section */}
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>Translation Tools</div>
+            <div className={styles.buttonGroup}>
+              <Button
+                appearance="primary"
+                size="large"
+                icon={<PaintBrush24Regular />}
+                onClick={activate}
+                disabled={busy || active || !isValidContext || contextChecking}
+                className={styles.actionButton}
+                onMouseEnter={() => setHoveredButton("highlight")}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                Highlight Fields
+              </Button>
+
+              <Button
+                appearance="secondary"
+                size="large"
+                icon={<EyeOff24Regular />}
+                onClick={deactivate}
+                disabled={busy || !active || !isValidContext || contextChecking}
+                className={styles.actionButton}
+                onMouseEnter={() => setHoveredButton("removeHighlight")}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                Remove Highlight
+              </Button>
+
+              <Button
+                appearance="primary"
+                size="large"
+                icon={<DocumentTable24Regular />}
+                onClick={openFormReportPage}
+                disabled={busy || !isValidContext || contextChecking}
+                className={styles.actionButton}
+                onMouseEnter={() => setHoveredButton("formTranslations")}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                Form Translations
+              </Button>
+            </div>
+          </div>
+
+          {/* Fixed Tooltip Area */}
+          <div className={styles.tooltipArea}>
+            <Text className={styles.tooltipText}>
+              {hoveredButton ? buttonDescriptions[hoveredButton] : "Hover over a button to see its description"}
+            </Text>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className={styles.footer}>
+          <Text className={styles.footerText}>
+            💡 <strong>Tip:</strong> After highlighting fields, click any highlighted control to instantly open its translation editor.
+          </Text>
+        </div>
       </div>
     </FluentProvider>
   );

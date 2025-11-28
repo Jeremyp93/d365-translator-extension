@@ -143,7 +143,7 @@ export default function FormLabelEditor({
   };
 
   return (
-    <Card className={styles.root} style={{ backgroundColor: "var(--colorNeutralBackgroundStatic)" }}>
+    <Card className={styles.root}>
       <CardHeader
         header={
           <Text weight="semibold">Form labels (control label per LCID)</Text>

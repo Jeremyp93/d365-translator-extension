@@ -8,9 +8,77 @@ import {
   TableHeaderCell,
   TableRow,
   Text,
+  makeStyles,
+  shorthands,
+  tokens,
+  Badge,
 } from "@fluentui/react-components";
+import { Globe20Regular } from "@fluentui/react-icons";
 import TextInput from "./ui/TextInput";
 import { getLanguageDisplayName } from "../utils/languageNames";
+import { spacing } from "../styles/theme";
+
+const useStyles = makeStyles({
+  container: {
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    ...shorthands.overflow("hidden"),
+    width: "100%",
+    overflowX: "auto",
+  },
+  loadingContainer: {
+    display: "flex",
+    alignItems: "center",
+    ...shorthands.gap(spacing.sm),
+    ...shorthands.padding(spacing.lg),
+  },
+  table: {
+    width: "100%",
+    minWidth: "600px",
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  headerRow: {
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
+  headerCell: {
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+    ...shorthands.padding(spacing.md),
+  },
+  languageCell: {
+    width: "280px",
+    minWidth: "200px",
+    maxWidth: "320px",
+    ...shorthands.padding(spacing.md),
+    verticalAlign: "middle",
+  },
+  labelCell: {
+    ...shorthands.padding(spacing.md),
+    verticalAlign: "middle",
+  },
+  languageDisplay: {
+    display: "flex",
+    alignItems: "center",
+    ...shorthands.gap(spacing.sm),
+  },
+  languageName: {
+    fontFamily: tokens.fontFamilyMonospace,
+    fontSize: tokens.fontSizeBase300,
+    color: tokens.colorNeutralForeground2,
+  },
+  defaultBadge: {
+    marginLeft: spacing.xs,
+  },
+  row: {
+    transition: "background-color 0.15s ease",
+    ":hover": {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+    },
+  },
+  disabledContainer: {
+    opacity: 0.6,
+    pointerEvents: "none",
+  },
+});
 
 export interface TranslationsTableProps {
   lcids: number[];
@@ -37,6 +105,8 @@ export default function TranslationsTable({
   defaultLcid = 1033,
   readOnly = false,
 }: TranslationsTableProps): JSX.Element {
+  const styles = useStyles();
+
   // Sort with default language first, then by LCID
   const ordered = React.useMemo(() => {
     const sorted = (lcids ?? []).slice().sort((a, b) => {
@@ -49,59 +119,61 @@ export default function TranslationsTable({
 
   if (loading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "8px 0",
-        }}
-      >
-        <Spinner />
+      <div className={styles.loadingContainer}>
+        <Spinner size="small" />
         <Text>Loading translations…</Text>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        opacity: disabled ? 0.6 : 1,
-        pointerEvents: disabled ? ("none" as const) : "auto",
-      }}
-    >
+    <div className={disabled ? styles.disabledContainer : styles.container}>
       {title && (
-        <Text weight="semibold" style={{ display: "block", marginBottom: 8 }}>
+        <Text weight="semibold" style={{ display: "block", marginBottom: spacing.sm }}>
           {title}
         </Text>
       )}
 
-      <Table aria-label={title ?? "Translations"}>
+      <Table aria-label={title ?? "Translations"} className={styles.table}>
         <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Language</TableHeaderCell>
-            <TableHeaderCell>Label</TableHeaderCell>
+          <TableRow className={styles.headerRow}>
+            <TableHeaderCell className={styles.headerCell}>
+              <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>
+                <Globe20Regular />
+                Language
+              </div>
+            </TableHeaderCell>
+            <TableHeaderCell className={styles.headerCell}>Label</TableHeaderCell>
           </TableRow>
         </TableHeader>
 
         <TableBody>
           {ordered.map((lcid) => (
-            <TableRow key={lcid}>
-              <TableCell
-                style={{ width: 220, fontVariantNumeric: "tabular-nums" }}
-              >
-                <code>{getLanguageDisplayName(lcid)}</code>
+            <TableRow key={lcid} className={styles.row}>
+              <TableCell className={styles.languageCell}>
+                <div className={styles.languageDisplay}>
+                  <code className={styles.languageName}>{getLanguageDisplayName(lcid)}</code>
+                  {lcid === defaultLcid && (
+                    <Badge 
+                      appearance="tint" 
+                      color="brand" 
+                      size="small"
+                      className={styles.defaultBadge}
+                    >
+                      Default
+                    </Badge>
+                  )}
+                </div>
               </TableCell>
-              <TableCell>
+              <TableCell className={styles.labelCell}>
                 <TextInput
                   value={values[lcid] ?? ""}
                   onChange={(e) =>
                     onChange(lcid, (e.target as HTMLInputElement).value)
                   }
                   placeholder={placeholder}
-                  style={{width: "100%"}}
+                  disabled={disabled}
                   readOnly={readOnly}
-                  disabled={disabled || readOnly}
                 />
               </TableCell>
             </TableRow>
@@ -111,3 +183,4 @@ export default function TranslationsTable({
     </div>
   );
 }
+

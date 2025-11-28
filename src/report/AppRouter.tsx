@@ -5,7 +5,8 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { FluentProvider, webDarkTheme } from "@fluentui/react-components";
+import { FluentProvider } from "@fluentui/react-components";
+import { useTheme } from "../context/ThemeContext";
 import FieldReportPage from "./pages/FieldReportPage";
 import FormReportPage from "./pages/FormReportPage";
 
@@ -15,10 +16,12 @@ function KeepSearchNavigate({ to }: { to: string }) {
 }
 
 export default function AppRouter(): JSX.Element {
+  const { theme } = useTheme();
+  
   return (
     <HashRouter basename="/report">
       <FluentProvider
-        theme={webDarkTheme}
+        theme={theme}
         style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}
       >
         <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
