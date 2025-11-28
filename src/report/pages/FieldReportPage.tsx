@@ -1,5 +1,5 @@
 // src/pages/FieldReportPage.tsx
-import * as React from "react";
+import { useEffect } from "react";
 import {
   Title3,
   Text,
@@ -9,7 +9,7 @@ import {
   makeStyles,
 } from "@fluentui/react-components";
 
-import { Info, ErrorBox } from "../../components/ui/Notice";
+import { ErrorBox } from "../../components/ui/Notice";
 import EntityLabelEditor from "../../components/EntityLabelEditor";
 import FormLabelEditor from "../../components/FormLabelEditor";
 
@@ -39,6 +39,11 @@ export default function FieldReportPage(): JSX.Element {
   const styles = useStyles();
 
   const { clientUrl, entity, attribute, formId, labelId } = useOrgContext();
+
+  // Set document title
+  useEffect(() => {
+    document.title = 'Field Labels - D365 Translator';
+  }, []);
 
   // Simple inline validation
   const problems: string[] = [];

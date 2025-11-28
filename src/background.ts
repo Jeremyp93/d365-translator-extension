@@ -14,5 +14,18 @@ chrome.runtime.onMessage.addListener((msg: any, _sender, _sendResponse) => {
 
     const url = `${base}#/report/field${qs}`;
     chrome.tabs.create({ url }).catch(() => {});
+  } else if (msg?.type === "OPEN_FORM_REPORT") {
+    const { clientUrl, entity, formId, apiVersion } = msg.payload ?? {};
+    if (!clientUrl || !entity || !formId || !apiVersion) return;
+
+    const base = chrome.runtime.getURL("src/report/report.html");
+    const qs =
+      `?clientUrl=${encodeURIComponent(clientUrl)}` +
+      `&entity=${encodeURIComponent(entity)}` +
+      `&formId=${encodeURIComponent(formId)}` +
+      `&apiVersion=${encodeURIComponent(apiVersion)}`;
+
+    const url = `${base}#/report/form${qs}`;
+    chrome.tabs.create({ url }).catch(() => {});
   }
 });

@@ -10,6 +10,7 @@ import {
   Text,
 } from "@fluentui/react-components";
 import TextInput from "./ui/TextInput";
+import { getLanguageDisplayName } from "../utils/languageNames";
 
 export interface TranslationsTableProps {
   lcids: number[];
@@ -21,6 +22,8 @@ export interface TranslationsTableProps {
   loading?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  defaultLcid?: number; // Default language to show first (e.g., 1033)
+  readOnly?: boolean; // Make inputs readonly
 }
 
 export default function TranslationsTable({
@@ -31,12 +34,18 @@ export default function TranslationsTable({
   loading,
   disabled,
   placeholder,
+  defaultLcid = 1033,
+  readOnly = false,
 }: TranslationsTableProps): JSX.Element {
-  // Stable sort just in case
-  const ordered = React.useMemo(
-    () => (lcids ?? []).slice().sort((a, b) => a - b),
-    [lcids]
-  );
+  // Sort with default language first, then by LCID
+  const ordered = React.useMemo(() => {
+    const sorted = (lcids ?? []).slice().sort((a, b) => {
+      if (a === defaultLcid) return -1;
+      if (b === defaultLcid) return 1;
+      return a - b;
+    });
+    return sorted;
+  }, [lcids, defaultLcid]);
 
   if (loading) {
     return (
@@ -70,7 +79,7 @@ export default function TranslationsTable({
       <Table aria-label={title ?? "Translations"}>
         <TableHeader>
           <TableRow>
-            <TableHeaderCell>LCID</TableHeaderCell>
+            <TableHeaderCell>Language</TableHeaderCell>
             <TableHeaderCell>Label</TableHeaderCell>
           </TableRow>
         </TableHeader>
@@ -79,9 +88,9 @@ export default function TranslationsTable({
           {ordered.map((lcid) => (
             <TableRow key={lcid}>
               <TableCell
-                style={{ width: 120, fontVariantNumeric: "tabular-nums" }}
+                style={{ width: 220, fontVariantNumeric: "tabular-nums" }}
               >
-                {lcid}
+                <code>{getLanguageDisplayName(lcid)}</code>
               </TableCell>
               <TableCell>
                 <TextInput
@@ -91,6 +100,8 @@ export default function TranslationsTable({
                   }
                   placeholder={placeholder}
                   style={{width: "100%"}}
+                  readOnly={readOnly}
+                  disabled={disabled || readOnly}
                 />
               </TableCell>
             </TableRow>

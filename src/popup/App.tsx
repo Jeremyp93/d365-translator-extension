@@ -160,16 +160,17 @@ function useD365Controller() {
   const callController = async (
     tabId: number,
     frameId: number,
-    method: "enable" | "disable" | "showAllFields"
+    method: "enable" | "disable" | "showAllFields" | "openFormReportPage"
   ): Promise<void> => {
     await chrome.scripting.executeScript({
       target: { tabId, frameIds: [frameId] },
       world: "MAIN",
-      func: (m: "enable" | "disable" | "showAllFields") => {
+      func: (m: "enable" | "disable" | "showAllFields" | "openFormReportPage") => {
         const ctl = (window as any).__d365Ctl as {
           enable: () => void;
           disable: () => void;
           showAllFields: () => void;
+          openFormReportPage: () => void;
         };
         if (!ctl) throw new Error("controller missing");
         ctl[m]();
@@ -212,6 +213,57 @@ function useD365Controller() {
     setBusy(false);
   };
 
+  const openFormReportPage = async (): Promise<void> => {
+    setBusy(true);
+    setInfo("Opening form translations report page…");
+    await withGuard(async (tabId, frameId) => {
+      await callController(tabId, frameId, "openFormReportPage");
+      setInfo("Form report page opened.");
+    });
+    setBusy(false);
+  };
+
+  const clearCacheAndHardRefresh = async (): Promise<void> => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id || !tab.url) return;
+
+  const tabId = tab.id;
+  const origin = new URL(tab.url).origin;
+
+  try {
+    // 1) Clear global HTTP cache (same as DevTools “Empty Cache”)
+    await chrome.browsingData.remove({ since: 0 }, { cache: true });
+
+    // 2) Clear site-scoped data for the current origin
+    //    (Cache Storage, IndexedDB, localStorage, Service Workers, etc.)
+    await chrome.browsingData.remove(
+      { since: 0, origins: [origin] },
+      {
+        cacheStorage: true,
+        indexedDB: true,
+        localStorage: true,
+        serviceWorkers: true,
+        webSQL: true
+      }
+    );
+
+    // 3) Clear per-tab storage inside the page (sessionStorage + any lingering localStorage)
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: () => {
+        try { window.localStorage?.clear?.(); } catch {}
+        try { window.sessionStorage?.clear?.(); } catch {}
+      }
+    });
+
+    // 4) Hard reload bypassing cache
+    await chrome.tabs.reload(tabId, { bypassCache: true });
+  } catch (e) {
+    console.warn("[popup] emptyCacheAndHardReload failed:", e);
+  }
+}
+
   return {
     active,
     busy,
@@ -220,12 +272,14 @@ function useD365Controller() {
     activate,
     deactivate,
     showAllFields,
+    clearCacheAndHardRefresh,
+    openFormReportPage,
   };
 }
 
 export default function App(): JSX.Element {
   const styles = useStyles();
-  const { active, busy, info, error, activate, deactivate, showAllFields } =
+  const { active, busy, info, error, activate, deactivate, showAllFields, clearCacheAndHardRefresh, openFormReportPage } =
     useD365Controller();
 
   return (
@@ -263,6 +317,19 @@ export default function App(): JSX.Element {
                 </Button>
               </Tooltip>
 
+              <Tooltip
+                content="Clear cache of the browser and refresh the form"
+                relationship="label"
+              >
+                <Button
+                  appearance="secondary"
+                  onClick={clearCacheAndHardRefresh}
+                  disabled={busy}
+                >
+                  Clear cache + Hard refresh
+                </Button>
+              </Tooltip>
+
               <Divider />
               <Tooltip
                 content="Highlight translatable controls. Click a control to open the report."
@@ -283,6 +350,15 @@ export default function App(): JSX.Element {
                   disabled={busy}
                 >
                   Remove highlight
+                </Button>
+              </Tooltip>
+              <Divider />
+              <Tooltip
+                content="Manage all form translations in a dedicated report page"
+                relationship="label"
+              >
+                <Button appearance="primary" onClick={openFormReportPage} disabled={busy}>
+                  Form Translations
                 </Button>
               </Tooltip>
             </div>

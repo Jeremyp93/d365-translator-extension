@@ -15,5 +15,11 @@
         payload: d.payload
       });
     }
+    if (d.type === 'OPEN_FORM_REPORT') {
+      chrome.runtime.sendMessage({
+        type: 'OPEN_FORM_REPORT',
+        payload: d.payload
+      });
+    }
   });
 })();

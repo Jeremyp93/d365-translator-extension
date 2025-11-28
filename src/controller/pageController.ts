@@ -14,14 +14,63 @@ import { storageGet } from "../services/storageCache";
     labelSelectors: string[]; // to find the label INSIDE the wrapper
   }
 
+  const getVersion = (): string => {
+    const X = (window as any).Xrm;
+    return `v${X?.Utility?.getGlobalContext?.().getVersion?.().slice(0,3) ?? "9.1"}`;
+  }
+
   const ctl: {
     enabled: boolean;
     onClick?: (e: MouseEvent) => void;
     enable: () => Promise<void>;
     disable: () => void;
     showAllFields: () => Promise<void>;
+    openFormReportPage: () => Promise<void>;
   } = {
     enabled: false,
+
+    async openFormReportPage() {
+      //if (ctl.enabled) return;
+
+      const X = (window as any).Xrm;
+      if (!X) {
+        console.warn("[ctl] Xrm not found in this frame.");
+        return;
+      }
+
+      const page = await waitFormReady(6000);
+      if (!page) {
+        console.warn("[ctl] Form context not ready in this frame.");
+        return;
+      }
+
+      const entityLogicalName: string =
+        page.data.entity.getEntityName?.() ?? "";
+        
+      const clientUrl =
+          (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.() ||
+          "";
+
+        const formId =
+          (window as any).Xrm?.Page?.ui?.formSelector
+            ?.getCurrentItem?.()
+            ?.getId?.() ||
+          (window as any).Xrm?.Page?.ui?.formSelector?.getId?.() ||
+          "";
+      window.postMessage(
+          {
+            __d365x__: true,
+            type: "OPEN_FORM_REPORT",
+            payload: {
+              clientUrl,
+              entity: entityLogicalName, // you already have this in scope
+              formId,
+              apiVersion: getVersion(),
+            },
+          },
+          "*"
+        );
+    },
 
     async enable() {
       if (ctl.enabled) return;
@@ -411,94 +460,94 @@ import { storageGet } from "../services/storageCache";
     return s.replace(/["\\]/g, "\\$&");
   }
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  async function getTranslations(
-    X: any,
-    entityLogicalName: string,
-    attributeLogicalName: string
-  ): Promise<{ labels: { languageCode: number; label: string }[] }> {
-    // Helper: normalize anything to an array
-    const asArray = (v: any): any[] => {
-      if (!v) return [];
-      if (Array.isArray(v)) return v;
-      if (typeof v.get === "function") {
-        try {
-          return v.get();
-        } catch {
-          /* ignore */
-        }
-      }
-      if (typeof v === "object") return Object.values(v);
-      return [];
-    };
+  // /* eslint-disable @typescript-eslint/no-explicit-any */
+  // async function getTranslations(
+  //   X: any,
+  //   entityLogicalName: string,
+  //   attributeLogicalName: string
+  // ): Promise<{ labels: { languageCode: number; label: string }[] }> {
+  //   // Helper: normalize anything to an array
+  //   const asArray = (v: any): any[] => {
+  //     if (!v) return [];
+  //     if (Array.isArray(v)) return v;
+  //     if (typeof v.get === "function") {
+  //       try {
+  //         return v.get();
+  //       } catch {
+  //         /* ignore */
+  //       }
+  //     }
+  //     if (typeof v === "object") return Object.values(v);
+  //     return [];
+  //   };
 
-    // 1) Try the simple way first (works in many orgs)
-    try {
-      if (X?.Utility?.getEntityMetadata) {
-        const meta = await X.Utility.getEntityMetadata(entityLogicalName, [
-          attributeLogicalName,
-        ]);
-        const attrs = asArray(meta.Attributes);
-        const attr =
-          attrs.find(
-            (a: any) =>
-              (a?.LogicalName ?? "").toLowerCase() ===
-              attributeLogicalName.toLowerCase()
-          ) ?? attrs[0];
+  //   // 1) Try the simple way first (works in many orgs)
+  //   try {
+  //     if (X?.Utility?.getEntityMetadata) {
+  //       const meta = await X.Utility.getEntityMetadata(entityLogicalName, [
+  //         attributeLogicalName,
+  //       ]);
+  //       const attrs = asArray(meta.Attributes);
+  //       const attr =
+  //         attrs.find(
+  //           (a: any) =>
+  //             (a?.LogicalName ?? "").toLowerCase() ===
+  //             attributeLogicalName.toLowerCase()
+  //         ) ?? attrs[0];
 
-        const labels = asArray(attr?.DisplayName?.LocalizedLabels).map(
-          (l: any) => ({
-            languageCode: l.LanguageCode,
-            label: l.Label,
-          })
-        );
+  //       const labels = asArray(attr?.DisplayName?.LocalizedLabels).map(
+  //         (l: any) => ({
+  //           languageCode: l.LanguageCode,
+  //           label: l.Label,
+  //         })
+  //       );
 
-        if (labels.length) return { labels };
-      }
-    } catch {
-      // swallow and fall through to Web API
-    }
+  //       if (labels.length) return { labels };
+  //     }
+  //   } catch {
+  //     // swallow and fall through to Web API
+  //   }
 
-    // 2) Robust fallback: call the metadata Web API route directly using alternate keys
-    //    GET /api/data/v9.2/EntityDefinitions(LogicalName='account')/Attributes(LogicalName='name')?$select=DisplayName
-    console.log("Robust way needed");
-    const clientUrl: string =
-      X?.Utility?.getGlobalContext?.().getClientUrl?.() ??
-      (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.();
-    if (!clientUrl) throw new Error("Cannot determine client URL");
+  //   // 2) Robust fallback: call the metadata Web API route directly using alternate keys
+  //   //    GET /api/data/v9.2/EntityDefinitions(LogicalName='account')/Attributes(LogicalName='name')?$select=DisplayName
+  //   console.log("Robust way needed");
+  //   const clientUrl: string =
+  //     X?.Utility?.getGlobalContext?.().getClientUrl?.() ??
+  //     (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.();
+  //   if (!clientUrl) throw new Error("Cannot determine client URL");
 
-    const e = encodeURIComponent(entityLogicalName);
-    const a = encodeURIComponent(attributeLogicalName);
-    const url = `${clientUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${e}')/Attributes(LogicalName='${a}')?$select=DisplayName`;
+  //   const e = encodeURIComponent(entityLogicalName);
+  //   const a = encodeURIComponent(attributeLogicalName);
+  //   const url = `${clientUrl}/api/data/${getVersion()}/EntityDefinitions(LogicalName='${e}')/Attributes(LogicalName='${a}')?$select=DisplayName`;
 
-    const resp = await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "OData-MaxVersion": "4.0",
-        "OData-Version": "4.0",
-        // If your org requires a bearer, the browser will include it automatically in same-origin.
-        // No auth header needed in normal D365 pages.
-      },
-      credentials: "same-origin",
-    });
+  //   const resp = await fetch(url, {
+  //     method: "GET",
+  //     headers: {
+  //       Accept: "application/json",
+  //       "OData-MaxVersion": "4.0",
+  //       "OData-Version": "4.0",
+  //       // If your org requires a bearer, the browser will include it automatically in same-origin.
+  //       // No auth header needed in normal D365 pages.
+  //     },
+  //     credentials: "same-origin",
+  //   });
 
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => "");
-      throw new Error(`Metadata request failed (${resp.status}): ${text}`);
-    }
+  //   if (!resp.ok) {
+  //     const text = await resp.text().catch(() => "");
+  //     throw new Error(`Metadata request failed (${resp.status}): ${text}`);
+  //   }
 
-    const json = await resp.json();
+  //   const json = await resp.json();
 
-    // json.DisplayName is a Label; pull LocalizedLabels if present
-    const labels = asArray(json?.DisplayName?.LocalizedLabels).map(
-      (l: any) => ({
-        languageCode: l.LanguageCode,
-        label: l.Label,
-      })
-    );
-    return { labels };
-  }
+  //   // json.DisplayName is a Label; pull LocalizedLabels if present
+  //   const labels = asArray(json?.DisplayName?.LocalizedLabels).map(
+  //     (l: any) => ({
+  //       languageCode: l.LanguageCode,
+  //       label: l.Label,
+  //     })
+  //   );
+  //   return { labels };
+  // }
 
   function removeExistingTooltips(): void {
     document
@@ -506,21 +555,21 @@ import { storageGet } from "../services/storageCache";
       .forEach((n) => n.remove());
   }
 
-  function buildEntityVsFormRows(
-    entityLabels: { languageCode: number; label: string }[],
-    formLabels: { languageCode: number; label: string }[]
-  ): { lcid: number; entity: string; form: string }[] {
-    const eMap = new Map(entityLabels.map((l) => [l.languageCode, l.label]));
-    const fMap = new Map(formLabels.map((l) => [l.languageCode, l.label]));
-    const all = Array.from(
-      new Set<number>([...eMap.keys(), ...fMap.keys()])
-    ).sort((a, b) => a - b);
-    return all.map((lcid) => ({
-      lcid,
-      entity: eMap.get(lcid) || "",
-      form: fMap.get(lcid) || "",
-    }));
-  }
+  // function buildEntityVsFormRows(
+  //   entityLabels: { languageCode: number; label: string }[],
+  //   formLabels: { languageCode: number; label: string }[]
+  // ): { lcid: number; entity: string; form: string }[] {
+  //   const eMap = new Map(entityLabels.map((l) => [l.languageCode, l.label]));
+  //   const fMap = new Map(formLabels.map((l) => [l.languageCode, l.label]));
+  //   const all = Array.from(
+  //     new Set<number>([...eMap.keys(), ...fMap.keys()])
+  //   ).sort((a, b) => a - b);
+  //   return all.map((lcid) => ({
+  //     lcid,
+  //     entity: eMap.get(lcid) || "",
+  //     form: fMap.get(lcid) || "",
+  //   }));
+  // }
 
   function getBaseUrl(): string {
     const raw =
@@ -567,7 +616,7 @@ import { storageGet } from "../services/storageCache";
   ): Promise<{ languageCode: number; label: string }[]> {
     const base = getBaseUrl();
     const url =
-      `${base}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(
+      `${base}/api/data/${getVersion()}/EntityDefinitions(LogicalName='${encodeURIComponent(
         entityLogName
       )}')` +
       `/Attributes(LogicalName='${encodeURIComponent(
@@ -599,7 +648,7 @@ import { storageGet } from "../services/storageCache";
     const base = getBaseUrl();
     const formId = getCurrentFormId();
     if (!formId) return [];
-    const url = `${base}/api/data/v9.2/systemforms(${formId})?$select=formxml`;
+    const url = `${base}/api/data/${getVersion()}/systemforms(${formId})?$select=formxml`;
     const j = await fetchJson(url);
     const formxml = String(j?.formxml || "");
     if (!formxml) return [];
@@ -697,7 +746,7 @@ import { storageGet } from "../services/storageCache";
 
     // 3) Fetch the entity DisplayName for this attribute (for comparison)
     const clientUrl = X?.Utility?.getGlobalContext?.().getClientUrl?.();
-    const url = `${clientUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(
+    const url = `${clientUrl}/api/data/${getVersion()}/EntityDefinitions(LogicalName='${encodeURIComponent(
       entityLogicalName
     )}')/Attributes(LogicalName='${encodeURIComponent(
       attributeLogicalName
@@ -825,7 +874,7 @@ import { storageGet } from "../services/storageCache";
     }
     try {
       const r = await fetch(
-        `${clientUrl}/api/data/v9.2/RetrieveProvisionedLanguages()`,
+        `${clientUrl}/api/data/${getVersion()}/RetrieveProvisionedLanguages()`,
         {
           method: "GET",
           headers: {
@@ -877,7 +926,7 @@ async function getCellLabelIdInHeader(
   formId: string,
   attributeLogicalName: string
 ): Promise<string | null> {
-  const sysformUrl = `${clientUrl.replace(/\/+$/, '')}/api/data/v9.2/systemforms(${formId})?$select=formxml`;
+  const sysformUrl = `${clientUrl.replace(/\/+$/, '')}/api/data/${getVersion()}/systemforms(${formId})?$select=formxml`;
   const j = await fetchJson(sysformUrl);
   const xml = String(j?.formxml || '');
   if (!xml) return null;
@@ -909,7 +958,7 @@ async function getCellLabelIdInHeader(
     const sysformUrl = `${clientUrl.replace(
       /\/+$/,
       ""
-    )}/api/data/v9.2/systemforms(${formId})?$select=formxml`;
+    )}/api/data/${getVersion()}/systemforms(${formId})?$select=formxml`;
     const j = await fetchJson(sysformUrl);
     const xml = String(j?.formxml || "");
     if (!xml) return null;
