@@ -138,7 +138,7 @@ export default function EntityLabelEditor({
   };
 
   return (
-    <Card className={styles.root} style={{ backgroundColor: "var(--colorNeutralBackgroundStatic)" }}>
+    <Card className={styles.root}>
       <CardHeader
         header={
           <Text weight="semibold">DisplayName labels (Entity metadata)</Text>

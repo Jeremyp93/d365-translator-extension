@@ -14,7 +14,6 @@ import {
   MessageBarBody,
   MessageBarTitle,
   Badge,
-  Body1,
   Caption1,
   Tooltip,
   Accordion,
@@ -30,15 +29,26 @@ import {
   ChevronDoubleUp20Regular,
   Search20Regular,
   Save20Regular,
+  DocumentTable24Regular,
+  Code24Regular,
+  CheckmarkCircle20Regular,
+  ErrorCircle20Regular,
+  Info20Regular,
+  ArrowExport20Regular,
+  WeatherMoon20Regular,
+  WeatherSunny20Regular,
 } from "@fluentui/react-icons";
 
 import { ErrorBox, Info } from "../../components/ui/Notice";
+import PageHeader from "../../components/ui/PageHeader";
 import { useOrgContext } from "../../hooks/useOrgContext";
 import { useFormStructure } from "../../hooks/useFormStructure";
 import { getDisplayLabel, buildPath, saveFormStructure } from "../../services/formStructureService";
 import { publishEntityViaWebApi } from "../../services/d365Api";
 import { getLanguageDisplayName } from "../../utils/languageNames";
 import { getControlTypeName, isEditableControlType } from "../../utils/controlClassIds";
+import { useSharedStyles, spacing } from "../../styles/theme";
+import { useTheme } from "../../context/ThemeContext";
 import TranslationsTable from "../../components/TranslationsTable";
 import type { FormTab, FormSection, FormControl, Label } from "../../types";
 
@@ -47,24 +57,7 @@ const useStyles = makeStyles({
     display: "flex",
     flexDirection: "column",
     height: "100vh",
-    backgroundColor: tokens.colorNeutralBackground1,
-  },
-  header: {
-    ...shorthands.padding("16px", "24px"),
-    ...shorthands.borderBottom("1px", "solid", tokens.colorNeutralStroke1),
-    backgroundColor: tokens.colorNeutralBackground2,
-  },
-  headerRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: "8px",
-  },
-  metaRow: {
-    display: "flex",
-    ...shorthands.gap("16px"),
-    fontSize: "12px",
-    color: tokens.colorNeutralForeground3,
+    backgroundColor: tokens.colorNeutralBackground3,
   },
   content: {
     display: "flex",
@@ -72,87 +65,170 @@ const useStyles = makeStyles({
     overflow: "hidden",
   },
   sidebar: {
-    width: "320px",
-    ...shorthands.borderRight("1px", "solid", tokens.colorNeutralStroke1),
-    backgroundColor: tokens.colorNeutralBackground2,
+    width: "360px",
+    ...shorthands.borderRight("2px", "solid", tokens.colorNeutralStroke1),
+    backgroundColor: tokens.colorNeutralBackground1,
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
+    boxShadow: tokens.shadow8,
   },
   sidebarHeader: {
-    ...shorthands.padding("12px", "16px"),
-    ...shorthands.borderBottom("1px", "solid", tokens.colorNeutralStroke1),
+    ...shorthands.padding(spacing.md, spacing.lg),
+    ...shorthands.borderBottom("2px", "solid", tokens.colorNeutralStroke1),
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
+  sidebarTitle: {
+    fontSize: tokens.fontSizeBase400,
+    fontWeight: tokens.fontWeightSemibold,
+    marginBottom: spacing.sm,
+    display: "flex",
+    alignItems: "center",
+    ...shorthands.gap(spacing.sm),
   },
   searchBox: {
-    marginTop: "8px",
+    marginTop: spacing.sm,
+  },
+  expandButtons: {
+    display: "flex",
+    ...shorthands.gap(spacing.sm),
+    marginBottom: spacing.sm,
   },
   treeContainer: {
     flex: 1,
     overflowY: "auto",
-    ...shorthands.padding("8px"),
+    ...shorthands.padding(spacing.sm),
+    "::-webkit-scrollbar": {
+      width: "8px",
+    },
+    "::-webkit-scrollbar-track": {
+      backgroundColor: tokens.colorNeutralBackground1,
+    },
+    "::-webkit-scrollbar-thumb": {
+      backgroundColor: tokens.colorNeutralStroke1,
+      ...shorthands.borderRadius("4px"),
+      ":hover": {
+        backgroundColor: tokens.colorNeutralStroke2,
+      },
+    },
   },
   treeItem: {
-    ...shorthands.padding("6px", "8px"),
-    ...shorthands.borderRadius("4px"),
+    ...shorthands.padding(spacing.sm, spacing.md),
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap("6px"),
-    fontSize: "13px",
+    ...shorthands.gap(spacing.sm),
+    fontSize: tokens.fontSizeBase300,
+    marginBottom: "2px",
+    transition: "all 0.15s ease",
+    ...shorthands.border("1px", "solid", "transparent"),
     ":hover": {
-      backgroundColor: tokens.colorNeutralBackground1Hover,
+      backgroundColor: tokens.colorNeutralBackground3,
+      ...shorthands.border("1px", "solid", tokens.colorNeutralStroke1),
     },
   },
   treeItemSelected: {
-    backgroundColor: tokens.colorNeutralBackground1Selected,
+    backgroundColor: tokens.colorBrandBackground,
+    color: tokens.colorNeutralForegroundOnBrand,
+    fontWeight: tokens.fontWeightSemibold,
+    ...shorthands.border("1px", "solid", tokens.colorBrandStroke1),
     ":hover": {
-      backgroundColor: tokens.colorNeutralBackground1Selected,
+      backgroundColor: tokens.colorBrandBackgroundHover,
+      color: tokens.colorNeutralForegroundOnBrand,
     },
   },
   treeItemNested: {
-    paddingLeft: "32px",
+    marginLeft: spacing.xl,
   },
   treeItemNested2: {
-    paddingLeft: "56px",
+    marginLeft: "48px",
   },
   detailsPane: {
     flex: 1,
     overflowY: "auto",
-    ...shorthands.padding("24px"),
+    overflowX: "hidden",
+    ...shorthands.padding(spacing.xl),
+    backgroundColor: tokens.colorNeutralBackground2,
+    minWidth: 0,
+    "::-webkit-scrollbar": {
+      width: "8px",
+    },
+    "::-webkit-scrollbar-track": {
+      backgroundColor: tokens.colorNeutralBackground1,
+    },
+    "::-webkit-scrollbar-thumb": {
+      backgroundColor: tokens.colorNeutralStroke1,
+      ...shorthands.borderRadius("4px"),
+      ":hover": {
+        backgroundColor: tokens.colorNeutralStroke2,
+      },
+    },
   },
   detailsCard: {
-    marginBottom: "16px",
+    marginBottom: spacing.lg,
+    boxShadow: tokens.shadow8,
+    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke1),
+    backgroundColor: tokens.colorNeutralBackground1,
   },
-  labelTable: {
+  propertiesTable: {
     width: "100%",
     borderCollapse: "collapse",
-    marginTop: "8px",
-    fontSize: "13px",
+    marginTop: spacing.sm,
+    fontSize: tokens.fontSizeBase300,
+    tableLayout: "fixed",
   },
-  labelTableRow: {
+  propertyRow: {
     ...shorthands.borderBottom("1px", "solid", tokens.colorNeutralStroke2),
   },
-  labelTableCell: {
-    ...shorthands.padding("8px"),
+  propertyLabel: {
+    ...shorthands.padding(spacing.md),
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground2,
+    width: "180px",
+    verticalAlign: "top",
+  },
+  propertyValue: {
+    ...shorthands.padding(spacing.md),
+    color: tokens.colorNeutralForeground1,
+    wordWrap: "break-word",
+    overflowWrap: "break-word",
   },
   codeBlock: {
     backgroundColor: tokens.colorNeutralBackground3,
-    ...shorthands.padding("12px"),
-    ...shorthands.borderRadius("4px"),
-    fontSize: "12px",
-    fontFamily: "monospace",
+    ...shorthands.padding(spacing.md),
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    fontSize: tokens.fontSizeBase200,
+    fontFamily: tokens.fontFamilyMonospace,
     overflowX: "auto",
-    maxHeight: "400px",
+    maxHeight: "500px",
     overflowY: "auto",
+    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke2),
+    wordBreak: "break-all",
+    whiteSpace: "pre-wrap",
   },
   actionBar: {
     display: "flex",
-    ...shorthands.gap("8px"),
-    marginBottom: "16px",
+    ...shorthands.gap(spacing.sm),
+    marginBottom: spacing.lg,
+    flexWrap: "wrap",
   },
   emptyState: {
-    textAlign: "center",
-    ...shorthands.padding("48px", "24px"),
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    ...shorthands.padding("64px", spacing.xl),
+    color: tokens.colorNeutralForeground3,
+  },
+  messageContainer: {
+    ...shorthands.padding(spacing.lg, spacing.xl),
+    ...shorthands.borderBottom("1px", "solid", tokens.colorNeutralStroke1),
+  },
+  metaInfo: {
+    display: "flex",
+    ...shorthands.gap(spacing.xl),
+    fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground3,
   },
 });
@@ -165,6 +241,8 @@ type SelectedItem =
 
 export default function FormReportPage(): JSX.Element {
   const styles = useStyles();
+  const sharedStyles = useSharedStyles();
+  const { theme, mode, toggleTheme } = useTheme();
   const { clientUrl, entity, formId } = useOrgContext();
   const { state, load, resetError } = useFormStructure();
 
@@ -424,68 +502,84 @@ export default function FormReportPage(): JSX.Element {
   return (
     <div className={styles.page}>
       {/* Header */}
-      <div className={styles.header}>
-        <div className={styles.headerRow}>
-          <Text size={400} weight="semibold">Form Structure Viewer</Text>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <Button
-              appearance="primary"
-              icon={<Save20Regular />}
-              onClick={handleSave}
-              disabled={isSaving || loading || !editedStructure}
-            >
-              {isSaving ? "Saving & Publishing..." : "Save All Languages"}
-            </Button>
+      <PageHeader
+        title="Form Structure Viewer"
+        subtitle="Manage form translations across all languages"
+        icon={<DocumentTable24Regular />}
+        actions={
+          <>
             {loading && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>
                 <Spinner size="tiny" />
                 <Caption1>Loading form…</Caption1>
               </div>
             )}
-          </div>
-        </div>
-        <div className={styles.metaRow}>
-          <span>Entity: <code>{entity || "(unknown)"}</code></span>
-          <span>FormId: <code>{formId || "(none)"}</code></span>
-        </div>
-      </div>
+            <Button
+              appearance="subtle"
+              icon={mode === "dark" ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />}
+              onClick={toggleTheme}
+              title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            />
+            <Button
+              appearance="primary"
+              size="large"
+              icon={<Save20Regular />}
+              onClick={handleSave}
+              disabled={isSaving || loading || !editedStructure}
+            >
+              {isSaving ? "Saving..." : "Save All"}
+            </Button>
+          </>
+        }
+      />
 
-      {/* Success/Error messages */}
-      {saveSuccess && (
-        <MessageBar intent="success" style={{ margin: "16px" }}>
-          <MessageBarBody>
-            <MessageBarTitle>Saved & Published successfully</MessageBarTitle>
-            Form structure has been updated for all languages and published.
-          </MessageBarBody>
-        </MessageBar>
+      {/* Messages */}
+      {(saveSuccess || saveError || saveStatus) && (
+        <div className={styles.messageContainer}>
+          {saveSuccess && (
+            <MessageBar intent="success">
+              <MessageBarBody>
+                <MessageBarTitle>
+                  <CheckmarkCircle20Regular /> Saved & Published Successfully
+                </MessageBarTitle>
+                Form structure has been updated for all languages and published.
+              </MessageBarBody>
+            </MessageBar>
+          )}
+
+          {saveError && (
+            <MessageBar intent="error">
+              <MessageBarBody>
+                <MessageBarTitle>
+                  <ErrorCircle20Regular /> Save Failed
+                </MessageBarTitle>
+                {saveError}
+              </MessageBarBody>
+            </MessageBar>
+          )}
+
+          {saveStatus && !saveError && (
+            <MessageBar intent="info">
+              <MessageBarBody>
+                <MessageBarTitle>
+                  <Info20Regular /> Saving
+                </MessageBarTitle>
+                {saveStatus}
+              </MessageBarBody>
+            </MessageBar>
+          )}
+        </div>
       )}
 
-      {saveError && (
-        <MessageBar intent="error" style={{ margin: "16px" }}>
-          <MessageBarBody>
-            <MessageBarTitle>Save failed</MessageBarTitle>
-            {saveError}
-          </MessageBarBody>
-        </MessageBar>
-      )}
-
-      {saveStatus && (
-        <div style={{ margin: "16px" }}>
-          <Info title="Saving">
-            {saveStatus}
-          </Info>
-        </div>
-      )}
-
-      {/* Error state */}
+      {/* Error states */}
       {problems.length > 0 && (
-        <div style={{ padding: "16px" }}>
+        <div style={{ padding: spacing.xl }}>
           <ErrorBox>{problems.join(" ")}</ErrorBox>
         </div>
       )}
 
       {error && (
-        <div style={{ padding: "16px" }}>
+        <div style={{ padding: spacing.xl }}>
           <ErrorBox title="Failed to load form">{error}</ErrorBox>
         </div>
       )}
@@ -496,22 +590,35 @@ export default function FormReportPage(): JSX.Element {
           {/* Left sidebar - tree navigation */}
           <div className={styles.sidebar}>
             <div className={styles.sidebarHeader}>
-              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                <Tooltip content="Expand all" relationship="label">
+              <div className={styles.sidebarTitle}>
+                <DocumentTable24Regular />
+                Form Structure
+              </div>
+              <div className={styles.metaInfo}>
+                <span>Entity: <code>{entity || "?"}</code></span>
+              </div>
+              <div className={styles.expandButtons}>
+                <Tooltip content="Expand all tabs and sections" relationship="label">
                   <Button
                     size="small"
+                    appearance="subtle"
                     icon={<ChevronDoubleDown20Regular />}
                     onClick={handleExpandAll}
                     disabled={!filteredStructure}
-                  />
+                  >
+                    Expand
+                  </Button>
                 </Tooltip>
                 <Tooltip content="Collapse all" relationship="label">
                   <Button
                     size="small"
+                    appearance="subtle"
                     icon={<ChevronDoubleUp20Regular />}
                     onClick={handleCollapseAll}
                     disabled={!filteredStructure}
-                  />
+                  >
+                    Collapse
+                  </Button>
                 </Tooltip>
               </div>
               <Input
@@ -520,14 +627,15 @@ export default function FormReportPage(): JSX.Element {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 contentBefore={<Search20Regular />}
-                size="small"
+                size="medium"
               />
             </div>
 
             <div className={styles.treeContainer}>
               {loading && (
                 <div className={styles.emptyState}>
-                  <Spinner />
+                  <Spinner size="medium" />
+                  <Caption1 style={{ marginTop: spacing.md }}>Loading form structure...</Caption1>
                 </div>
               )}
 
@@ -559,8 +667,8 @@ export default function FormReportPage(): JSX.Element {
                         }}
                       >
                         {isTabExpanded ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
-                        <Text weight="semibold">{tabLabel}</Text>
-                        <Badge size="small" appearance="tint" color="informative">
+                        <Text weight="semibold" style={{ flex: 1 }}>{tabLabel}</Text>
+                        <Badge size="small" appearance="tint" color="brand">
                           Tab
                         </Badge>
                       </div>
@@ -594,8 +702,8 @@ export default function FormReportPage(): JSX.Element {
                                   }}
                                 >
                                   {isSectionExpanded ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
-                                  <Text>{sectionLabel}</Text>
-                                  <Badge size="small" appearance="tint">
+                                  <Text style={{ flex: 1 }}>{sectionLabel}</Text>
+                                  <Badge size="small" appearance="tint" color="informative">
                                     Section
                                   </Badge>
                                 </div>
@@ -628,9 +736,9 @@ export default function FormReportPage(): JSX.Element {
                                           });
                                         }}
                                       >
-                                        <Text size={200}>{controlLabel}</Text>
+                                        <Text size={200} style={{ flex: 1 }}>{controlLabel}</Text>
                                         {control.datafieldname && (
-                                          <Badge size="tiny" appearance="outline">
+                                          <Badge size="tiny" appearance="outline" color="success">
                                             Field
                                           </Badge>
                                         )}
@@ -651,7 +759,11 @@ export default function FormReportPage(): JSX.Element {
           <div className={styles.detailsPane}>
             {!selectedItem && !loading && (
               <div className={styles.emptyState}>
-                <Caption1>Select a tab, section, or control to view details</Caption1>
+                <DocumentTable24Regular style={{ fontSize: "48px", marginBottom: spacing.md }} />
+                <Text size={500} weight="semibold">Select an Item</Text>
+                <Caption1 style={{ marginTop: spacing.sm }}>
+                  Choose a tab, section, or control from the tree to view and edit its details
+                </Caption1>
               </div>
             )}
 
@@ -666,15 +778,16 @@ export default function FormReportPage(): JSX.Element {
                       icon={<Copy20Regular />}
                       onClick={handleCopyPath}
                       appearance="subtle"
+                      size="small"
                     >
-                      {copySuccess ? "Copied!" : "Copy Path"}
+                      {copySuccess ? "✓ Copied!" : "Copy Path"}
                     </Button>
                   </div>
 
                   <Card className={styles.detailsCard}>
                     <CardHeader
                       header={<Text weight="semibold">Path</Text>}
-                      description={<code>{buildPath(currentItem.path)}</code>}
+                      description={<code style={{ fontSize: tokens.fontSizeBase300 }}>{buildPath(currentItem.path)}</code>}
                     />
                   </Card>
 
@@ -812,35 +925,35 @@ function TabDetails({
       <Card className={styles.detailsCard}>
         <CardHeader header={<Text weight="semibold">Tab Properties</Text>} />
         <Divider />
-        <table className={styles.labelTable}>
+        <table className={styles.propertiesTable}>
           <tbody>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>ID</Caption1>
-              </td>
-              <td className={styles.labelTableCell}>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>ID</td>
+              <td className={styles.propertyValue}>
                 <code>{tab.id}</code>
               </td>
             </tr>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>Name</Caption1>
-              </td>
-              <td className={styles.labelTableCell}>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>Name</td>
+              <td className={styles.propertyValue}>
                 <code>{tab.name || "(none)"}</code>
               </td>
             </tr>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>Visible</Caption1>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>Visible</td>
+              <td className={styles.propertyValue}>
+                <Badge appearance="tint" color={tab.visible ?? true ? "success" : "danger"}>
+                  {String(tab.visible ?? true)}
+                </Badge>
               </td>
-              <td className={styles.labelTableCell}>{String(tab.visible ?? true)}</td>
             </tr>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>Show Label</Caption1>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>Show Label</td>
+              <td className={styles.propertyValue}>
+                <Badge appearance="tint" color={tab.showlabel ?? true ? "success" : "danger"}>
+                  {String(tab.showlabel ?? true)}
+                </Badge>
               </td>
-              <td className={styles.labelTableCell}>{String(tab.showlabel ?? true)}</td>
             </tr>
           </tbody>
         </table>
@@ -867,41 +980,41 @@ function SectionDetails({
       <Card className={styles.detailsCard}>
         <CardHeader header={<Text weight="semibold">Section Properties</Text>} />
         <Divider />
-        <table className={styles.labelTable}>
+        <table className={styles.propertiesTable}>
           <tbody>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>ID</Caption1>
-              </td>
-              <td className={styles.labelTableCell}>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>ID</td>
+              <td className={styles.propertyValue}>
                 <code>{section.id}</code>
               </td>
             </tr>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>Name</Caption1>
-              </td>
-              <td className={styles.labelTableCell}>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>Name</td>
+              <td className={styles.propertyValue}>
                 <code>{section.name || "(none)"}</code>
               </td>
             </tr>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>Visible</Caption1>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>Visible</td>
+              <td className={styles.propertyValue}>
+                <Badge appearance="tint" color={section.visible ?? true ? "success" : "danger"}>
+                  {String(section.visible ?? true)}
+                </Badge>
               </td>
-              <td className={styles.labelTableCell}>{String(section.visible ?? true)}</td>
             </tr>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>Show Label</Caption1>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>Show Label</td>
+              <td className={styles.propertyValue}>
+                <Badge appearance="tint" color={section.showlabel ?? true ? "success" : "danger"}>
+                  {String(section.showlabel ?? true)}
+                </Badge>
               </td>
-              <td className={styles.labelTableCell}>{String(section.showlabel ?? true)}</td>
             </tr>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>Controls</Caption1>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>Controls</td>
+              <td className={styles.propertyValue}>
+                <Badge appearance="filled" color="brand">{section.controls.length}</Badge>
               </td>
-              <td className={styles.labelTableCell}>{section.controls.length}</td>
             </tr>
           </tbody>
         </table>
@@ -934,59 +1047,53 @@ function ControlDetails({
       <Card className={styles.detailsCard}>
         <CardHeader header={<Text weight="semibold">Control Properties</Text>} />
         <Divider />
-        <table className={styles.labelTable}>
+        <table className={styles.propertiesTable}>
           <tbody>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>ID</Caption1>
-              </td>
-              <td className={styles.labelTableCell}>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>ID</td>
+              <td className={styles.propertyValue}>
                 <code>{control.id}</code>
               </td>
             </tr>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>Name</Caption1>
-              </td>
-              <td className={styles.labelTableCell}>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>Name</td>
+              <td className={styles.propertyValue}>
                 <code>{control.name || "(none)"}</code>
               </td>
             </tr>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>Data Field</Caption1>
-              </td>
-              <td className={styles.labelTableCell}>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>Data Field</td>
+              <td className={styles.propertyValue}>
                 <code>{control.datafieldname || "(none)"}</code>
               </td>
             </tr>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>Label ID (Cell ID)</Caption1>
-              </td>
-              <td className={styles.labelTableCell}>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>Label ID (Cell ID)</td>
+              <td className={styles.propertyValue}>
                 <code>{control.cellId || "(none)"}</code>
               </td>
             </tr>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>Class ID</Caption1>
-              </td>
-              <td className={styles.labelTableCell}>
-                <code>{getControlTypeName(control.classId)}</code>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>Class ID</td>
+              <td className={styles.propertyValue}>
+                <code style={{ fontSize: tokens.fontSizeBase200 }}>{getControlTypeName(control.classId)}</code>
               </td>
             </tr>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>Visible</Caption1>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>Visible</td>
+              <td className={styles.propertyValue}>
+                <Badge appearance="tint" color={control.visible ?? true ? "success" : "danger"}>
+                  {String(control.visible ?? true)}
+                </Badge>
               </td>
-              <td className={styles.labelTableCell}>{String(control.visible ?? true)}</td>
             </tr>
-            <tr className={styles.labelTableRow}>
-              <td className={styles.labelTableCell}>
-                <Caption1>Disabled</Caption1>
+            <tr className={styles.propertyRow}>
+              <td className={styles.propertyLabel}>Disabled</td>
+              <td className={styles.propertyValue}>
+                <Badge appearance="tint" color={control.disabled ?? false ? "danger" : "success"}>
+                  {String(control.disabled ?? false)}
+                </Badge>
               </td>
-              <td className={styles.labelTableCell}>{String(control.disabled ?? false)}</td>
             </tr>
           </tbody>
         </table>
@@ -1049,10 +1156,12 @@ function LabelsList({
       <Card>
         <CardHeader
           header={<Text weight="semibold">Labels (0)</Text>}
-          description="All language translations defined in the form XML"
+          description="No language translations defined in the form XML"
         />
         <Divider />
-        <Caption1 style={{ padding: "12px" }}>No labels defined</Caption1>
+        <div style={{ padding: spacing.lg, textAlign: "center", color: tokens.colorNeutralForeground3 }}>
+          <Caption1>No labels defined</Caption1>
+        </div>
       </Card>
     );
   }
@@ -1069,11 +1178,15 @@ function LabelsList({
       <CardHeader
         header={
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <Text weight="semibold">Labels ({labels.length})</Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+              <Text weight="semibold">Labels</Text>
+              <Badge appearance="filled" color="brand">{labels.length}</Badge>
+            </div>
             {clientUrl && entity && attribute && formId && (
               <Button
                 appearance="subtle"
                 size="small"
+                icon={<ArrowExport20Regular />}
                 onClick={openFieldReport}
               >
                 Open in Field Editor
@@ -1081,10 +1194,10 @@ function LabelsList({
             )}
           </div>
         }
-        description="All language translations defined in the form XML"
+        description="Multi-language translations defined in the form XML"
       />
       <Divider />
-      <div style={{ padding: "12px" }}>
+      <div style={{ padding: spacing.lg }}>
         <TranslationsTable
           lcids={lcids}
           values={values}
