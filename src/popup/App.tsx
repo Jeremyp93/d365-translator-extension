@@ -8,6 +8,8 @@ import {
   tokens,
   Button,
   Divider,
+  TabList,
+  Tab,
 } from "@fluentui/react-components";
 import {
   PaintBrush24Regular,
@@ -18,6 +20,8 @@ import {
   Sparkle24Regular,
   WeatherMoon20Regular,
   WeatherSunny20Regular,
+  Home20Regular,
+  Settings20Regular,
 } from "@fluentui/react-icons";
 import { useSharedStyles, spacing } from "../styles/theme";
 import { useTheme } from "../context/ThemeContext";
@@ -26,9 +30,11 @@ const useStyles = makeStyles({
   popup: {
     width: "360px",
     minHeight: "500px",
+    maxHeight: "600px",
     display: "flex",
     flexDirection: "column",
     backgroundColor: tokens.colorNeutralBackground1,
+    position: "relative",
   },
   header: {
     ...shorthands.padding(spacing.lg),
@@ -60,10 +66,20 @@ const useStyles = makeStyles({
   },
   content: {
     flex: 1,
-    ...shorthands.padding(spacing.lg),
     display: "flex",
     flexDirection: "column",
+    overflowY: "auto",
+    overflowX: "hidden",
+  },
+  contentWrapper: {
+    ...shorthands.padding(spacing.lg),
     ...shorthands.gap(spacing.md),
+    display: "flex",
+    flexDirection: "column",
+  },
+  stickyspacer: {
+    height: "8px",
+    flexShrink: 0,
   },
   statusCard: {
     ...shorthands.padding(spacing.md),
@@ -98,26 +114,20 @@ const useStyles = makeStyles({
     ...shorthands.padding(spacing.md),
   },
   tooltipArea: {
+    position: "sticky",
+    bottom: "52px",
     minHeight: "48px",
     ...shorthands.padding(spacing.md),
     ...shorthands.borderTop("1px", "solid", tokens.colorNeutralStroke2),
-    backgroundColor: tokens.colorNeutralBackground3,
+    backgroundColor: tokens.colorNeutralBackground1,
     display: "flex",
     alignItems: "center",
+    boxShadow: tokens.shadow8,
+    zIndex: 999,
   },
   tooltipText: {
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground2,
-    lineHeight: "1.4",
-  },
-  footer: {
-    ...shorthands.padding(spacing.md, spacing.lg),
-    ...shorthands.borderTop("1px", "solid", tokens.colorNeutralStroke2),
-    backgroundColor: tokens.colorNeutralBackground2,
-  },
-  footerText: {
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground3,
     lineHeight: "1.4",
   },
   message: {
@@ -143,6 +153,33 @@ const useStyles = makeStyles({
     color: tokens.colorPaletteYellowForeground2,
     ...shorthands.border("1px", "solid", tokens.colorPaletteYellowBorder2),
   },
+  tabMenu: {
+    position: "sticky",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderTopWidth: "2px",
+    borderTopStyle: "solid",
+    borderTopColor: tokens.colorNeutralStroke1,
+    boxShadow: tokens.shadow16,
+    display: "flex",
+    ...shorthands.padding(spacing.sm, 0),
+    zIndex: 1000,
+    "& .fui-TabList": {
+      width: "100%",
+      display: "flex",
+    },
+    "& .fui-Tab": {
+      flex: 1,
+      justifyContent: "center",
+    },
+  },
+  tabContent: {
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap(spacing.md),
+  },
 });
 
 /**
@@ -157,6 +194,7 @@ function useD365Controller() {
   const [info, setInfo] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isValidContext, setIsValidContext] = React.useState<boolean>(true);
+  const [isDynamicsEnv, setIsDynamicsEnv] = React.useState<boolean>(true);
   const [contextChecking, setContextChecking] = React.useState<boolean>(true);
 
   // Check if we're on a valid Dynamics 365 form page
@@ -170,6 +208,7 @@ function useD365Controller() {
         
         if (!tab?.url) {
           setIsValidContext(false);
+          setIsDynamicsEnv(false);
           setContextChecking(false);
           return;
         }
@@ -180,11 +219,13 @@ function useD365Controller() {
         const isFormPage = url.pathname.includes('/main.aspx') && 
                           url.searchParams.get('pagetype') === 'entityrecord';
 
+        setIsDynamicsEnv(isDynamicsDomain);
         setIsValidContext(isDynamicsDomain && isFormPage);
         setContextChecking(false);
       } catch (e) {
         console.error("Failed to check context:", e);
         setIsValidContext(false);
+        setIsDynamicsEnv(false);
         setContextChecking(false);
       }
     };
@@ -320,17 +361,18 @@ function useD365Controller() {
   const callController = async (
     tabId: number,
     frameId: number,
-    method: "enable" | "disable" | "showAllFields" | "openFormReportPage"
+    method: "enable" | "disable" | "showAllFields" | "openFormReportPage" | "openPluginTraceLogsPage"
   ): Promise<void> => {
     await chrome.scripting.executeScript({
       target: { tabId, frameIds: [frameId] },
       world: "MAIN",
-      func: (m: "enable" | "disable" | "showAllFields" | "openFormReportPage") => {
+      func: (m: "enable" | "disable" | "showAllFields" | "openFormReportPage" | "openPluginTraceLogsPage") => {
         const ctl = (window as any).__d365Ctl as {
           enable: () => void;
           disable: () => void;
           showAllFields: () => void;
           openFormReportPage: () => void;
+          openPluginTraceLogsPage: () => void;
         };
         if (!ctl) throw new Error("controller missing");
         ctl[m]();
@@ -385,6 +427,21 @@ function useD365Controller() {
     setBusy(false);
   };
 
+  const openPluginTraceLogsPage = async (): Promise<void> => {
+    setBusy(true);
+    setInfo("Opening plugin trace logs report page…");
+    await withGuard(async (tabId, frameId) => {
+      await callController(tabId, frameId, "openPluginTraceLogsPage");
+      setInfo("Plugin trace logs report page opened.");
+    });
+    setBusy(false);
+  };
+
+  // const openPluginTraceLogsPage = async (): Promise<void> => {
+  //   const url = chrome.runtime.getURL('report.html') + '#/plugin-trace-logs';
+  //   await chrome.tabs.create({ url });
+  // };
+
   const clearCacheAndHardRefresh = async (): Promise<void> => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !tab.url) return;
@@ -436,7 +493,9 @@ function useD365Controller() {
     showAllFields,
     clearCacheAndHardRefresh,
     openFormReportPage,
+    openPluginTraceLogsPage,
     isValidContext,
+    isDynamicsEnv,
     contextChecking,
     setInfo,
   };
@@ -446,10 +505,27 @@ export default function App(): JSX.Element {
   const styles = useStyles();
   const sharedStyles = useSharedStyles();
   const { theme, mode, toggleTheme } = useTheme();
-  const { active, busy, info, error, activate, deactivate, showAllFields, clearCacheAndHardRefresh, openFormReportPage, isValidContext, contextChecking, setInfo } =
+  const { active, busy, info, error, activate, deactivate, showAllFields, clearCacheAndHardRefresh, openFormReportPage, openPluginTraceLogsPage, isValidContext, isDynamicsEnv, contextChecking, setInfo } =
     useD365Controller();
 
   const [hoveredButton, setHoveredButton] = React.useState<string | null>(null);
+  const [activeTab, setActiveTab] = React.useState<"general" | "developer">("general");
+
+  // Load saved tab preference from storage
+  React.useEffect(() => {
+    chrome.storage.local.get(["popupActiveTab"], (result) => {
+      if (result.popupActiveTab) {
+        setActiveTab(result.popupActiveTab);
+      }
+    });
+  }, []);
+
+  // Save tab preference when it changes
+  const handleTabChange = React.useCallback((_: any, data: any) => {
+    const newTab = data.value as "general" | "developer";
+    setActiveTab(newTab);
+    chrome.storage.local.set({ popupActiveTab: newTab });
+  }, []);
 
   // Auto-dismiss info messages after 3 seconds
   React.useEffect(() => {
@@ -467,6 +543,7 @@ export default function App(): JSX.Element {
     highlight: "Highlight all translatable fields on the form. Click any highlighted field to open its translation editor.",
     removeHighlight: "Remove field highlighting and disable the translation overlay",
     formTranslations: "Open the comprehensive form translations editor in a new tab",
+    pluginTraceLogs: "View plugin execution trace logs with filtering options",
   };
 
   return (
@@ -499,120 +576,172 @@ export default function App(): JSX.Element {
 
         {/* Content */}
         <div className={styles.content}>
-          {/* Context Warning */}
-          {!contextChecking && !isValidContext && (
-            <div className={`${styles.message} ${styles.warningMessage}`}>
-              <Text weight="semibold">⚠️ Not on a Dynamics 365 Form</Text>
-              <Text>This extension only works on Dynamics 365 form pages. Please navigate to a form to use the translation tools.</Text>
+          <div className={styles.contentWrapper}>
+            {/* Context Warning - General Tab */}
+            {!contextChecking && !isValidContext && activeTab === "general" && (
+              <div className={`${styles.message} ${styles.warningMessage}`}>
+                <Text weight="semibold">⚠️ {isDynamicsEnv ? "Not on a Dynamics 365 Form" : "Not in Dynamics 365"}</Text>
+                <Text>
+                  {isDynamicsEnv 
+                    ? "General tools require a Dynamics 365 form page. Please navigate to a form or switch to the Developer tab."
+                    : "This extension requires a Dynamics 365 environment. Please navigate to a Dynamics 365 page."}
+                </Text>
+              </div>
+            )}
+
+            {/* Context Warning - Developer Tab */}
+            {!contextChecking && !isDynamicsEnv && activeTab === "developer" && (
+              <div className={`${styles.message} ${styles.warningMessage}`}>
+                <Text weight="semibold">⚠️ Not in Dynamics 365</Text>
+                <Text>Developer tools require a Dynamics 365 environment. Please navigate to a Dynamics 365 page.</Text>
+              </div>
+            )}
+
+            {/* Status messages */}
+            {error && (
+              <div className={`${styles.message} ${styles.errorMessage}`}>
+                <Text weight="semibold">Error:</Text>
+                <Text>{error}</Text>
+              </div>
+            )}
+            
+            {info && !error && (
+              <div className={`${styles.message} ${styles.infoMessage}`}>
+                <Text>{info}</Text>
+              </div>
+            )}
+
+            {/* General Tab Content */}
+            {activeTab === "general" && (
+            <div className={styles.tabContent}>
+              {/* Quick Actions Section */}
+              <div className={styles.section}>
+                <div className={styles.sectionTitle}>Quick Actions</div>
+                <div className={styles.buttonGroup}>
+                  <Button
+                    appearance="secondary"
+                    size="large"
+                    icon={<Eye24Regular />}
+                    onClick={showAllFields}
+                    disabled={busy || !isValidContext || contextChecking}
+                    className={styles.actionButton}
+                    onMouseEnter={() => setHoveredButton("showAllFields")}
+                    onMouseLeave={() => setHoveredButton(null)}
+                  >
+                    Show All Fields
+                  </Button>
+                </div>
+              </div>
+
+              <Divider />
+
+              {/* Translation Tools Section */}
+              <div className={styles.section}>
+                <div className={styles.sectionTitle}>Translation Tools</div>
+                <div className={styles.buttonGroup}>
+                  <Button
+                    appearance="primary"
+                    size="large"
+                    icon={<PaintBrush24Regular />}
+                    onClick={activate}
+                    disabled={busy || active || !isValidContext || contextChecking}
+                    className={styles.actionButton}
+                    onMouseEnter={() => setHoveredButton("highlight")}
+                    onMouseLeave={() => setHoveredButton(null)}
+                  >
+                    Highlight Fields
+                  </Button>
+
+                  <Button
+                    appearance="secondary"
+                    size="large"
+                    icon={<EyeOff24Regular />}
+                    onClick={deactivate}
+                    disabled={busy || !active || !isValidContext || contextChecking}
+                    className={styles.actionButton}
+                    onMouseEnter={() => setHoveredButton("removeHighlight")}
+                    onMouseLeave={() => setHoveredButton(null)}
+                  >
+                    Remove Highlight
+                  </Button>
+
+                  <Button
+                    appearance="primary"
+                    size="large"
+                    icon={<DocumentTable24Regular />}
+                    onClick={openFormReportPage}
+                    disabled={busy || !isValidContext || contextChecking}
+                    className={styles.actionButton}
+                    onMouseEnter={() => setHoveredButton("formTranslations")}
+                    onMouseLeave={() => setHoveredButton(null)}
+                  >
+                    Form Translations
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Status messages */}
-          {error && (
-            <div className={`${styles.message} ${styles.errorMessage}`}>
-              <Text weight="semibold">Error:</Text>
-              <Text>{error}</Text>
+          {/* Developer Tab Content */}
+          {activeTab === "developer" && (
+            <div className={styles.tabContent}>
+              <div className={styles.section}>
+                <div className={styles.sectionTitle}>Developer Tools</div>
+                <div className={styles.buttonGroup}>
+                  <Button
+                    appearance="secondary"
+                    size="large"
+                    icon={<ArrowClockwise24Regular />}
+                    onClick={clearCacheAndHardRefresh}
+                    disabled={busy || !isDynamicsEnv || contextChecking}
+                    className={styles.actionButton}
+                    onMouseEnter={() => setHoveredButton("clearCache")}
+                    onMouseLeave={() => setHoveredButton(null)}
+                  >
+                    Clear Cache & Refresh
+                  </Button>
+
+                  <Button
+                    appearance="primary"
+                    size="large"
+                    icon={<Sparkle24Regular />}
+                    onClick={openPluginTraceLogsPage}
+                    disabled={busy || !isDynamicsEnv || contextChecking}
+                    className={styles.actionButton}
+                    onMouseEnter={() => setHoveredButton("pluginTraceLogs")}
+                    onMouseLeave={() => setHoveredButton(null)}
+                  >
+                    Plugin Trace Logs
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
-          
-          {info && !error && (
-            <div className={`${styles.message} ${styles.infoMessage}`}>
-              <Text>{info}</Text>
-            </div>
-          )}
-
-          {/* Quick Actions Section */}
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>Quick Actions</div>
-            <div className={styles.buttonGroup}>
-              <Button
-                appearance="secondary"
-                size="large"
-                icon={<Eye24Regular />}
-                onClick={showAllFields}
-                disabled={busy || !isValidContext || contextChecking}
-                className={styles.actionButton}
-                onMouseEnter={() => setHoveredButton("showAllFields")}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                Show All Fields
-              </Button>
-
-              <Button
-                appearance="secondary"
-                size="large"
-                icon={<ArrowClockwise24Regular />}
-                onClick={clearCacheAndHardRefresh}
-                disabled={busy || !isValidContext || contextChecking}
-                className={styles.actionButton}
-                onMouseEnter={() => setHoveredButton("clearCache")}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                Clear Cache & Refresh
-              </Button>
-            </div>
-          </div>
-
-          <Divider />
-
-          {/* Translation Tools Section */}
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>Translation Tools</div>
-            <div className={styles.buttonGroup}>
-              <Button
-                appearance="primary"
-                size="large"
-                icon={<PaintBrush24Regular />}
-                onClick={activate}
-                disabled={busy || active || !isValidContext || contextChecking}
-                className={styles.actionButton}
-                onMouseEnter={() => setHoveredButton("highlight")}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                Highlight Fields
-              </Button>
-
-              <Button
-                appearance="secondary"
-                size="large"
-                icon={<EyeOff24Regular />}
-                onClick={deactivate}
-                disabled={busy || !active || !isValidContext || contextChecking}
-                className={styles.actionButton}
-                onMouseEnter={() => setHoveredButton("removeHighlight")}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                Remove Highlight
-              </Button>
-
-              <Button
-                appearance="primary"
-                size="large"
-                icon={<DocumentTable24Regular />}
-                onClick={openFormReportPage}
-                disabled={busy || !isValidContext || contextChecking}
-                className={styles.actionButton}
-                onMouseEnter={() => setHoveredButton("formTranslations")}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                Form Translations
-              </Button>
-            </div>
-          </div>
-
-          {/* Fixed Tooltip Area */}
-          <div className={styles.tooltipArea}>
-            <Text className={styles.tooltipText}>
-              {hoveredButton ? buttonDescriptions[hoveredButton] : "Hover over a button to see its description"}
-            </Text>
+          <div className={styles.stickyspacer} />
           </div>
         </div>
 
-        {/* Footer */}
-        <div className={styles.footer}>
-          <Text className={styles.footerText}>
-            💡 <strong>Tip:</strong> After highlighting fields, click any highlighted control to instantly open its translation editor.
+        {/* Sticky Tooltip Area */}
+        <div className={styles.tooltipArea}>
+          <Text className={styles.tooltipText}>
+            {hoveredButton ? buttonDescriptions[hoveredButton] : "Hover over a button to see its description"}
           </Text>
+        </div>
+
+        {/* Sticky Tab Menu */}
+        <div className={styles.tabMenu}>
+          <TabList
+            selectedValue={activeTab}
+            onTabSelect={handleTabChange}
+            size="large"
+          >
+            <Tab value="general" icon={<Home20Regular />}>
+              General
+            </Tab>
+            <Tab value="developer" icon={<Settings20Regular />}>
+              Developer
+            </Tab>
+          </TabList>
         </div>
       </div>
     </FluentProvider>
