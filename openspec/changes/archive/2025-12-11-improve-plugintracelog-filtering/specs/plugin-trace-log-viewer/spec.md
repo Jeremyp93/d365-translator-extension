@@ -31,14 +31,34 @@ The system SHALL provide a quick search input that instantly filters loaded plug
 - **THEN** an empty state message is displayed: "No results match 'X'"
 - **AND** user can see they can modify the search or clear it
 
+### Requirement: Resizable Type Name Column
+The system SHALL allow users to resize the Type Name column width by dragging a resize handle to accommodate different plugin naming conventions.
+
+#### Scenario: User resizes Type Name column
+- **GIVEN** the plugin trace log table is displayed
+- **WHEN** user hovers over the right edge of the Type Name column header
+- **THEN** a resize handle appears with visual feedback (cursor changes to col-resize)
+- **AND** the handle is highlighted on hover
+- **WHEN** user drags the resize handle left or right
+- **THEN** the column width adjusts in real-time
+- **AND** the minimum width is 150px and maximum width is 800px
+- **AND** table cells adjust to match the new column width
+
+#### Scenario: Resize handle doesn't interfere with sorting
+- **GIVEN** the Type Name column header has both sort and resize functionality
+- **WHEN** user clicks on the column header text
+- **THEN** sorting is triggered (not resizing)
+- **WHEN** user clicks specifically on the resize handle area
+- **THEN** resizing begins (not sorting)
+
 ### Requirement: Visual Distinction Between Search and Filters
 The system SHALL visually distinguish between quick search (client-side) and server filters (API-based) so users understand the difference.
 
 #### Scenario: Visual separation
 - **GIVEN** the plugin trace log page is open
-- **THEN** the quick search section has a distinct appearance (lighter background, prominent placement)
-- **AND** the server filters section has a distinct appearance (darker background, labeled "Server Filters" or "Advanced Filters")
-- **AND** helper text explains: quick search shows "Instantly filters loaded results" and server filters show "Fetch filtered data from Dynamics 365"
+- **THEN** the server filters section appears first with a distinct appearance (standard background, border, labeled "Server Filters")
+- **AND** the quick search section appears below with a distinct appearance (lighter background, no border)
+- **AND** helper text explains: server filters show "Fetch filtered data from Dynamics 365 • Click Apply to execute" and quick search shows "Instantly filters loaded results • No server calls"
 
 #### Scenario: Results count clarity
 - **GIVEN** both quick search and server filters may be active
@@ -96,8 +116,29 @@ The system SHALL minimize API calls by only querying the server when filters are
 - **AND** filtering is instant (client-side only)
 - **AND** results count shows "X of 50" where X is the quick search matches
 
-### Requirement: Responsive Table Layout
-The system SHALL display the plugin trace log table in a responsive manner that adapts to different screen sizes while maintaining readability and functionality.
+### Requirement: Responsive Layout
+The system SHALL display both the filter inputs and the plugin trace log table in a responsive manner that adapts to different screen sizes while maintaining readability and functionality.
+
+#### Scenario: Filter inputs on desktop (> 1200px)
+- **GIVEN** the plugin trace log page is open on a desktop with viewport width > 1200px
+- **WHEN** the page loads
+- **THEN** filter inputs are arranged in a 3-column grid
+- **AND** all inputs have equal width with 16px gaps between columns and rows
+- **AND** inputs do not touch or overlap
+
+#### Scenario: Filter inputs on tablet (768px - 1200px)
+- **GIVEN** the plugin trace log page is open on a tablet with viewport width between 768px and 1200px
+- **WHEN** the page loads
+- **THEN** filter inputs are arranged in a 2-column grid
+- **AND** all inputs have equal width with 16px gaps between columns and rows
+- **AND** inputs do not touch or overlap
+
+#### Scenario: Filter inputs on mobile (< 768px)
+- **GIVEN** the plugin trace log page is open on a mobile device with viewport width < 768px
+- **WHEN** the page loads
+- **THEN** filter inputs are arranged in a single column (stacked)
+- **AND** inputs span the full available width
+- **AND** there is 16px vertical spacing between inputs
 
 #### Scenario: Table on mobile device (< 768px)
 - **GIVEN** the plugin trace log page is open on a mobile device with viewport width < 768px

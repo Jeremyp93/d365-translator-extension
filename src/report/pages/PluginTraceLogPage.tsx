@@ -22,7 +22,7 @@ import {
   TableCellLayout,
   TableColumnId,
 } from '@fluentui/react-components';
-import { ArrowClockwiseRegular, FilterRegular, WeatherMoon20Regular, WeatherSunny20Regular, ChevronRight20Regular, ChevronDown20Regular } from '@fluentui/react-icons';
+import { ArrowClockwiseRegular, FilterRegular, WeatherMoon20Regular, WeatherSunny20Regular, ChevronRight20Regular, ChevronDown20Regular, Search20Regular, Settings20Regular, Dismiss20Regular } from '@fluentui/react-icons';
 import { useOrgContext } from '../../hooks/useOrgContext';
 import { usePluginTraceLogs } from '../../hooks/usePluginTraceLogs';
 import { useTheme } from '../../context/ThemeContext';
@@ -70,6 +70,26 @@ const useStyles = makeStyles({
     overflowY: 'auto',
     ...shorthands.padding('24px'),
   },
+  quickSearchSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    ...shorthands.gap('12px'),
+    ...shorthands.padding('16px'),
+    backgroundColor: tokens.colorNeutralBackground2,
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    marginBottom: '16px',
+  },
+  quickSearchTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    ...shorthands.gap('8px'),
+    fontSize: tokens.fontSizeBase400,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  quickSearchHelp: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+  },
   filterSection: {
     display: 'flex',
     flexDirection: 'column',
@@ -89,9 +109,16 @@ const useStyles = makeStyles({
   },
   filterGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    ...shorthands.gap('12px'),
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    columnGap: '16px',
+    rowGap: '16px',
     alignItems: 'end',
+    '@media (max-width: 1200px)': {
+      gridTemplateColumns: 'repeat(2, 1fr)',
+    },
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+    },
   },
   filterActions: {
     display: 'flex',
@@ -115,6 +142,14 @@ const useStyles = makeStyles({
     ...shorthands.borderRadius(tokens.borderRadiusMedium),
     ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
     ...shorthands.overflow('hidden'),
+    width: '100%',
+    // Responsive table handling
+    overflowX: 'auto',
+    '@media (max-width: 768px)': {
+      // Mobile: horizontal scroll for full table
+      overflowX: 'scroll',
+      WebkitOverflowScrolling: 'touch',
+    },
   },
   errorMessage: {
     ...shorthands.padding('12px'),
@@ -169,31 +204,65 @@ const useStyles = makeStyles({
     fontWeight: tokens.fontWeightSemibold,
     minWidth: '150px',
   },
+  responsiveTable: {
+    width: '100%',
+    borderCollapse: 'collapse' as const,
+    minWidth: '1200px', // Desktop: full width with all columns
+    '@media (min-width: 768px) and (max-width: 1024px)': {
+      // Tablet: slightly reduced min-width, flexible columns
+      minWidth: '900px',
+    },
+    '@media (max-width: 767px)': {
+      // Mobile: minimum table width, will scroll horizontally
+      minWidth: '800px',
+    },
+  },
+  resizableHeader: {
+    position: 'relative' as const,
+    userSelect: 'none' as const,
+  },
+  resizeHandle: {
+    position: 'absolute' as const,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: '8px',
+    cursor: 'col-resize',
+    backgroundColor: 'transparent',
+    ':hover': {
+      backgroundColor: tokens.colorBrandBackground,
+      opacity: 0.5,
+    },
+  },
+  resizing: {
+    backgroundColor: tokens.colorBrandBackground,
+    opacity: 0.7,
+  },
 });
 
 interface FilterSectionProps {
   filters: PluginTraceLogFilters;
   onFiltersChange: (filters: PluginTraceLogFilters) => void;
-  onRefresh: () => void;
+  onApply: () => void;
+  onClear: () => void;
   loading: boolean;
 }
 
-function FilterSection({ filters, onFiltersChange, onRefresh, loading }: FilterSectionProps) {
+function FilterSection({ filters, onFiltersChange, onApply, onClear, loading }: FilterSectionProps) {
   const styles = useStyles();
 
   const handleFilterChange = (field: keyof PluginTraceLogFilters, value: any) => {
     onFiltersChange({ ...filters, [field]: value });
   };
 
-  const handleClearFilters = () => {
-    onFiltersChange({});
-  };
-
   return (
     <div className={styles.filterSection}>
       <Text className={styles.filterTitle}>
-        <FilterRegular />
-        Filter Options
+        <Settings20Regular />
+        Server Filters
+      </Text>
+      <Text style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>
+        Fetch filtered data from Dynamics 365 • Click Apply to execute
       </Text>
 
       <div className={styles.filterGrid}>
@@ -266,11 +335,11 @@ function FilterSection({ filters, onFiltersChange, onRefresh, loading }: FilterS
       </div>
 
       <div className={styles.filterActions}>
-        <Button appearance="secondary" onClick={handleClearFilters}>
+        <Button appearance="secondary" onClick={onClear}>
           Clear Filters
         </Button>
-        <Button appearance="primary" icon={<ArrowClockwiseRegular />} onClick={onRefresh} disabled={loading}>
-          Refresh
+        <Button appearance="primary" icon={<ArrowClockwiseRegular />} onClick={onApply} disabled={loading}>
+          {loading ? 'Applying...' : 'Apply Filters'}
         </Button>
       </div>
     </div>
@@ -284,6 +353,8 @@ interface ResultsTableProps {
 function ResultsTable({ logs }: ResultsTableProps) {
   const styles = useStyles();
   const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
+  const [typeNameWidth, setTypeNameWidth] = React.useState<number>(350);
+  const [isResizing, setIsResizing] = React.useState<boolean>(false);
 
   const toggleRow = (id: string) => {
     setExpandedRows((prev) => {
@@ -295,6 +366,29 @@ function ResultsTable({ logs }: ResultsTableProps) {
       }
       return next;
     });
+  };
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    
+    const startX = e.clientX;
+    const startWidth = typeNameWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      const newWidth = Math.max(150, Math.min(800, startWidth + delta)); // Min 150px, max 800px
+      setTypeNameWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
   };
 
   const columns: TableColumnDefinition<PluginTraceLog>[] = [
@@ -447,12 +541,29 @@ function ResultsTable({ logs }: ResultsTableProps) {
 
   return (
     <div className={styles.tableContainer}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <table className={styles.responsiveTable}>
         <thead>
           <tr style={{ borderBottom: `2px solid ${tokens.colorNeutralStroke1}`, backgroundColor: tokens.colorNeutralBackground2 }}>
             <th style={{ width: '40px', padding: '8px' }}></th>
-            <th style={{ minWidth: '350px', padding: '8px', textAlign: 'left', fontWeight: tokens.fontWeightSemibold, cursor: 'pointer' }} onClick={() => onSortChange(null as any, { sortColumn: 'typename', sortDirection: sortState.sortColumn === 'typename' && sortState.sortDirection === 'ascending' ? 'descending' : 'ascending' })}>
+            <th 
+              className={styles.resizableHeader}
+              style={{ 
+                width: `${typeNameWidth}px`, 
+                minWidth: `${typeNameWidth}px`,
+                maxWidth: `${typeNameWidth}px`,
+                padding: '8px', 
+                textAlign: 'left', 
+                fontWeight: tokens.fontWeightSemibold, 
+                cursor: 'pointer' 
+              }} 
+              onClick={() => onSortChange(null as any, { sortColumn: 'typename', sortDirection: sortState.sortColumn === 'typename' && sortState.sortDirection === 'ascending' ? 'descending' : 'ascending' })}
+            >
               Type Name {sortState.sortColumn === 'typename' && (sortState.sortDirection === 'ascending' ? '↑' : '↓')}
+              <div 
+                className={`${styles.resizeHandle} ${isResizing ? styles.resizing : ''}`}
+                onMouseDown={handleResizeStart}
+                onClick={(e) => e.stopPropagation()}
+              />
             </th>
             <th style={{ minWidth: '150px', padding: '8px', textAlign: 'left', fontWeight: tokens.fontWeightSemibold, cursor: 'pointer' }} onClick={() => onSortChange(null as any, { sortColumn: 'messagename', sortDirection: sortState.sortColumn === 'messagename' && sortState.sortDirection === 'ascending' ? 'descending' : 'ascending' })}>
               Message {sortState.sortColumn === 'messagename' && (sortState.sortDirection === 'ascending' ? '↑' : '↓')}
@@ -489,7 +600,15 @@ function ResultsTable({ logs }: ResultsTableProps) {
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: '8px', maxWidth: '350px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.typename}>
+                  <td style={{ 
+                    padding: '8px', 
+                    width: `${typeNameWidth}px`,
+                    minWidth: `${typeNameWidth}px`,
+                    maxWidth: `${typeNameWidth}px`,
+                    overflow: 'hidden', 
+                    textOverflow: 'ellipsis', 
+                    whiteSpace: 'nowrap' 
+                  }} title={log.typename}>
                     {log.typename || 'N/A'}
                   </td>
                   <td style={{ padding: '8px' }}>{log.messagename || 'N/A'}</td>
@@ -581,7 +700,18 @@ function ResultsTable({ logs }: ResultsTableProps) {
 export default function PluginTraceLogPage(): JSX.Element {
   const styles = useStyles();
   const { clientUrl } = useOrgContext();
-  const { logs, loading, error, filters, setFilters, refetch } = usePluginTraceLogs(clientUrl);
+  const {
+    serverLogs,
+    serverFilters,
+    setServerFilters,
+    applyServerFilters,
+    clearServerFilters,
+    searchQuery,
+    setSearchQuery,
+    filteredLogs,
+    loading,
+    error,
+  } = usePluginTraceLogs(clientUrl);
   const { theme, mode, toggleTheme } = useTheme();
 
   if (!clientUrl) {
@@ -613,17 +743,36 @@ export default function PluginTraceLogPage(): JSX.Element {
       </div>
 
       <div className={styles.content}>
+        {/* Server Filters Section */}
         <FilterSection
-          filters={filters}
-          onFiltersChange={setFilters}
-          onRefresh={refetch}
+          filters={serverFilters}
+          onFiltersChange={setServerFilters}
+          onApply={applyServerFilters}
+          onClear={clearServerFilters}
           loading={loading}
         />
+
+        {/* Quick Search Section */}
+        <div className={styles.quickSearchSection}>
+          <Text className={styles.quickSearchTitle}>
+            <Search20Regular />
+            Quick Search
+          </Text>
+          <Input
+            placeholder="Search in results (Type Name, Message, Exception, Trace Log...)"
+            value={searchQuery}
+            onChange={(_, data) => setSearchQuery(data.value)}
+            contentAfter={searchQuery ? <Dismiss20Regular onClick={() => setSearchQuery('')} style={{ cursor: 'pointer' }} /> : <Search20Regular />}
+          />
+          <Text className={styles.quickSearchHelp}>
+            Instantly filters loaded results • No server calls
+          </Text>
+        </div>
 
         <div className={styles.resultsSection}>
           <div className={styles.resultsHeader}>
             <Text weight="semibold" size={500}>
-              Results ({logs.length})
+              Results ({filteredLogs.length}{searchQuery && ` of ${serverLogs.length}`})
             </Text>
           </div>
 
@@ -640,11 +789,15 @@ export default function PluginTraceLogPage(): JSX.Element {
             </div>
           )}
 
-          {!loading && !error && logs.length === 0 && (
-            <Text>No plugin trace logs found matching the current filters.</Text>
+          {!loading && !error && filteredLogs.length === 0 && serverLogs.length === 0 && (
+            <Text>No plugin trace logs found matching the current server filters.</Text>
           )}
 
-          {!loading && !error && logs.length > 0 && <ResultsTable logs={logs} />}
+          {!loading && !error && filteredLogs.length === 0 && serverLogs.length > 0 && searchQuery && (
+            <Text>No results match "{searchQuery}". Try a different search term or clear the search.</Text>
+          )}
+
+          {!loading && !error && filteredLogs.length > 0 && <ResultsTable logs={filteredLogs} />}
         </div>
       </div>
     </div>

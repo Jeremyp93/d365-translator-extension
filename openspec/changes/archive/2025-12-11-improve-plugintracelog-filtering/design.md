@@ -123,31 +123,51 @@ const filteredLogs = useMemo(() => {
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ 🔍 Quick Search                                             │
-│ [Search in results........................] 🔍              │
-│ Searches: Type Name, Message, Exception, Trace Log          │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
 │ ⚙️ Server Filters                                            │
 │                                                             │
-│ Type Name    [........................]                     │
-│ Message Name [........................]                     │
-│ Mode         [All            ▼]                             │
-│ Min Duration [....] Max Duration [....]                     │
-│ Start Date   [........] End Date [.......]                  │
-│ ☐ Show only exceptions                                      │
+│ [Type Name] [Message Name] [Mode ▼]                         │
+│ [Min Duration] [Max Duration] [Start Date]                  │
+│ [End Date] ☐ Show only exceptions                           │
 │                                                             │
+│ Fetch filtered data from Dynamics 365 • Click Apply to execute
 │ [Clear Filters] [Apply Filters]                             │
 └─────────────────────────────────────────────────────────────┘
 
+┌─────────────────────────────────────────────────────────────┐
+│ 🔍 Quick Search                                             │
+│ [Search in results........................] 🔍 or ✖         │
+│ Instantly filters loaded results • No server calls          │
+└─────────────────────────────────────────────────────────────┘
+
 Results (5 of 23)  ← "5 matching search, 23 from server"
+
+┌─────────────────────────────────────────────────────────────┐
+│ Type Name ↕ ⋮  │ Message │ Mode │ Type │ Duration │ ...     │
+│ Plugin1.Handler │ Create  │ Sync │ Plug │ 125ms ⚡ │         │
+│ Plugin1.Step2   │ Update  │ Sync │ Plug │ 89ms  ⚡ │         │
+└─────────────────────────────────────────────────────────────┘
+         ↑ Resizable (drag ⋮ handle)
 ```
+
+**Filter Grid Responsive Layout**:
+- Desktop (>1200px): 3 columns, 16px gaps
+- Tablet (768-1200px): 2 columns, 16px gaps
+- Mobile (<768px): 1 column, 16px vertical spacing
+
+**Section Order Rationale**: Server filters appear first because they control what data is loaded. Users set up their server query first, then use quick search to explore within those results.
 
 ### Visual Distinction
 
-- **Quick Search**: Light background, single input, prominent placement, always visible
-- **Server Filters**: Slightly darker background, multiple inputs, collapsible (optional), labeled "Advanced"
+- **Server Filters**: Standard background (`colorNeutralBackground1`) with border, labeled "Server Filters" with settings icon, appears first
+- **Quick Search**: Light background (`colorNeutralBackground2`), no border, labeled "Quick Search" with search icon, appears second
+
+### Resizable Column
+
+**Type Name Column**:
+- Resize handle (8px width) on right edge of header
+- Drag to adjust width (min: 150px, max: 800px)
+- Visual feedback: blue highlight on hover, cursor changes to col-resize
+- Persists during session, doesn't interfere with sorting
 
 ### Hook Refactoring
 
@@ -155,6 +175,7 @@ Results (5 of 23)  ← "5 matching search, 23 from server"
 export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsApi {
   const [serverLogs, setServerLogs] = useState<PluginTraceLog[]>([]);
   const [serverFilters, setServerFilters] = useState<PluginTraceLogFilters>({});
+  const [appliedFilters, setAppliedFilters] = useState<PluginTraceLogFilters>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -165,19 +186,20 @@ export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsApi {
     setLoading(true);
     setError(null);
     try {
-      const logs = await getPluginTraceLogs(baseUrl, serverFilters);
+      const logs = await getPluginTraceLogs(baseUrl, appliedFilters);
       setServerLogs(logs);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [baseUrl, serverFilters]);
+  }, [baseUrl, appliedFilters]);
 
-  // Initial load
+  // Initial load on mount only
   useEffect(() => {
     fetchLogs();
-  }, [fetchLogs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseUrl]); // Only refetch when baseUrl changes
 
   // Client-side filtering (memoized for performance)
   const filteredLogs = useMemo(() => {
@@ -192,16 +214,34 @@ export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsApi {
     );
   }, [serverLogs, searchQuery]);
 
+  const applyServerFilters = useCallback(async () => {
+    setAppliedFilters(serverFilters);
+    // Manually trigger fetch with current serverFilters
+    if (!baseUrl) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const logs = await getPluginTraceLogs(baseUrl, serverFilters);
+      setServerLogs(logs);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [baseUrl, serverFilters]);
+
   const clearServerFilters = useCallback(() => {
     setServerFilters({});
-    // fetchLogs will be called automatically via useEffect
-  }, []);
+    setAppliedFilters({});
+    // Manually trigger fetch with empty filters
+    // (implementation details omitted for brevity)
+  }, [baseUrl]);
 
   return {
     serverLogs,
     serverFilters,
     setServerFilters,
-    applyServerFilters: fetchLogs,
+    applyServerFilters,
     clearServerFilters,
     searchQuery,
     setSearchQuery,
@@ -212,6 +252,13 @@ export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsApi {
   };
 }
 ```
+
+**Key Implementation Details**:
+- `serverFilters`: User input state (can be modified without triggering API calls)
+- `appliedFilters`: Last filters sent to API (used for actual fetching)
+- `useEffect` only depends on `baseUrl`, not on `serverFilters` or `appliedFilters`
+- `applyServerFilters()` copies `serverFilters` to `appliedFilters` and manually fetches
+- `clearServerFilters()` resets both states and manually fetches with empty filters
 
 ### Component Changes
 
@@ -232,6 +279,15 @@ export default function PluginTraceLogPage() {
 
   return (
     <div className={styles.page}>
+      {/* Server Filters Section */}
+      <FilterSection
+        filters={serverFilters}
+        onFiltersChange={setServerFilters}
+        onApply={applyServerFilters}
+        onClear={clearServerFilters}
+        loading={loading}
+      />
+
       {/* Quick Search Section */}
       <div className={styles.quickSearchSection}>
         <Text className={styles.sectionTitle}>
@@ -241,7 +297,7 @@ export default function PluginTraceLogPage() {
           placeholder="Search in results (Type Name, Message, Exception, Trace Log...)"
           value={searchQuery}
           onChange={(_, data) => setSearchQuery(data.value)}
-          contentAfter={<Search20Regular />}
+          contentAfter={searchQuery ? <Dismiss20Regular onClick={() => setSearchQuery('')} /> : <Search20Regular />}
         />
         <Text size={200} style={{color: tokens.colorNeutralForeground3}}>
           Instantly filters loaded results • No server calls
