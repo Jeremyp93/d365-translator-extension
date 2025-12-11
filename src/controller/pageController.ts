@@ -26,8 +26,35 @@ import { storageGet } from "../services/storageCache";
     disable: () => void;
     showAllFields: () => Promise<void>;
     openFormReportPage: () => Promise<void>;
+    openPluginTraceLogsPage: () => Promise<void>;
   } = {
     enabled: false,
+
+    async openPluginTraceLogsPage() {
+      //if (ctl.enabled) return;
+
+      const X = (window as any).Xrm;
+      if (!X) {
+        console.warn("[ctl] Xrm not found in this frame.");
+        return;
+      }
+        
+      const clientUrl =
+          (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.() ||
+          "";
+
+      window.postMessage(
+          {
+            __d365x__: true,
+            type: "OPEN_PLUGIN_REPORT",
+            payload: {
+              clientUrl,
+              apiVersion: getVersion(),
+            },
+          },
+          "*"
+        );
+    },
 
     async openFormReportPage() {
       //if (ctl.enabled) return;

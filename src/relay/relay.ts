@@ -21,5 +21,11 @@
         payload: d.payload
       });
     }
+    if (d.type === 'OPEN_PLUGIN_REPORT') {
+      chrome.runtime.sendMessage({
+        type: 'OPEN_PLUGIN_REPORT',
+        payload: d.payload
+      });
+    }
   });
 })();

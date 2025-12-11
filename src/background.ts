@@ -27,5 +27,16 @@ chrome.runtime.onMessage.addListener((msg: any, _sender, _sendResponse) => {
 
     const url = `${base}#/report/form${qs}`;
     chrome.tabs.create({ url }).catch(() => {});
+  } else if (msg?.type === "OPEN_PLUGIN_REPORT") {
+    const { clientUrl, apiVersion } = msg.payload ?? {};
+    if (!clientUrl || !apiVersion) return;
+
+    const base = chrome.runtime.getURL("src/report/report.html");
+    const qs =
+      `?clientUrl=${encodeURIComponent(clientUrl)}` +
+      `&apiVersion=${encodeURIComponent(apiVersion)}`;
+
+    const url = `${base}#/report/plugin-trace-logs${qs}`;
+    chrome.tabs.create({ url }).catch(() => {});
   }
 });
