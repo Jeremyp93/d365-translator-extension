@@ -14,6 +14,11 @@ export interface PluginTraceLog {
   correlationid?: string;
 }
 
+export interface PaginatedResponse<T> {
+  records: T[];
+  nextLink: string | null;
+}
+
 export interface PluginTraceLogFilters {
   typename?: string;
   messagename?: string;
@@ -26,12 +31,13 @@ export interface PluginTraceLogFilters {
 }
 
 /**
- * Fetch plugin trace logs from Dynamics 365 with optional filtering
+ * Fetch plugin trace logs from Dynamics 365 with optional filtering and pagination
  */
 export async function getPluginTraceLogs(
   baseUrl: string,
-  filters?: PluginTraceLogFilters
-): Promise<PluginTraceLog[]> {
+  filters?: PluginTraceLogFilters,
+  pageSize: number = 100
+): Promise<PaginatedResponse<PluginTraceLog>> {
   const filterParts: string[] = [];
 
   if (filters?.typename) {
@@ -51,7 +57,11 @@ export async function getPluginTraceLogs(
   }
 
   if (filters?.endDate) {
-    filterParts.push(`createdon le ${filters.endDate}`);
+    // Use exclusive upper bound at next day to include all logs on endDate
+    const endDate = new Date(filters.endDate + 'T00:00:00.000Z');
+    endDate.setUTCDate(endDate.getUTCDate() + 1);
+    const nextDay = endDate.toISOString().split('T')[0];
+    filterParts.push(`createdon lt ${nextDay}`);
   }
 
   if (filters?.hasException !== undefined) {
@@ -64,14 +74,17 @@ export async function getPluginTraceLogs(
 
   const filterQuery = filterParts.length > 0 ? `$filter=${filterParts.join(' and ')}` : '';
   const selectQuery = '$select=plugintracelogid,typename,messagename,mode,depth,performanceexecutionduration,operationtype,exceptiondetails,messageblock,createdon,correlationid';
-  const orderQuery = '$orderby=createdon desc';
-  const topQuery = '$top=100';
+  const orderQuery = '$orderby=createdon desc,plugintracelogid desc';
 
-  const queryParts = [selectQuery, orderQuery, topQuery, filterQuery].filter(Boolean);
+  const queryParts = [selectQuery, orderQuery, filterQuery].filter(Boolean);
   const query = queryParts.join('&');
 
   const url = `${baseUrl}/api/data/v9.2/plugintracelogs?${query}`;
-  const response = await fetchJson(url) as { value: PluginTraceLog[] };
+  const response = await fetchJson(url, {
+    headers: {
+      'Prefer': `odata.maxpagesize=${pageSize}`
+    }
+  }) as { value: PluginTraceLog[]; '@odata.nextLink'?: string };
 
   let logs = response.value || [];
 
@@ -89,7 +102,29 @@ export async function getPluginTraceLogs(
     });
   }
 
-  return logs;
+  return {
+    records: logs,
+    nextLink: response['@odata.nextLink'] || null
+  };
+}
+
+/**
+ * Fetch the next page of plugin trace logs using the nextLink URL
+ */
+export async function getNextPageOfLogs(
+  nextLink: string,
+  pageSize: number = 100
+): Promise<PaginatedResponse<PluginTraceLog>> {
+  const response = await fetchJson(nextLink, {
+    headers: {
+      'Prefer': `odata.maxpagesize=${pageSize}`
+    }
+  }) as { value: PluginTraceLog[]; '@odata.nextLink'?: string };
+
+  return {
+    records: response.value || [],
+    nextLink: response['@odata.nextLink'] || null
+  };
 }
 
 /**

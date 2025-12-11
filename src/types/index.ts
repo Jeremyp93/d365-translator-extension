@@ -51,4 +51,4 @@ export interface FormStructure {
   rawXmlByLcid?: Record<number, string>; // XML for each language
 }
 
-export type { PluginTraceLog, PluginTraceLogFilters } from '../services/pluginTraceLogService';
+export type { PluginTraceLog, PluginTraceLogFilters, PaginatedResponse } from '../services/pluginTraceLogService';

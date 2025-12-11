@@ -39,7 +39,7 @@ const useStyles = makeStyles({
   page: {
     display: 'flex',
     flexDirection: 'column',
-    height: '100vh',
+    minHeight: '100vh',
     backgroundColor: tokens.colorNeutralBackground3,
   },
   header: {
@@ -67,7 +67,6 @@ const useStyles = makeStyles({
   },
   content: {
     flex: 1,
-    overflowY: 'auto',
     ...shorthands.padding('24px'),
   },
   quickSearchSection: {
@@ -238,6 +237,16 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorBrandBackground,
     opacity: 0.7,
   },
+  scrollSentinel: {
+    height: '1px',
+    width: '100%',
+  },
+  loadingMore: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shorthands.padding('24px'),
+  },
 });
 
 interface FilterSectionProps {
@@ -246,9 +255,11 @@ interface FilterSectionProps {
   onApply: () => void;
   onClear: () => void;
   loading: boolean;
+  pageSize: number;
+  onPageSizeChange: (size: number) => void;
 }
 
-function FilterSection({ filters, onFiltersChange, onApply, onClear, loading }: FilterSectionProps) {
+function FilterSection({ filters, onFiltersChange, onApply, onClear, loading, pageSize, onPageSizeChange }: FilterSectionProps) {
   const styles = useStyles();
 
   const handleFilterChange = (field: keyof PluginTraceLogFilters, value: any) => {
@@ -332,6 +343,21 @@ function FilterSection({ filters, onFiltersChange, onApply, onClear, loading }: 
           checked={filters.hasException || false}
           onChange={(_, data) => handleFilterChange('hasException', data.checked)}
         />
+        <Dropdown
+          placeholder="Page Size"
+          value={pageSize.toString()}
+          selectedOptions={[pageSize.toString()]}
+          onOptionSelect={(_, data) => {
+            const size = parseInt(data.optionValue || '100', 10);
+            onPageSizeChange(size);
+          }}
+        >
+          <Option value="50">50 records</Option>
+          <Option value="100">100 records (default)</Option>
+          <Option value="200">200 records</Option>
+          <Option value="500">500 records</Option>
+          <Option value="1000">1000 records</Option>
+        </Dropdown>
       </div>
 
       <div className={styles.filterActions}>
@@ -706,6 +732,11 @@ export default function PluginTraceLogPage(): JSX.Element {
     setServerFilters,
     applyServerFilters,
     clearServerFilters,
+    pageSize,
+    setPageSize,
+    hasMore,
+    isLoadingMore,
+    loadMoreLogs,
     searchQuery,
     setSearchQuery,
     filteredLogs,
@@ -713,6 +744,35 @@ export default function PluginTraceLogPage(): JSX.Element {
     error,
   } = usePluginTraceLogs(clientUrl);
   const { theme, mode, toggleTheme } = useTheme();
+
+  // Infinite scroll implementation
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!hasMore || isLoadingMore) return;
+    if (!sentinelRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          loadMoreLogs();
+        }
+      },
+      { 
+        rootMargin: '50px',
+        threshold: 0.1
+      }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMore, isLoadingMore, loadMoreLogs, filteredLogs.length]); // Re-run when filteredLogs changes
+
+  const handlePageSizeChange = React.useCallback((size: number) => {
+    setPageSize(size);
+  }, [setPageSize]);
 
   if (!clientUrl) {
     return (
@@ -750,6 +810,8 @@ export default function PluginTraceLogPage(): JSX.Element {
           onApply={applyServerFilters}
           onClear={clearServerFilters}
           loading={loading}
+          pageSize={pageSize}
+          onPageSizeChange={handlePageSizeChange}
         />
 
         {/* Quick Search Section */}
@@ -772,7 +834,11 @@ export default function PluginTraceLogPage(): JSX.Element {
         <div className={styles.resultsSection}>
           <div className={styles.resultsHeader}>
             <Text weight="semibold" size={500}>
-              Results ({filteredLogs.length}{searchQuery && ` of ${serverLogs.length}`})
+              {searchQuery ? (
+                `Results (${filteredLogs.length} of ${serverLogs.length})`
+              ) : (
+                `Results (Loaded ${filteredLogs.length}${hasMore ? '+' : ''} ${hasMore ? '' : '(all)'})`
+              )}
             </Text>
           </div>
 
@@ -798,6 +864,18 @@ export default function PluginTraceLogPage(): JSX.Element {
           )}
 
           {!loading && !error && filteredLogs.length > 0 && <ResultsTable logs={filteredLogs} />}
+
+          {/* Infinite scroll sentinel */}
+          {!loading && !error && filteredLogs.length > 0 && hasMore && (
+            <div ref={sentinelRef} className={styles.scrollSentinel} />
+          )}
+
+          {/* Loading more indicator */}
+          {isLoadingMore && (
+            <div className={styles.loadingMore}>
+              <Spinner label="Loading more logs..." />
+            </div>
+          )}
         </div>
       </div>
     </div>
