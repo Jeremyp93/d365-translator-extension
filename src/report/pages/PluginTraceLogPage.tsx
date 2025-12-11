@@ -374,9 +374,14 @@ function FilterSection({ filters, onFiltersChange, onApply, onClear, loading, pa
 
 interface ResultsTableProps {
   logs: PluginTraceLog[];
+  onSortChange?: (sortColumn: TableColumnId | undefined, sortDirection: 'ascending' | 'descending') => void;
 }
 
-function ResultsTable({ logs }: ResultsTableProps) {
+interface ResultsTableHandle {
+  resetSort: () => void;
+}
+
+const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(({ logs, onSortChange }, ref) => {
   const styles = useStyles();
   const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
   const [typeNameWidth, setTypeNameWidth] = React.useState<number>(350);
@@ -556,14 +561,23 @@ function ResultsTable({ logs }: ResultsTableProps) {
     return sortState.sortDirection === 'descending' ? sorted.reverse() : sorted;
   }, [logs, sortState, columns]);
 
-  const onSortChange = React.useCallback(
+  const handleSortChange = React.useCallback(
     (_: unknown, data: { sortColumn: TableColumnId | undefined; sortDirection: 'ascending' | 'descending' }) => {
       if (data.sortColumn) {
         setSortState({ sortColumn: data.sortColumn, sortDirection: data.sortDirection });
+        onSortChange?.(data.sortColumn, data.sortDirection);
       }
     },
-    []
+    [onSortChange]
   );
+
+  const resetSort = React.useCallback(() => {
+    setSortState({ sortColumn: 'createdon', sortDirection: 'descending' });
+  }, []);
+
+  React.useImperativeHandle(ref, () => ({
+    resetSort
+  }), [resetSort]);
 
   return (
     <div className={styles.tableContainer}>
@@ -582,7 +596,7 @@ function ResultsTable({ logs }: ResultsTableProps) {
                 fontWeight: tokens.fontWeightSemibold, 
                 cursor: 'pointer' 
               }} 
-              onClick={() => onSortChange(null as any, { sortColumn: 'typename', sortDirection: sortState.sortColumn === 'typename' && sortState.sortDirection === 'ascending' ? 'descending' : 'ascending' })}
+              onClick={() => handleSortChange(null as any, { sortColumn: 'typename', sortDirection: sortState.sortColumn === 'typename' && sortState.sortDirection === 'ascending' ? 'descending' : 'ascending' })}
             >
               Type Name {sortState.sortColumn === 'typename' && (sortState.sortDirection === 'ascending' ? '↑' : '↓')}
               <div 
@@ -591,17 +605,17 @@ function ResultsTable({ logs }: ResultsTableProps) {
                 onClick={(e) => e.stopPropagation()}
               />
             </th>
-            <th style={{ minWidth: '150px', padding: '8px', textAlign: 'left', fontWeight: tokens.fontWeightSemibold, cursor: 'pointer' }} onClick={() => onSortChange(null as any, { sortColumn: 'messagename', sortDirection: sortState.sortColumn === 'messagename' && sortState.sortDirection === 'ascending' ? 'descending' : 'ascending' })}>
+            <th style={{ minWidth: '150px', padding: '8px', textAlign: 'left', fontWeight: tokens.fontWeightSemibold, cursor: 'pointer' }} onClick={() => handleSortChange(null as any, { sortColumn: 'messagename', sortDirection: sortState.sortColumn === 'messagename' && sortState.sortDirection === 'ascending' ? 'descending' : 'ascending' })}>
               Message {sortState.sortColumn === 'messagename' && (sortState.sortDirection === 'ascending' ? '↑' : '↓')}
             </th>
             <th style={{ minWidth: '120px', padding: '8px', textAlign: 'left', fontWeight: tokens.fontWeightSemibold }}>Mode</th>
             <th style={{ minWidth: '100px', padding: '8px', textAlign: 'left', fontWeight: tokens.fontWeightSemibold }}>Type</th>
             <th style={{ minWidth: '80px', padding: '8px', textAlign: 'left', fontWeight: tokens.fontWeightSemibold }}>Depth</th>
-            <th style={{ minWidth: '100px', padding: '8px', textAlign: 'left', fontWeight: tokens.fontWeightSemibold, cursor: 'pointer' }} onClick={() => onSortChange(null as any, { sortColumn: 'duration', sortDirection: sortState.sortColumn === 'duration' && sortState.sortDirection === 'ascending' ? 'descending' : 'ascending' })}>
+            <th style={{ minWidth: '100px', padding: '8px', textAlign: 'left', fontWeight: tokens.fontWeightSemibold, cursor: 'pointer' }} onClick={() => handleSortChange(null as any, { sortColumn: 'duration', sortDirection: sortState.sortColumn === 'duration' && sortState.sortDirection === 'ascending' ? 'descending' : 'ascending' })}>
               Duration {sortState.sortColumn === 'duration' && (sortState.sortDirection === 'ascending' ? '↑' : '↓')}
             </th>
             <th style={{ minWidth: '250px', padding: '8px', textAlign: 'left', fontWeight: tokens.fontWeightSemibold }}>Exception</th>
-            <th style={{ minWidth: '180px', padding: '8px', textAlign: 'left', fontWeight: tokens.fontWeightSemibold, cursor: 'pointer' }} onClick={() => onSortChange(null as any, { sortColumn: 'createdon', sortDirection: sortState.sortColumn === 'createdon' && sortState.sortDirection === 'ascending' ? 'descending' : 'ascending' })}>
+            <th style={{ minWidth: '180px', padding: '8px', textAlign: 'left', fontWeight: tokens.fontWeightSemibold, cursor: 'pointer' }} onClick={() => handleSortChange(null as any, { sortColumn: 'createdon', sortDirection: sortState.sortColumn === 'createdon' && sortState.sortDirection === 'ascending' ? 'descending' : 'ascending' })}>
               Created On {sortState.sortColumn === 'createdon' && (sortState.sortDirection === 'ascending' ? '↑' : '↓')}
             </th>
           </tr>
@@ -721,7 +735,9 @@ function ResultsTable({ logs }: ResultsTableProps) {
       </table>
     </div>
   );
-}
+});
+
+ResultsTable.displayName = 'ResultsTable';
 
 export default function PluginTraceLogPage(): JSX.Element {
   const styles = useStyles();
@@ -745,16 +761,37 @@ export default function PluginTraceLogPage(): JSX.Element {
   } = usePluginTraceLogs(clientUrl);
   const { theme, mode, toggleTheme } = useTheme();
 
-  // Infinite scroll implementation
+  // Ref to call resetSort on ResultsTable
+  const resultsTableRef = React.useRef<ResultsTableHandle>(null);
+
+  // Track current sort state to disable infinite scroll when sorting changes
+  const [currentSort, setCurrentSort] = React.useState<{ column?: TableColumnId; direction: 'ascending' | 'descending' }>({ 
+    column: 'createdon', 
+    direction: 'descending' 
+  });
+
+  const handleTableSortChange = React.useCallback((column: TableColumnId | undefined, direction: 'ascending' | 'descending') => {
+    setCurrentSort({ column, direction });
+  }, []);
+
+  const handleResetSort = React.useCallback(() => {
+    setCurrentSort({ column: 'createdon', direction: 'descending' });
+    resultsTableRef.current?.resetSort();
+  }, []);
+
+  // Check if current sort matches server default (createdon descending)
+  const isDefaultSort = currentSort.column === 'createdon' && currentSort.direction === 'descending';
+
+  // Infinite scroll implementation - only active when using default sort
   const sentinelRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    if (!hasMore || isLoadingMore) return;
+    if (!hasMore || isLoadingMore || !isDefaultSort) return;
     if (!sentinelRef.current) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore && isDefaultSort) {
           loadMoreLogs();
         }
       },
@@ -768,7 +805,7 @@ export default function PluginTraceLogPage(): JSX.Element {
     return () => {
       observer.disconnect();
     };
-  }, [hasMore, isLoadingMore, loadMoreLogs, filteredLogs.length]); // Re-run when filteredLogs changes
+  }, [hasMore, isLoadingMore, loadMoreLogs, filteredLogs.length, isDefaultSort]); // Re-run when filteredLogs or sort changes
 
   const handlePageSizeChange = React.useCallback((size: number) => {
     setPageSize(size);
@@ -863,7 +900,32 @@ export default function PluginTraceLogPage(): JSX.Element {
             <Text>No results match "{searchQuery}". Try a different search term or clear the search.</Text>
           )}
 
-          {!loading && !error && filteredLogs.length > 0 && <ResultsTable logs={filteredLogs} />}
+          {!loading && !error && filteredLogs.length > 0 && !isDefaultSort && hasMore && (
+            <div style={{
+              padding: '12px 16px',
+              marginBottom: '12px',
+              backgroundColor: tokens.colorNeutralBackground2,
+              borderRadius: tokens.borderRadiusMedium,
+              border: `1px solid ${tokens.colorNeutralStroke1}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px'
+            }}>
+              <Text>
+                Infinite scroll is disabled when sorting. More records are available on the server.
+              </Text>
+              <Button
+                appearance="primary"
+                size="small"
+                onClick={handleResetSort}
+              >
+                Reset to Default Sort
+              </Button>
+            </div>
+          )}
+
+          {!loading && !error && filteredLogs.length > 0 && <ResultsTable ref={resultsTableRef} logs={filteredLogs} onSortChange={handleTableSortChange} />}
 
           {/* Infinite scroll sentinel */}
           {!loading && !error && filteredLogs.length > 0 && hasMore && (

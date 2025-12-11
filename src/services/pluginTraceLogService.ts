@@ -66,10 +66,11 @@ export async function getPluginTraceLogs(
 
   if (filters?.hasException !== undefined) {
     if (filters.hasException) {
-      filterParts.push(`exceptiondetails ne null`);
-    } else {
-      filterParts.push(`exceptiondetails eq null`);
+      filterParts.push(`(exceptiondetails ne null and exceptiondetails ne '')`);
     }
+    // } else {
+    //   filterParts.push(`(exceptiondetails eq null or exceptiondetails eq '')`);
+    // }
   }
 
   const filterQuery = filterParts.length > 0 ? `$filter=${filterParts.join(' and ')}` : '';
