@@ -85,6 +85,9 @@ export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsResult {
 
   // Load more logs (infinite scroll)
   const loadMoreLogs = useCallback(async () => {
+    // Block loading more when local filtering is active
+    if (searchQuery.trim()) return;
+    
     if (!nextLink || isLoadingMore || !hasMore) return;
 
     setIsLoadingMore(true);
@@ -102,7 +105,7 @@ export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsResult {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [nextLink, isLoadingMore, hasMore, pageSize]);
+  }, [nextLink, isLoadingMore, hasMore, pageSize, searchQuery]);
 
   // Client-side filtering (memoized for performance)
   const filteredLogs = useMemo(() => {
@@ -144,6 +147,7 @@ export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsResult {
   const clearServerFilters = useCallback(() => {
     setServerFilters({});
     setAppliedFilters({});
+    setPageSizeState(100);
     // Manually trigger refetch with empty filters
     (async () => {
       if (!baseUrl) return;
@@ -152,7 +156,7 @@ export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsResult {
       setError(null);
 
       try {
-        const response = await getPluginTraceLogs(baseUrl, {}, pageSize);
+        const response = await getPluginTraceLogs(baseUrl, {}, 100);
         setServerLogs(response.records);
         setNextLink(response.nextLink);
         setHasMore(response.nextLink !== null);
