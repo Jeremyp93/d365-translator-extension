@@ -22,7 +22,7 @@ import {
   TableCellLayout,
   TableColumnId,
 } from '@fluentui/react-components';
-import { ArrowClockwiseRegular, FilterRegular, WeatherMoon20Regular, WeatherSunny20Regular, ChevronRight20Regular, ChevronDown20Regular, Search20Regular, Settings20Regular, Dismiss20Regular } from '@fluentui/react-icons';
+import { ArrowClockwiseRegular, FilterRegular, WeatherMoon20Regular, WeatherSunny20Regular, ChevronRight20Regular, ChevronDown20Regular, Search20Regular, Settings20Regular, Dismiss20Regular, FlowRegular, Building20Regular } from '@fluentui/react-icons';
 import { useOrgContext } from '../../hooks/useOrgContext';
 import { usePluginTraceLogs } from '../../hooks/usePluginTraceLogs';
 import { useTheme } from '../../context/ThemeContext';
@@ -34,6 +34,7 @@ import {
   getOperationTypeLabel,
   getDurationColor,
 } from '../../services/pluginTraceLogService';
+import { CorrelationFlowPanel } from '../components/CorrelationFlowPanel';
 
 const useStyles = makeStyles({
   page: {
@@ -64,6 +65,13 @@ const useStyles = makeStyles({
   subtitle: {
     fontSize: tokens.fontSizeBase300,
     color: tokens.colorNeutralForeground2,
+  },
+  connectionInfo: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    display: 'flex',
+    alignItems: 'center',
+    ...shorthands.gap('6px'),
   },
   content: {
     flex: 1,
@@ -375,29 +383,23 @@ function FilterSection({ filters, onFiltersChange, onApply, onClear, loading, pa
 interface ResultsTableProps {
   logs: PluginTraceLog[];
   onSortChange?: (sortColumn: TableColumnId | undefined, sortDirection: 'ascending' | 'descending') => void;
+  onViewFlow?: (correlationId: string, rowId: string) => void;
+  expandedRows: Set<string>;
+  onToggleRow: (rowId: string) => void;
 }
 
 interface ResultsTableHandle {
   resetSort: () => void;
 }
 
-const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(({ logs, onSortChange }, ref) => {
+const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(({ logs, onSortChange, onViewFlow, expandedRows: externalExpandedRows, onToggleRow }, ref) => {
   const styles = useStyles();
-  const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
   const [typeNameWidth, setTypeNameWidth] = React.useState<number>(350);
   const [isResizing, setIsResizing] = React.useState<boolean>(false);
 
-  const toggleRow = (id: string) => {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+  // Use external expanded rows state
+  const expandedRows = externalExpandedRows;
+  const toggleRow = onToggleRow;
 
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -444,6 +446,25 @@ const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(({ 
           </TableCellLayout>
         );
       },
+    }),
+    createTableColumn<PluginTraceLog>({
+      columnId: 'actions',
+      renderHeaderCell: () => 'Actions',
+      renderCell: (log) => (
+        <TableCellLayout>
+          {log.correlationid && onViewFlow && (
+            <Button
+              appearance="subtle"
+              size="small"
+              icon={<FlowRegular />}
+              onClick={() => onViewFlow(log.correlationid!, log.plugintracelogid)}
+              title="View correlation flow diagram"
+            >
+              View flow
+            </Button>
+          )}
+        </TableCellLayout>
+      ),
     }),
     createTableColumn<PluginTraceLog>({
       columnId: 'typename',
@@ -585,6 +606,7 @@ const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(({ 
         <thead>
           <tr style={{ borderBottom: `2px solid ${tokens.colorNeutralStroke1}`, backgroundColor: tokens.colorNeutralBackground2 }}>
             <th style={{ width: '40px', padding: '8px' }}></th>
+            <th style={{ minWidth: '120px', padding: '8px', textAlign: 'left', fontWeight: tokens.fontWeightSemibold }}>Actions</th>
             <th 
               className={styles.resizableHeader}
               style={{ 
@@ -627,7 +649,7 @@ const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(({ 
             
             return (
               <React.Fragment key={log.plugintracelogid}>
-                <tr style={{ borderBottom: `1px solid ${tokens.colorNeutralStroke2}`, backgroundColor: tokens.colorNeutralBackground1 }}>
+                <tr data-row-id={log.plugintracelogid} style={{ borderBottom: `1px solid ${tokens.colorNeutralStroke2}`, backgroundColor: tokens.colorNeutralBackground1 }}>
                   <td style={{ padding: '8px', textAlign: 'center' }}>
                     {hasDetails && (
                       <div
@@ -638,6 +660,19 @@ const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(({ 
                       >
                         {isExpanded ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
                       </div>
+                    )}
+                  </td>
+                  <td style={{ padding: '8px', textAlign: 'center' }}>
+                    {log.correlationid && onViewFlow && (
+                      <Button
+                        appearance="subtle"
+                        size="small"
+                        icon={<FlowRegular />}
+                        onClick={() => onViewFlow(log.correlationid!, log.plugintracelogid)}
+                        title="View correlation flow diagram"
+                      >
+                        View flow
+                      </Button>
                     )}
                   </td>
                   <td style={{ 
@@ -674,7 +709,7 @@ const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(({ 
                 </tr>
                 {isExpanded && (
                   <tr>
-                    <td colSpan={9} style={{ padding: 0, backgroundColor: tokens.colorNeutralBackground2 }}>
+                    <td colSpan={10} style={{ padding: 0, backgroundColor: tokens.colorNeutralBackground2 }}>
                       <div className={styles.expandedContent}>
                         <div className={styles.detailRow}>
                           <Text className={styles.detailLabel}>Type Name:</Text>
@@ -741,7 +776,7 @@ ResultsTable.displayName = 'ResultsTable';
 
 export default function PluginTraceLogPage(): JSX.Element {
   const styles = useStyles();
-  const { clientUrl } = useOrgContext();
+  const { clientUrl, apiVersion } = useOrgContext();
   const {
     serverLogs,
     serverFilters,
@@ -782,6 +817,25 @@ export default function PluginTraceLogPage(): JSX.Element {
   // Check if current sort matches server default (createdon descending)
   const isDefaultSort = currentSort.column === 'createdon' && currentSort.direction === 'descending';
 
+  // Correlation flow panel state
+  const [isPanelOpen, setIsPanelOpen] = React.useState(false);
+  const [panelCorrelationId, setPanelCorrelationId] = React.useState<string | null>(null);
+  const [selectedRowId, setSelectedRowId] = React.useState<string | null>(null);
+  const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
+
+  // Handle row toggle
+  const handleToggleRow = React.useCallback((rowId: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(rowId)) {
+        next.delete(rowId);
+      } else {
+        next.add(rowId);
+      }
+      return next;
+    });
+  }, []);
+
   // Infinite scroll implementation - only active when using default sort
   const sentinelRef = React.useRef<HTMLDivElement>(null);
 
@@ -811,6 +865,36 @@ export default function PluginTraceLogPage(): JSX.Element {
     setPageSize(size);
   }, [setPageSize]);
 
+  // Handle opening correlation flow panel
+  const handleViewFlow = React.useCallback((correlationId: string, rowId: string) => {
+    setPanelCorrelationId(correlationId);
+    setSelectedRowId(rowId);
+    setIsPanelOpen(true);
+  }, []);
+
+  // Handle closing panel
+  const handleClosePanel = React.useCallback(() => {
+    setIsPanelOpen(false);
+  }, []);
+
+  // Handle node click in diagram - scroll to and expand row
+  const handleNodeClick = React.useCallback((rowId: string) => {
+    setSelectedRowId(rowId);
+    // Expand the row if not already expanded
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      next.add(rowId);
+      return next;
+    });
+    // Scroll to the row
+    setTimeout(() => {
+      const rowElement = document.querySelector(`[data-row-id="${rowId}"]`);
+      if (rowElement) {
+        rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100); // Small delay to ensure row expansion state is updated
+  }, []);
+
   if (!clientUrl) {
     return (
       <div className={styles.page}>
@@ -829,6 +913,10 @@ export default function PluginTraceLogPage(): JSX.Element {
           <Text className={styles.title}>Plugin Trace Logs</Text>
           <Text className={styles.subtitle}>
             View and analyze plugin execution traces with detailed filtering options
+          </Text>
+          <Text className={styles.connectionInfo}>
+            <Building20Regular />
+            Connected to: {clientUrl} - Api Version: {apiVersion}
           </Text>
         </div>
         <Button
@@ -925,7 +1013,16 @@ export default function PluginTraceLogPage(): JSX.Element {
             </div>
           )}
 
-          {!loading && !error && filteredLogs.length > 0 && <ResultsTable ref={resultsTableRef} logs={filteredLogs} onSortChange={handleTableSortChange} />}
+          {!loading && !error && filteredLogs.length > 0 && (
+            <ResultsTable 
+              ref={resultsTableRef} 
+              logs={filteredLogs} 
+              onSortChange={handleTableSortChange}
+              onViewFlow={handleViewFlow}
+              expandedRows={expandedRows}
+              onToggleRow={handleToggleRow}
+            />
+          )}
 
           {/* Infinite scroll sentinel */}
           {!loading && !error && filteredLogs.length > 0 && hasMore && (
@@ -940,6 +1037,16 @@ export default function PluginTraceLogPage(): JSX.Element {
           )}
         </div>
       </div>
+
+      {/* Correlation Flow Panel */}
+      <CorrelationFlowPanel
+        isOpen={isPanelOpen}
+        correlationId={panelCorrelationId}
+        selectedRowId={selectedRowId}
+        expandedRowIds={expandedRows}
+        onClose={handleClosePanel}
+        onNodeClick={handleNodeClick}
+      />
     </div>
   );
 }

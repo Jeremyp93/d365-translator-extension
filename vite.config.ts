@@ -35,6 +35,7 @@ export default defineConfig({
 
         // emit CSS with a stable name so manifest can reference it
         highlight: resolve(__dirname, 'src/styles/highlight.css'),
+        flow: resolve(__dirname, 'src/styles/flow.css'),
       },
       output: {
         entryFileNames: (assetInfo) => {

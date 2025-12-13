@@ -201,3 +201,22 @@ export function getDurationColor(durationMs?: number): 'success' | 'warning' | '
   if (durationMs < 5000) return 'warning'; // Yellow for 1-5s
   return 'danger'; // Red for > 5s
 }
+
+/**
+ * Fetch all plugin trace logs for a specific correlation ID
+ * Used for building correlation flow diagrams
+ */
+export async function getLogsForCorrelation(
+  baseUrl: string,
+  correlationId: string
+): Promise<PluginTraceLog[]> {
+  const selectQuery = '$select=plugintracelogid, correlationid,typename,messagename,mode,depth,performanceexecutionduration,operationtype,exceptiondetails,messageblock,createdon,correlationid';
+  const filterQuery = `$filter=correlationid eq '${correlationId}'`;
+  const orderQuery = '$orderby=createdon asc,plugintracelogid asc'; // Chronological order for flow diagram
+  
+  const query = `${selectQuery}&${filterQuery}&${orderQuery}`;
+  const url = `${baseUrl}/api/data/v9.2/plugintracelogs?${query}`;
+  
+  const response = await fetchJson(url) as { value: PluginTraceLog[] };
+  return response.value || [];
+}

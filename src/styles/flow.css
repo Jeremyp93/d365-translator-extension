@@ -1,0 +1,10 @@
+.react-flow__node-default,
+.react-flow__node-default.selectable:hover,
+.react-flow__node-default.selected,
+.react-flow__node-default:focus,
+.react-flow__node-default:focus-visible {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
