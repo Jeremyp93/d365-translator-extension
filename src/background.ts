@@ -38,5 +38,16 @@ chrome.runtime.onMessage.addListener((msg: any, _sender, _sendResponse) => {
 
     const url = `${base}#/report/plugin-trace-logs${qs}`;
     chrome.tabs.create({ url }).catch(() => {});
+  } else if (msg?.type === "OPEN_GLOBAL_OPTIONSETS") {
+    const { clientUrl, apiVersion } = msg.payload ?? {};
+    if (!clientUrl) return;
+
+    const base = chrome.runtime.getURL("src/report/report.html");
+    const qs = `?clientUrl=${encodeURIComponent(clientUrl)}${
+      apiVersion ? `&apiVersion=${encodeURIComponent(apiVersion)}` : ""
+    }`;
+
+    const url = `${base}#/report/global-optionsets${qs}`;
+    chrome.tabs.create({ url }).catch(() => {});
   }
 });

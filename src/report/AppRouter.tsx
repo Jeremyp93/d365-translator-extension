@@ -10,6 +10,7 @@ import { useTheme } from "../context/ThemeContext";
 import FieldReportPage from "./pages/FieldReportPage";
 import FormReportPage from "./pages/FormReportPage";
 import PluginTraceLogPage from "./pages/PluginTraceLogPage";
+import GlobalOptionSetPage from "./pages/GlobalOptionSetPage";
 
 function KeepSearchNavigate({ to }: { to: string }) {
   const { search } = useLocation();
@@ -30,6 +31,7 @@ export default function AppRouter(): JSX.Element {
             <Route path="/field" element={<FieldReportPage />} />
             <Route path="/form" element={<FormReportPage />} />
             <Route path="/plugin-trace-logs" element={<PluginTraceLogPage />} />
+            <Route path="/global-optionsets" element={<GlobalOptionSetPage />} />
             {/* default → field, but keep query params */}
             <Route path="*" element={<KeepSearchNavigate to="/field" />} />
           </Routes>

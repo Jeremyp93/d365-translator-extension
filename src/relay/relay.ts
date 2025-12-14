@@ -27,5 +27,11 @@
         payload: d.payload
       });
     }
+    if (d.type === 'OPEN_GLOBAL_OPTIONSETS') {
+      chrome.runtime.sendMessage({
+        type: 'OPEN_GLOBAL_OPTIONSETS',
+        payload: d.payload
+      });
+    }
   });
 })();

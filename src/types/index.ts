@@ -51,4 +51,29 @@ export interface FormStructure {
   rawXmlByLcid?: Record<number, string>; // XML for each language
 }
 
+/** Option Set (Picklist) types */
+export type OptionSetType = 'Picklist' | 'MultiSelectPicklist' | 'Boolean' | 'Status' | 'State';
+
+export interface OptionValue {
+  value: number;
+  labels: Label[];
+  description?: Label[];
+  color?: string;
+}
+
+export interface OptionSetMetadata {
+  isGlobal: boolean;
+  name: string | null; // For global: "industrycode", for local: null
+  displayName?: string;
+  optionSetType?: OptionSetType;
+  options: OptionValue[];
+}
+
+export interface GlobalOptionSetSummary {
+  name: string; // Logical name (e.g., "industrycode")
+  displayName: string; // User-facing name
+  description?: string;
+  metadataId: string;
+}
+
 export type { PluginTraceLog, PluginTraceLogFilters, PaginatedResponse } from '../services/pluginTraceLogService';
