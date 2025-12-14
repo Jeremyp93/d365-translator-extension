@@ -1248,6 +1248,7 @@ async function getCellLabelIdInHeader(
               attribute, // existing param
               formId,
               labelId,
+              apiVersion: getVersion(),
             },
           },
           "*"

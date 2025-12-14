@@ -9,7 +9,7 @@ import {
 } from '../services/d365Api';
 import { getProvisionedLanguagesCached } from '../services/languageService';
 
-export function useLanguages(clientUrl: string) {
+export function useLanguages(clientUrl: string, apiVersion: string = 'v9.2') {
   const [langs, setLangs] = useState<number[] | null>(null);
   const [baseLcid, setBaseLcid] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,8 +19,8 @@ export function useLanguages(clientUrl: string) {
       try {
         setError(null);
         const [provisioned, base] = await Promise.all([
-          getProvisionedLanguagesCached(clientUrl),
-          getOrgBaseLanguageCode(clientUrl),
+          getProvisionedLanguagesCached(clientUrl, apiVersion),
+          getOrgBaseLanguageCode(clientUrl, apiVersion),
         ]);
         console.log('Provisioned languages:', provisioned, 'Base LCID:', base);
         setLangs(provisioned);
@@ -29,19 +29,19 @@ export function useLanguages(clientUrl: string) {
         setError(e?.message ?? String(e));
       }
     })();
-  }, [clientUrl]);
+  }, [clientUrl, apiVersion]);
 
   // Optional utilities if the hook also manages user UI language switching
   const switchUserUiLanguage = useCallback(async (lcid: number) => {
-    const userId = await whoAmI(clientUrl);
-    await setUserUiLanguage(clientUrl, userId, lcid);
-  }, [clientUrl]);
+    const userId = await whoAmI(clientUrl, apiVersion);
+    await setUserUiLanguage(clientUrl, userId, lcid, apiVersion);
+  }, [clientUrl, apiVersion]);
 
   const readUserUiLanguage = useCallback(async () => {
-    const userId = await whoAmI(clientUrl);
-    const us = await getUserSettingsRow(clientUrl, userId);
+    const userId = await whoAmI(clientUrl, apiVersion);
+    const us = await getUserSettingsRow(clientUrl, userId, apiVersion);
     return us.uilanguageid;
-  }, [clientUrl]);
+  }, [clientUrl, apiVersion]);
 
   return { langs, baseLcid, error, switchUserUiLanguage, readUserUiLanguage };
 }

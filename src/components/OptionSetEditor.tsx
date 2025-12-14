@@ -70,15 +70,17 @@ interface Props {
   clientUrl: string;
   entity: string;
   attribute: string;
+  apiVersion?: string;
 }
 
 export default function OptionSetEditor({
   clientUrl,
   entity,
   attribute,
+  apiVersion = 'v9.2',
 }: Props): JSX.Element {
   const styles = useStyles();
-  const { langs, error: langsError } = useLanguages(clientUrl);
+  const { langs, error: langsError } = useLanguages(clientUrl, apiVersion);
   const langsLoading = !langs && !langsError;
 
   const [metadata, setMetadata] = useState<OptionSetMetadata | null>(null);
@@ -102,7 +104,7 @@ export default function OptionSetEditor({
         setInfo("Loading option set…");
         setLoading(true);
 
-        const meta = await getOptionSetMetadata(clientUrl, entity, attribute);
+        const meta = await getOptionSetMetadata(clientUrl, entity, attribute, apiVersion);
         
         // Build values map
         const valuesMap: EditableOptions = {};
@@ -198,7 +200,7 @@ export default function OptionSetEditor({
           metadata?.isGlobal ? (
             <Text size={200}>
               This is a global option set shared across multiple fields.{" "}
-              <Link href={`#/report/global-optionsets?clientUrl=${encodeURIComponent(clientUrl)}&name=${metadata.name}`}>
+              <Link href={`#/report/global-optionsets?clientUrl=${encodeURIComponent(clientUrl)}&apiVersion=${encodeURIComponent(apiVersion)}&name=${metadata.name}`}>
                 Manage in Global OptionSet Manager
               </Link>
             </Text>

@@ -62,8 +62,8 @@ export const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
    Org, languages, publish
    ──────────────────────────────────────────────────────────────────────────── */
 
-export async function getProvisionedLanguages(baseUrl: string): Promise<number[]> {
-  const url = `${baseUrl}/api/data/v9.2/RetrieveProvisionedLanguages()`;
+export async function getProvisionedLanguages(baseUrl: string, apiVersion: string = 'v9.2'): Promise<number[]> {
+  const url = `${baseUrl}/api/data/${apiVersion}/RetrieveProvisionedLanguages()`;
   const j = await fetchJson(url);
   const raw = Array.isArray((j as any)?.RetrieveProvisionedLanguages)
     ? (j as any).RetrieveProvisionedLanguages
@@ -73,17 +73,17 @@ export async function getProvisionedLanguages(baseUrl: string): Promise<number[]
   return raw.map((x: any) => Number(x)).filter((n: number) => Number.isFinite(n));
 }
 
-export async function getOrgBaseLanguageCode(baseUrl: string): Promise<number> {
+export async function getOrgBaseLanguageCode(baseUrl: string, apiVersion: string = 'v9.2'): Promise<number> {
   const base = baseUrl.replace(/\/+$/, '');
   try {
-    const j = await fetchJson(`${base}/api/data/v9.2/organizations?$select=languagecode&$top=1`);
+    const j = await fetchJson(`${base}/api/data/${apiVersion}/organizations?$select=languagecode&$top=1`);
     const row = j?.value?.[0];
     const n = Number(row?.languagecode);
     if (Number.isFinite(n) && n > 0) return n;
   } catch { /* ignore and use fallbacks */ }
 
   try {
-    const langs = await getProvisionedLanguages(base);
+    const langs = await getProvisionedLanguages(base, apiVersion);
     if (Array.isArray(langs) && langs.length) {
       return langs.includes(1033) ? 1033 : langs[0];
     }
@@ -92,8 +92,8 @@ export async function getOrgBaseLanguageCode(baseUrl: string): Promise<number> {
   return 1033;
 }
 
-export async function publishEntityViaWebApi(baseUrl: string, entityLogicalName: string): Promise<void> {
-  const url = `${baseUrl}/api/data/v9.2/PublishXml`;
+export async function publishEntityViaWebApi(baseUrl: string, entityLogicalName: string, apiVersion: string = 'v9.2'): Promise<void> {
+  const url = `${baseUrl}/api/data/${apiVersion}/PublishXml`;
   const parameterXml = `<importexportxml><entities><entity>${entityLogicalName}</entity></entities></importexportxml>`;
   await fetchJson(url, {
     method: 'POST',
@@ -106,21 +106,21 @@ export async function publishEntityViaWebApi(baseUrl: string, entityLogicalName:
    User + UI language (for form label tricks)
    ──────────────────────────────────────────────────────────────────────────── */
 
-export async function whoAmI(baseUrl: string): Promise<string> {
-  const j = await fetchJson(`${baseUrl}/api/data/v9.2/WhoAmI()`);
+export async function whoAmI(baseUrl: string, apiVersion: string = 'v9.2'): Promise<string> {
+  const j = await fetchJson(`${baseUrl}/api/data/${apiVersion}/WhoAmI()`);
   const id = j?.UserId;
   if (!id) throw new Error('WhoAmI failed to return UserId');
   return formatGuid(String(id));
 }
 
-export async function getUserSettingsRow(baseUrl: string, systemUserId: string): Promise<{
+export async function getUserSettingsRow(baseUrl: string, systemUserId: string, apiVersion: string = 'v9.2'): Promise<{
   systemuserid?: string;
   uilanguageid: number;
   helplanguageid: number;
   localeid: number;
 }> {
   const url =
-    `${baseUrl}/api/data/v9.2/usersettingscollection(${formatGuid(systemUserId)})` +
+    `${baseUrl}/api/data/${apiVersion}/usersettingscollection(${formatGuid(systemUserId)})` +
     `?$select=uilanguageid,helplanguageid,localeid,systemuserid`;
   const j = await fetchJson(url);
   if (!j?.systemuserid) throw new Error('Could not resolve usersettings row for current user.');
@@ -132,8 +132,8 @@ export async function getUserSettingsRow(baseUrl: string, systemUserId: string):
   };
 }
 
-export async function setUserUiLanguage(baseUrl: string, systemUserId: string, lcid: number): Promise<void> {
-  const url = `${baseUrl}/api/data/v9.2/usersettingscollection(${formatGuid(systemUserId)})`;
+export async function setUserUiLanguage(baseUrl: string, systemUserId: string, lcid: number, apiVersion: string = 'v9.2'): Promise<void> {
+  const url = `${baseUrl}/api/data/${apiVersion}/usersettingscollection(${formatGuid(systemUserId)})`;
   await fetchJson(url, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json; charset=utf-8' },

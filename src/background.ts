@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 chrome.runtime.onMessage.addListener((msg: any, _sender, _sendResponse) => {
   if (msg?.type === "OPEN_REPORT") {
-    const { clientUrl, entity, attribute, labelId, formId } = msg.payload ?? {};
-    if (!clientUrl || !entity || !attribute || !labelId || !formId) return;
+    const { clientUrl, entity, attribute, labelId, formId, apiVersion } = msg.payload ?? {};
+    if (!clientUrl || !entity || !attribute || !labelId || !formId || !apiVersion) return;
 
     const base = chrome.runtime.getURL("src/report/report.html");
     const qs =
@@ -10,7 +10,8 @@ chrome.runtime.onMessage.addListener((msg: any, _sender, _sendResponse) => {
       `&entity=${encodeURIComponent(entity)}` +
       `&attribute=${encodeURIComponent(attribute)}` +
       `&labelId=${encodeURIComponent(labelId)}` +
-      `&formId=${encodeURIComponent(formId)}`;
+      `&formId=${encodeURIComponent(formId)}` +
+      `&apiVersion=${encodeURIComponent(apiVersion)}`;
 
     const url = `${base}#/report/field${qs}`;
     chrome.tabs.create({ url }).catch(() => {});

@@ -362,18 +362,19 @@ function useD365Controller() {
   const callController = async (
     tabId: number,
     frameId: number,
-    method: "enable" | "disable" | "showAllFields" | "openFormReportPage" | "openPluginTraceLogsPage"
+    method: "enable" | "disable" | "showAllFields" | "openFormReportPage" | "openPluginTraceLogsPage" | "openGlobalOptionSetsPage"
   ): Promise<void> => {
     await chrome.scripting.executeScript({
       target: { tabId, frameIds: [frameId] },
       world: "MAIN",
-      func: (m: "enable" | "disable" | "showAllFields" | "openFormReportPage" | "openPluginTraceLogsPage") => {
+      func: (m: "enable" | "disable" | "showAllFields" | "openFormReportPage" | "openPluginTraceLogsPage" | "openGlobalOptionSetsPage") => {
         const ctl = (window as any).__d365Ctl as {
           enable: () => void;
           disable: () => void;
           showAllFields: () => void;
           openFormReportPage: () => void;
           openPluginTraceLogsPage: () => void;
+          openGlobalOptionSetsPage: () => void;
         };
         if (!ctl) throw new Error("controller missing");
         ctl[m]();

@@ -73,7 +73,7 @@ export default function FieldReportPage(): JSX.Element {
   const sharedStyles = useSharedStyles();
   const { theme, mode, toggleTheme } = useTheme();
 
-  const { clientUrl, entity, attribute, formId, labelId } = useOrgContext();
+  const { clientUrl, entity, attribute, formId, labelId, apiVersion } = useOrgContext();
   
   const [attributeType, setAttributeType] = useState<string>("");
   const [isLoadingType, setIsLoadingType] = useState(false);
@@ -91,7 +91,7 @@ export default function FieldReportPage(): JSX.Element {
     (async () => {
       try {
         setIsLoadingType(true);
-        const type = await getAttributeType(clientUrl, entity, attribute);
+        const type = await getAttributeType(clientUrl, entity, attribute, apiVersion || 'v9.2');
         if (!cancelled) {
           setAttributeType(type);
         }
@@ -197,6 +197,7 @@ export default function FieldReportPage(): JSX.Element {
               clientUrl={clientUrl!}
               entity={entity!}
               attribute={attribute!}
+              apiVersion={apiVersion}
             />
           </Section>
         )}

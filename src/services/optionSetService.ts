@@ -17,10 +17,11 @@ import type { OptionSetMetadata, OptionValue, OptionSetType, GlobalOptionSetSumm
 export async function getAttributeType(
   baseUrl: string,
   entityLogicalName: string,
-  attributeLogicalName: string
+  attributeLogicalName: string,
+  apiVersion: string = 'v9.2'
 ): Promise<string> {
   const url =
-    `${baseUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
+    `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
     `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')?$select=AttributeType`;
   const j = await fetchJson(url);
   return String(j?.AttributeType ?? '');
@@ -40,11 +41,12 @@ export function isOptionSetType(attributeType: string): boolean {
 export async function getOptionSetMetadata(
   baseUrl: string,
   entityLogicalName: string,
-  attributeLogicalName: string
+  attributeLogicalName: string,
+  apiVersion: string = 'v9.2'
 ): Promise<OptionSetMetadata> {
   // First, check the attribute type to determine which property to expand
   const typeUrl =
-    `${baseUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
+    `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
     `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')?$select=AttributeType`;
   
   const typeCheck = await fetchJson(typeUrl);
@@ -53,7 +55,7 @@ export async function getOptionSetMetadata(
   // For Boolean (Two Options), we need a different approach
   if (attrType === 'Boolean') {
     const boolUrl =
-      `${baseUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
+      `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
       `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')/Microsoft.Dynamics.CRM.BooleanAttributeMetadata` +
       `?$select=AttributeType&$expand=OptionSet($select=TrueOption,FalseOption)`;
     
@@ -100,17 +102,17 @@ export async function getOptionSetMetadata(
   let url: string;
   if (attrType === 'Picklist' || attrType === 'MultiSelectPicklist') {
     url =
-      `${baseUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
+      `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
       `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')/Microsoft.Dynamics.CRM.PicklistAttributeMetadata` +
       `?$select=AttributeType&$expand=OptionSet($select=IsGlobal,Name,DisplayName,Options),GlobalOptionSet($select=Name,DisplayName,Options)`;
   } else if (attrType === 'State') {
     url =
-      `${baseUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
+      `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
       `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')/Microsoft.Dynamics.CRM.StateAttributeMetadata` +
       `?$select=AttributeType&$expand=OptionSet($select=Options)`;
   } else if (attrType === 'Status') {
     url =
-      `${baseUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
+      `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
       `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')/Microsoft.Dynamics.CRM.StatusAttributeMetadata` +
       `?$select=AttributeType&$expand=OptionSet($select=Options)`;
   } else {
@@ -175,10 +177,11 @@ export async function getOptionSetOptions(
  * List all global OptionSets in the organization
  */
 export async function listGlobalOptionSets(
-  baseUrl: string
+  baseUrl: string,
+  apiVersion: string = 'v9.2'
 ): Promise<GlobalOptionSetSummary[]> {
   const url =
-    `${baseUrl}/api/data/v9.2/GlobalOptionSetDefinitions` +
+    `${baseUrl}/api/data/${apiVersion}/GlobalOptionSetDefinitions` +
     `?$select=Name,DisplayName,Description,MetadataId,IsGlobal`;
 
   const j = await fetchJson(url);
@@ -197,10 +200,11 @@ export async function listGlobalOptionSets(
  */
 export async function getGlobalOptionSet(
   baseUrl: string,
-  optionSetName: string
+  optionSetName: string,
+  apiVersion: string = 'v9.2'
 ): Promise<OptionSetMetadata> {
   const url =
-    `${baseUrl}/api/data/v9.2/GlobalOptionSetDefinitions(Name='${encodeURIComponent(
+    `${baseUrl}/api/data/${apiVersion}/GlobalOptionSetDefinitions(Name='${encodeURIComponent(
       optionSetName
     )}')/Microsoft.Dynamics.CRM.OptionSetMetadata` +
     `?$select=Name,DisplayName,IsGlobal,Options`;
@@ -324,12 +328,13 @@ export async function updateLocalOptionSetLabels(
   baseUrl: string,
   entityLogicalName: string,
   attributeLogicalName: string,
-  editedOptions: Array<{ value: number; labels: Label[] }>
+  editedOptions: Array<{ value: number; labels: Label[] }>,
+  apiVersion: string = 'v9.2'
 ): Promise<void> {
   // 1. Get current metadata and base language
   const [currentMetadata, baseLcid] = await Promise.all([
-    getOptionSetMetadata(baseUrl, entityLogicalName, attributeLogicalName),
-    getOrgBaseLanguageCode(baseUrl),
+    getOptionSetMetadata(baseUrl, entityLogicalName, attributeLogicalName, apiVersion),
+    getOrgBaseLanguageCode(baseUrl, apiVersion),
   ]);
 
   // 2. Merge edited labels with current labels
@@ -343,7 +348,7 @@ export async function updateLocalOptionSetLabels(
     return;
   }
 
-  const url = `${baseUrl.replace(/\/+$/, "")}/api/data/v9.2/UpdateOptionValue`;
+  const url = `${baseUrl.replace(/\/+$/, "")}/api/data/${apiVersion}/UpdateOptionValue`;
 
   // 3. Call UpdateOptionValue once per option (no batch for now)
   await Promise.all(
@@ -463,12 +468,13 @@ export async function updateLocalOptionSetLabels(
 export async function updateGlobalOptionSetLabels(
   baseUrl: string,
   optionSetName: string,
-  editedOptions: Array<{ value: number; labels: Label[] }>
+  editedOptions: Array<{ value: number; labels: Label[] }>,
+  apiVersion: string = 'v9.2'
 ): Promise<void> {
   // 1. Get current metadata and base language
   const [currentMetadata, baseLcid] = await Promise.all([
-    getGlobalOptionSet(baseUrl, optionSetName),
-    getOrgBaseLanguageCode(baseUrl),
+    getGlobalOptionSet(baseUrl, optionSetName, apiVersion),
+    getOrgBaseLanguageCode(baseUrl, apiVersion),
   ]);
 
   // 2. Merge edited labels with current labels (your logic, including clear/empty rules)
@@ -524,7 +530,7 @@ let hasAnyOperation = false;
     lines.push("Content-Transfer-Encoding: binary");
     lines.push(`Content-ID: ${contentId++}`);
     lines.push("");
-    lines.push("POST /api/data/v9.2/UpdateOptionValue HTTP/1.1");
+    lines.push(`POST /api/data/${apiVersion}/UpdateOptionValue HTTP/1.1`);
     lines.push("Content-Type: application/json; charset=utf-8");
     lines.push("Accept: application/json");
     lines.push("");
@@ -543,7 +549,7 @@ let hasAnyOperation = false;
 
   const batchBody = lines.join("\r\n");
 
-  const res = await fetch(`${trimmedBaseUrl}/api/data/v9.2/$batch`, {
+  const res = await fetch(`${trimmedBaseUrl}/api/data/${apiVersion}/$batch`, {
     method: "POST",
     headers: {
       "Content-Type": `multipart/mixed;boundary=${batchBoundary}`,

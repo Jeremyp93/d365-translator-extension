@@ -157,14 +157,13 @@ export default function GlobalOptionSetPage(): JSX.Element {
   const styles = useStyles();
   const sharedStyles = useSharedStyles();
   const { theme, mode, toggleTheme } = useTheme();
-  const { clientUrl: contextClientUrl } = useOrgContext();
+  const { clientUrl: clientUrlFromParam, apiVersion: apiVersionFromParam } = useOrgContext();
   
   // Read URL parameters
   const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
-  const clientUrlFromParam = urlParams.get('clientUrl') || contextClientUrl;
   const optionSetNameFromUrl = urlParams.get('name');
   
-  const { langs, error: langsError } = useLanguages(clientUrlFromParam || "");
+  const { langs, error: langsError } = useLanguages(clientUrlFromParam || "", apiVersionFromParam);
 
   const [optionSets, setOptionSets] = useState<GlobalOptionSetSummary[]>([]);
   const [selectedOptionSet, setSelectedOptionSet] = useState<string | null>(optionSetNameFromUrl);
@@ -197,7 +196,7 @@ export default function GlobalOptionSetPage(): JSX.Element {
       try {
         setError(null);
         setLoading(true);
-        const sets = await listGlobalOptionSets(clientUrlFromParam);
+        const sets = await listGlobalOptionSets(clientUrlFromParam, apiVersionFromParam);
         if (!cancelled) {
           setOptionSets(sets);
         }
@@ -224,7 +223,7 @@ export default function GlobalOptionSetPage(): JSX.Element {
         setInfo("Loading option set details…");
         setLoadingDetail(true);
         
-        const meta = await getGlobalOptionSet(clientUrlFromParam, selectedOptionSet);
+        const meta = await getGlobalOptionSet(clientUrlFromParam, selectedOptionSet, apiVersionFromParam);
         
         // Build values map
         const valuesMap: EditableOptions = {};
@@ -287,7 +286,7 @@ export default function GlobalOptionSetPage(): JSX.Element {
             })),
         }));
 
-      await updateGlobalOptionSetLabels(clientUrlFromParam, selectedOptionSet, editedOptions);
+      await updateGlobalOptionSetLabels(clientUrlFromParam, selectedOptionSet, editedOptions, apiVersionFromParam);
 
       setInfo("Saved. Global option set changes are automatically published.");
     } catch (e: any) {
