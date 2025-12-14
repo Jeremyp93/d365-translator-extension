@@ -36,7 +36,10 @@ const useStyles = makeStyles({
     boxShadow: tokens.shadow64,
     zIndex: 1000,
     display: 'flex',
-    flexDirection: 'column'
+    flexDirection: 'column',
+    '@media (max-width: 768px)': {
+      width: '100vw',
+    }
   },
   overlay: {
     position: 'fixed',
