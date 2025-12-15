@@ -324,12 +324,86 @@ function mergeOptionLabels(
 }
 
 
+// export async function updateLocalOptionSetLabels(
+//   baseUrl: string,
+//   entityLogicalName: string,
+//   attributeLogicalName: string,
+//   editedOptions: Array<{ value: number; labels: Label[] }>,
+//   apiVersion: string = 'v9.2'
+// ): Promise<void> {
+//   // 1. Get current metadata and base language
+//   const [currentMetadata, baseLcid] = await Promise.all([
+//     getOptionSetMetadata(baseUrl, entityLogicalName, attributeLogicalName, apiVersion),
+//     getOrgBaseLanguageCode(baseUrl, apiVersion),
+//   ]);
+
+//   // 2. Merge edited labels with current labels
+//   const mergedOptions = mergeOptionLabels(
+//     editedOptions,
+//     currentMetadata.options,
+//     baseLcid
+//   );
+
+//   if (!mergedOptions.length) {
+//     return;
+//   }
+
+//   const url = `${baseUrl.replace(/\/+$/, "")}/api/data/${apiVersion}/UpdateOptionValue`;
+
+//   // 3. Call UpdateOptionValue once per option (no batch for now)
+//   await Promise.all(
+//     mergedOptions.map(async (opt) => {
+//       const labelsArray = toArray(opt.labels);
+
+//       // If nothing to send for this option, skip
+//       if (!labelsArray.length) {
+//         return;
+//       }
+
+//       const body = {
+//         EntityLogicalName: entityLogicalName,
+//         AttributeLogicalName: attributeLogicalName,
+//         Value: opt.value,
+//         Label: {
+//           LocalizedLabels: labelsArray.map((l) => ({
+//             Label: l.Label,          // may be "" if user cleared it
+//             LanguageCode: l.LanguageCode,
+//           })),
+//         },
+//         // Keep existing labels for languages not included
+//         MergeLabels: true,
+//       };
+
+//       const res = await fetch(url, {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json; charset=utf-8",
+//           "OData-Version": "4.0",
+//           "OData-MaxVersion": "4.0",
+//           Accept: "application/json",
+//         },
+//         body: JSON.stringify(body),
+//       });
+
+//       if (!res.ok) {
+//         const text = await res.text().catch(() => "");
+//         throw new Error(
+//           `UpdateOptionValue (local) failed for ${entityLogicalName}.${attributeLogicalName} / value ${opt.value}: ` +
+//             `${res.status} ${res.statusText} ${text}`
+//         );
+//       }
+//     })
+//   );
+
+//   // 4. Publish entity changes (still needed for local option sets)
+//   await publishEntityViaWebApi(baseUrl, entityLogicalName);
+// }
 export async function updateLocalOptionSetLabels(
   baseUrl: string,
   entityLogicalName: string,
   attributeLogicalName: string,
   editedOptions: Array<{ value: number; labels: Label[] }>,
-  apiVersion: string = 'v9.2'
+  apiVersion: string = "v9.2"
 ): Promise<void> {
   // 1. Get current metadata and base language
   const [currentMetadata, baseLcid] = await Promise.all([
@@ -348,52 +422,95 @@ export async function updateLocalOptionSetLabels(
     return;
   }
 
-  const url = `${baseUrl.replace(/\/+$/, "")}/api/data/${apiVersion}/UpdateOptionValue`;
+  const trimmedBaseUrl = baseUrl.replace(/\/+$/, "");
+  const batchBoundary = `batch_${crypto.randomUUID()}`;
+  const changesetBoundary = `changeset_${crypto.randomUUID()}`;
+  const batchUrl = `${trimmedBaseUrl}/api/data/${apiVersion}/$batch`;
 
-  // 3. Call UpdateOptionValue once per option (no batch for now)
-  await Promise.all(
-    mergedOptions.map(async (opt) => {
-      const labelsArray = toArray(opt.labels);
+  const lines: string[] = [];
 
-      // If nothing to send for this option, skip
-      if (!labelsArray.length) {
-        return;
-      }
+  // Outer batch → one transactional changeset
+  lines.push(`--${batchBoundary}`);
+  lines.push(`Content-Type: multipart/mixed;boundary=${changesetBoundary}`);
+  lines.push("");
 
-      const body = {
-        EntityLogicalName: entityLogicalName,
-        AttributeLogicalName: attributeLogicalName,
-        Value: opt.value,
-        Label: {
-          LocalizedLabels: labelsArray.map((l) => ({
-            Label: l.Label,          // may be "" if user cleared it
-            LanguageCode: l.LanguageCode,
-          })),
-        },
-        // Keep existing labels for languages not included
-        MergeLabels: true,
-      };
+  let contentId = 1;
+  let hasAnyOperation = false;
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json; charset=utf-8",
-          "OData-Version": "4.0",
-          "OData-MaxVersion": "4.0",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(body),
-      });
+  for (const opt of mergedOptions) {
+    const labelsArray = toArray(opt.labels);
 
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(
-          `UpdateOptionValue (local) failed for ${entityLogicalName}.${attributeLogicalName} / value ${opt.value}: ` +
-            `${res.status} ${res.statusText} ${text}`
-        );
-      }
-    })
-  );
+    // If nothing to send for this option, skip
+    if (!labelsArray.length) {
+      continue;
+    }
+
+    hasAnyOperation = true;
+
+    const body = {
+      EntityLogicalName: entityLogicalName,
+      AttributeLogicalName: attributeLogicalName,
+      Value: opt.value,
+      Label: {
+        LocalizedLabels: labelsArray.map((l) => ({
+          Label: l.Label,          // may be "" if user cleared it
+          LanguageCode: l.LanguageCode,
+        })),
+      },
+      MergeLabels: true, // keep existing labels for languages not included
+    };
+
+    lines.push(`--${changesetBoundary}`);
+    lines.push("Content-Type: application/http");
+    lines.push("Content-Transfer-Encoding: binary");
+    lines.push(`Content-ID: ${contentId++}`);
+    lines.push("");
+    lines.push(`POST /api/data/${apiVersion}/UpdateOptionValue HTTP/1.1`);
+    lines.push("Content-Type: application/json; charset=utf-8");
+    lines.push("Accept: application/json");
+    lines.push("");
+    lines.push(JSON.stringify(body));
+    lines.push("");
+  }
+
+  // Nothing to update? bail out before calling API / publish
+  if (!hasAnyOperation) {
+    return;
+  }
+
+  // Close changeset and batch
+  lines.push(`--${changesetBoundary}--`);
+  lines.push(`--${batchBoundary}--`);
+
+  const batchBody = lines.join("\r\n");
+
+  const res = await fetch(batchUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": `multipart/mixed;boundary=${batchBoundary}`,
+      "OData-Version": "4.0",
+      "OData-MaxVersion": "4.0",
+      Accept: "application/json",
+    },
+    body: batchBody,
+  });
+
+  const responseText = await res.text().catch(() => "");
+
+  if (!res.ok) {
+    throw new Error(
+      `Batch UpdateOptionValue (local) failed (HTTP ${res.status} ${res.statusText}): ${responseText}`
+    );
+  }
+
+  // Dataverse can still return 200/202 even if a sub-request fails,
+  // so scan inner responses for 4xx/5xx.
+  const innerErrorMatch = /HTTP\/1\.1\s(4\d\d|5\d\d)\s/.exec(responseText);
+  if (innerErrorMatch) {
+    throw new Error(
+      `Batch UpdateOptionValue (local) failed inside changeset (inner status ${innerErrorMatch[1]}): ${responseText}`
+    );
+  }
 
   // 4. Publish entity changes (still needed for local option sets)
   await publishEntityViaWebApi(baseUrl, entityLogicalName);
