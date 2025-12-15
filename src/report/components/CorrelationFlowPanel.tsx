@@ -303,7 +303,7 @@ export function CorrelationFlowPanel({
   onNodeClick
 }: CorrelationFlowPanelProps) {
   const styles = useStyles();
-  const { clientUrl } = useOrgContext();
+  const { clientUrl, apiVersion } = useOrgContext();
   const baseUrl = clientUrl;
   
   const [flowData, setFlowData] = useState<FlowGraph | null>(null);
@@ -328,7 +328,7 @@ export function CorrelationFlowPanel({
     setLoading(true);
     setError(null);
     
-    getLogsForCorrelation(baseUrl, correlationId)
+    getLogsForCorrelation(baseUrl, correlationId, apiVersion)
       .then((logs: PluginTraceLog[]) => {
         const graph = buildFlowGraph(logs);
         flowCache.set(correlationId, graph);
@@ -342,7 +342,7 @@ export function CorrelationFlowPanel({
       .finally(() => {
         setLoading(false);
       });
-  }, [isOpen, correlationId, baseUrl]);
+  }, [isOpen, correlationId, baseUrl, apiVersion]);
 
   // Handle node click
   const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {

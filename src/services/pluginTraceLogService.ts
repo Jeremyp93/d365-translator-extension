@@ -36,7 +36,8 @@ export interface PluginTraceLogFilters {
 export async function getPluginTraceLogs(
   baseUrl: string,
   filters?: PluginTraceLogFilters,
-  pageSize: number = 100
+  pageSize: number = 100,
+  apiVersion: string = 'v9.2'
 ): Promise<PaginatedResponse<PluginTraceLog>> {
   const filterParts: string[] = [];
 
@@ -80,7 +81,7 @@ export async function getPluginTraceLogs(
   const queryParts = [selectQuery, orderQuery, filterQuery].filter(Boolean);
   const query = queryParts.join('&');
 
-  const url = `${baseUrl}/api/data/v9.2/plugintracelogs?${query}`;
+  const url = `${baseUrl}/api/data/${apiVersion}/plugintracelogs?${query}`;
   const response = await fetchJson(url, {
     headers: {
       'Prefer': `odata.maxpagesize=${pageSize}`
@@ -133,10 +134,11 @@ export async function getNextPageOfLogs(
  */
 export async function getPluginTraceLogById(
   baseUrl: string,
-  id: string
+  id: string,
+  apiVersion: string = 'v9.2'
 ): Promise<PluginTraceLog | null> {
   try {
-    const url = `${baseUrl}/api/data/v9.2/plugintracelogs(${id})`;
+    const url = `${baseUrl}/api/data/${apiVersion}/plugintracelogs(${id})`;
     const log = await fetchJson(url) as PluginTraceLog;
     return log;
   } catch (error) {
@@ -208,14 +210,15 @@ export function getDurationColor(durationMs?: number): 'success' | 'warning' | '
  */
 export async function getLogsForCorrelation(
   baseUrl: string,
-  correlationId: string
+  correlationId: string,
+  apiVersion: string = 'v9.2'
 ): Promise<PluginTraceLog[]> {
   const selectQuery = '$select=plugintracelogid, correlationid,typename,messagename,mode,depth,performanceexecutionduration,operationtype,exceptiondetails,messageblock,createdon,correlationid';
   const filterQuery = `$filter=correlationid eq '${correlationId}'`;
   const orderQuery = '$orderby=createdon asc,plugintracelogid asc'; // Chronological order for flow diagram
   
   const query = `${selectQuery}&${filterQuery}&${orderQuery}`;
-  const url = `${baseUrl}/api/data/v9.2/plugintracelogs?${query}`;
+  const url = `${baseUrl}/api/data/${apiVersion}/plugintracelogs?${query}`;
   
   const response = await fetchJson(url) as { value: PluginTraceLog[] };
   return response.value || [];
