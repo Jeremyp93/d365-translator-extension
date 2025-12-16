@@ -77,7 +77,7 @@ export const useSharedStyles = makeStyles({
     fontSize: tokens.fontSizeBase600,
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground1,
-    marginBottom: spacing.sm,
+    //marginBottom: spacing.sm,
     display: "flex",
     alignItems: "center",
     ...shorthands.gap(spacing.md),
@@ -85,9 +85,18 @@ export const useSharedStyles = makeStyles({
   
   pageSubtitle: {
     fontSize: tokens.fontSizeBase300,
-    color: tokens.colorNeutralForeground3,
-    marginTop: spacing.xs,
+    color: tokens.colorNeutralForeground2,
+    //marginTop: spacing.xs,
   },
+
+  pageConnectionInfo: {
+      fontSize: tokens.fontSizeBase200,
+      color: tokens.colorNeutralForeground3,
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      marginTop: spacing.xs
+    },
   
   section: {
     ...shorthands.padding(spacing.lg),

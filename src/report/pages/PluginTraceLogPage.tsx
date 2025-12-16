@@ -16,7 +16,7 @@ import {
   TableCellLayout,
   TableColumnId,
 } from '@fluentui/react-components';
-import { ArrowClockwiseRegular, FilterRegular, WeatherMoon20Regular, WeatherSunny20Regular, ChevronRight20Regular, ChevronDown20Regular, Search20Regular, Settings20Regular, Dismiss20Regular, FlowRegular, Building20Regular } from '@fluentui/react-icons';
+import { ArrowClockwiseRegular, WeatherMoon20Regular, WeatherSunny20Regular, ChevronRight20Regular, ChevronDown20Regular, Search20Regular, Settings20Regular, Dismiss20Regular, FlowRegular, DocumentText24Regular } from '@fluentui/react-icons';
 import { useOrgContext } from '../../hooks/useOrgContext';
 import { usePluginTraceLogs } from '../../hooks/usePluginTraceLogs';
 import { useTheme } from '../../context/ThemeContext';
@@ -30,6 +30,7 @@ import {
 } from '../../services/pluginTraceLogService';
 //import { CorrelationFlowPanel } from '../components/CorrelationFlowPanel';
 import { lazy } from 'react';
+import PageHeader from '../../components/ui/PageHeader';
 
 const FlowSidePanel = lazy(() => import('../components/CorrelationFlowPanel'));
 
@@ -905,24 +906,20 @@ export default function PluginTraceLogPage(): JSX.Element {
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <Text className={styles.title}>Plugin Trace Logs</Text>
-          <Text className={styles.subtitle}>
-            View and analyze plugin execution traces with detailed filtering options
-          </Text>
-          <Text className={styles.connectionInfo}>
-            <Building20Regular />
-            Connected to: {clientUrl} - Api Version: {apiVersion}
-          </Text>
-        </div>
-        <Button
+      <PageHeader
+              title="Plugin Trace Logs"
+              subtitle="View and analyze plugin execution traces with detailed filtering options"
+              icon={<DocumentText24Regular />}
+              connectionInfo={{ clientUrl, apiVersion }}
+              actions={
+                <Button
           appearance="subtle"
           icon={mode === 'dark' ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />}
           onClick={toggleTheme}
           title={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}
         />
-      </div>
+              }
+            />
 
       <div className={styles.content}>
         {/* Server Filters Section */}

@@ -16,10 +16,12 @@ import {
   createTableColumn,
   TableColumnDefinition,
   TableCellLayout,
+  Button,
 } from "@fluentui/react-components";
 import {
   Database24Regular,
   Search20Regular,
+  TableEdit24Regular,
   WeatherMoon20Regular,
   WeatherSunny20Regular,
 } from "@fluentui/react-icons";
@@ -28,7 +30,6 @@ import { ErrorBox, Info } from "../../components/ui/Notice";
 import PageHeader from "../../components/ui/PageHeader";
 import Section from "../../components/ui/Section";
 import EntityLabelEditor from "../../components/EntityLabelEditor";
-import CustomButton from "../../components/ui/Button";
 
 import { useOrgContext } from "../../hooks/useOrgContext";
 import { useLanguages } from "../../hooks/useLanguages";
@@ -403,26 +404,20 @@ export default function EntityAttributeBrowserPage(): JSX.Element {
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <Text className={styles.title}>Entity & Attribute Browser</Text>
-          <Text className={styles.subtitle}>
-            Browse and translate entity attributes across all entities
-          </Text>
-          {clientUrl && (
-            <Text className={styles.connectionInfo}>
-              <Database24Regular />
-              Connected to: {new URL(clientUrl).hostname} - Api Version: {apiVersion || 'v9.2'}
-            </Text>
-          )}
-        </div>
-        <CustomButton
-          icon={mode === "dark" ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />}
-          onClick={toggleTheme}
-          appearance="subtle"
-          className={styles.themeButton}
-        />
-      </div>
+      <PageHeader
+              title="Entity & Attribute Browser"
+              subtitle="Browse and translate entity attributes across all entities"
+              icon={<TableEdit24Regular />}
+              connectionInfo={{ clientUrl, apiVersion }}
+              actions={
+                <Button
+                  appearance="subtle"
+                  icon={mode === "dark" ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />}
+                  onClick={toggleTheme}
+                  title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                />
+              }
+            />
 
       <div className={styles.content}>
         {error && <ErrorBox>{error}</ErrorBox>}

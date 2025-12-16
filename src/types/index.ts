@@ -67,6 +67,7 @@ export interface OptionSetMetadata {
   displayName?: string;
   optionSetType?: OptionSetType;
   options: OptionValue[];
+  metadataId: string;
 }
 
 export interface GlobalOptionSetSummary {

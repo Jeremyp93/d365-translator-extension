@@ -18,6 +18,7 @@ import {
   Search20Regular,
   WeatherMoon20Regular,
   WeatherSunny20Regular,
+  Globe24Regular,
 } from "@fluentui/react-icons";
 
 import { ErrorBox, Info } from "../../components/ui/Notice";
@@ -36,6 +37,7 @@ import {
   updateGlobalOptionSetLabels,
 } from "../../services/optionSetService";
 import type { GlobalOptionSetSummary, OptionSetMetadata, Label } from "../../types";
+import { getGlobalOptionSetUsage, OptionSetUsageRow } from "../../services/dependencyService";
 
 const useStyles = makeStyles({
   page: {
@@ -57,13 +59,28 @@ const useStyles = makeStyles({
   },
   splitLayout: {
     display: "grid",
-    gridTemplateColumns: "450px 1fr",
+    gridTemplateColumns: "450px 1fr 340px",
+    gridTemplateAreas: `"sidebar detail usage"`,
     ...shorthands.gap(spacing.lg),
+    // medium screens: put usage below (full width) but keep sidebar + main
+    '@media (max-width: 1200px)': {
+      gridTemplateColumns: '450px 1fr',
+      gridTemplateAreas: `
+        "sidebar detail"
+        "usage  usage"
+      `,
+    },
     "@media (max-width: 768px)": {
       gridTemplateColumns: "1fr",
+      gridTemplateAreas: `
+        "sidebar"
+        "detail"
+        "usage"
+      `,
     },
   },
   sidebar: {
+    gridArea: 'sidebar',
     display: "flex",
     flexDirection: "column",
     ...shorthands.gap(spacing.md),
@@ -97,6 +114,16 @@ const useStyles = makeStyles({
       ...shorthands.border("1px", "solid", tokens.colorBrandStroke1),
     },
   },
+  usageItem: {
+    ...shorthands.padding(spacing.sm, spacing.md),
+    ...shorthands.borderRadius(tokens.borderRadiusSmall),
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.border("1px", "solid", "transparent"),
+    "&:hover": {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+      ...shorthands.border("1px", "solid", tokens.colorBrandStroke1),
+    },
+  },
   optionSetName: {
     fontWeight: tokens.fontWeightSemibold,
     fontSize: tokens.fontSizeBase300,
@@ -116,9 +143,16 @@ const useStyles = makeStyles({
     textOverflow: "ellipsis",
   },
   detailPanel: {
+    gridArea: 'detail',
     display: "flex",
     flexDirection: "column",
     ...shorthands.gap(spacing.md),
+  },
+  usagePanel: {
+    gridArea: 'usage',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,              // important: allows inner scroll
   },
   optionRow: {
     marginBottom: "32px",
@@ -177,6 +211,11 @@ export default function GlobalOptionSetPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  const [usage, setUsage] = useState<OptionSetUsageRow[]>([]);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [usageError, setUsageError] = useState<string | null>(null);
+  const [usageSearch, setUsageSearch] = useState('');
+
   const lcids = useMemo(
     () => (langs ?? []).slice().sort((a, b) => a - b),
     [langs]
@@ -211,6 +250,47 @@ export default function GlobalOptionSetPage(): JSX.Element {
       cancelled = true;
     };
   }, [clientUrlFromParam]);
+
+  useEffect(() => {
+  if (!clientUrlFromParam || !selectedMetadata?.metadataId) return;
+
+  let cancelled = false;
+
+  (async () => {
+    try {
+      setUsageError(null);
+      setUsageLoading(true);
+
+      const rows = await getGlobalOptionSetUsage(
+        clientUrlFromParam,
+        selectedMetadata.metadataId,
+        apiVersionFromParam ?? 'v9.2',
+      );
+
+      if (!cancelled) setUsage(rows);
+    } catch (e: any) {
+      if (!cancelled) setUsageError(e?.message ?? String(e));
+    } finally {
+      if (!cancelled) setUsageLoading(false);
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [clientUrlFromParam, apiVersionFromParam, selectedMetadata?.metadataId]);
+
+const filteredUsage = useMemo(() => {
+  const term = usageSearch.trim().toLowerCase();
+  if (!term) return usage;
+
+  return usage.filter((r) =>
+    r.entityDisplayName.toLowerCase().includes(term) ||
+    r.fieldDisplayName.toLowerCase().includes(term) ||
+    r.fieldLogicalName.toLowerCase().includes(term) ||
+    r.solutionUniqueName.toLowerCase().includes(term)
+  );
+}, [usage, usageSearch]);
 
   // Load selected option set details
   useEffect(() => {
@@ -327,7 +407,8 @@ export default function GlobalOptionSetPage(): JSX.Element {
       <PageHeader
         title="Global OptionSet Translation Manager"
         subtitle="Manage translations for global option sets shared across entities"
-        icon={<Database24Regular />}
+        icon={<Globe24Regular />}
+        connectionInfo={{ clientUrl: clientUrlFromParam, apiVersion: apiVersionFromParam }}
         actions={
           <Button
             appearance="subtle"
@@ -463,6 +544,46 @@ export default function GlobalOptionSetPage(): JSX.Element {
                 </Card>
               </Section>
             ) : null}
+          </div>
+          {/* Usage Panel: OptionSet Usage */}
+          <div className={styles.usagePanel}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+                <Input
+                  placeholder="Search fields/entities..."
+                  value={usageSearch}
+                  onChange={(e) => setUsageSearch(e.target.value)}
+                  contentBefore={<Search20Regular />}
+                  style={{ flex: 1, minWidth: 0 }}
+                />
+                <Badge appearance="outline" style={{ marginLeft: spacing.md }}>{usage.length} total</Badge>
+              </div>
+
+            <Section title="Used by Fields" icon={<Database24Regular />}>
+            {usageError && <ErrorBox>{usageError}</ErrorBox>}
+              {usageLoading ? (
+                <div style={{ textAlign: "center", padding: spacing.lg }}>
+                  <Spinner size="medium" label="Loading dependencies..." />
+                </div>
+              ) : filteredUsage.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <Text>No fields found using this global option set.</Text>
+                </div>
+              ) : (
+                <div className={styles.optionSetList}>
+                  {filteredUsage.map((r) => (
+                    <div
+                      key={r.fieldLogicalName}
+                      className={`${styles.usageItem}`}
+                    >
+                      <div className={styles.optionSetName}>{r.fieldLogicalName}</div>
+                      <div className={styles.optionSetMeta}>
+                        <Text size={200}>{r.entityDisplayName}</Text>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Section>
           </div>
         </div>
       </div>
