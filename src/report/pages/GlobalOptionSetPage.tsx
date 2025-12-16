@@ -36,6 +36,7 @@ import {
   updateGlobalOptionSetLabels,
 } from "../../services/optionSetService";
 import type { GlobalOptionSetSummary, OptionSetMetadata, Label } from "../../types";
+import { getGlobalOptionSetUsage, OptionSetUsageRow } from "../../services/dependencyService";
 
 const useStyles = makeStyles({
   page: {
@@ -57,13 +58,28 @@ const useStyles = makeStyles({
   },
   splitLayout: {
     display: "grid",
-    gridTemplateColumns: "450px 1fr",
+    gridTemplateColumns: "450px 1fr 340px",
+    gridTemplateAreas: `"sidebar detail usage"`,
     ...shorthands.gap(spacing.lg),
+    // medium screens: put usage below (full width) but keep sidebar + main
+    '@media (max-width: 1200px)': {
+      gridTemplateColumns: '450px 1fr',
+      gridTemplateAreas: `
+        "sidebar detail"
+        "usage  usage"
+      `,
+    },
     "@media (max-width: 768px)": {
       gridTemplateColumns: "1fr",
+      gridTemplateAreas: `
+        "sidebar"
+        "detail"
+        "usage"
+      `,
     },
   },
   sidebar: {
+    gridArea: 'sidebar',
     display: "flex",
     flexDirection: "column",
     ...shorthands.gap(spacing.md),
@@ -116,9 +132,16 @@ const useStyles = makeStyles({
     textOverflow: "ellipsis",
   },
   detailPanel: {
+    gridArea: 'detail',
     display: "flex",
     flexDirection: "column",
     ...shorthands.gap(spacing.md),
+  },
+  usagePanel: {
+    gridArea: 'usage',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,              // important: allows inner scroll
   },
   optionRow: {
     marginBottom: "32px",
@@ -177,6 +200,11 @@ export default function GlobalOptionSetPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  const [usage, setUsage] = useState<OptionSetUsageRow[]>([]);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [usageError, setUsageError] = useState<string | null>(null);
+  const [usageSearch, setUsageSearch] = useState('');
+
   const lcids = useMemo(
     () => (langs ?? []).slice().sort((a, b) => a - b),
     [langs]
@@ -211,6 +239,47 @@ export default function GlobalOptionSetPage(): JSX.Element {
       cancelled = true;
     };
   }, [clientUrlFromParam]);
+
+  useEffect(() => {
+  if (!clientUrlFromParam || !selectedMetadata?.metadataId) return;
+
+  let cancelled = false;
+
+  (async () => {
+    try {
+      setUsageError(null);
+      setUsageLoading(true);
+
+      const rows = await getGlobalOptionSetUsage(
+        clientUrlFromParam,
+        selectedMetadata.metadataId,
+        apiVersionFromParam ?? 'v9.2',
+      );
+
+      if (!cancelled) setUsage(rows);
+    } catch (e: any) {
+      if (!cancelled) setUsageError(e?.message ?? String(e));
+    } finally {
+      if (!cancelled) setUsageLoading(false);
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [clientUrlFromParam, apiVersionFromParam, selectedMetadata?.metadataId]);
+
+const filteredUsage = useMemo(() => {
+  const term = usageSearch.trim().toLowerCase();
+  if (!term) return usage;
+
+  return usage.filter((r) =>
+    r.entityDisplayName.toLowerCase().includes(term) ||
+    r.fieldDisplayName.toLowerCase().includes(term) ||
+    r.fieldLogicalName.toLowerCase().includes(term) ||
+    r.solutionUniqueName.toLowerCase().includes(term)
+  );
+}, [usage, usageSearch]);
 
   // Load selected option set details
   useEffect(() => {
@@ -463,6 +532,61 @@ export default function GlobalOptionSetPage(): JSX.Element {
                 </Card>
               </Section>
             ) : null}
+          </div>
+          {/* Usage Panel: OptionSet Usage */}
+          <div className={styles.usagePanel}>
+            <Card style={{ padding: spacing.md, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text weight="semibold">Used by fields</Text>
+                      <Badge appearance="outline">{usage.length} total</Badge>
+                    </div>
+
+                    {usageError && <ErrorBox>{usageError}</ErrorBox>}
+
+                    <div style={{ display: 'flex', gap: spacing.sm, alignItems: 'center', marginTop: spacing.sm }}>
+                      <Input
+                        placeholder="Search fields/entities..."
+                        value={usageSearch}
+                        onChange={(e) => setUsageSearch(e.target.value)}
+                        contentBefore={<Search20Regular />}
+                      />
+                    </div>
+
+                    {usageLoading ? (
+                      <div style={{ textAlign: 'center', padding: spacing.lg }}>
+                        <Spinner size="medium" label="Loading dependencies..." />
+                      </div>
+                    ) : filteredUsage.length === 0 ? (
+                      <Text size={200} style={{ marginTop: spacing.sm }}>
+                        No fields found using this global option set.
+                      </Text>
+                    ) : (
+                      <div style={{ marginTop: spacing.sm, flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                        {filteredUsage.map((r) => (
+                          <Card
+                            key={r.fieldMetadataId}
+                            appearance="subtle"
+                            style={{
+                              padding: spacing.sm,
+                              marginBottom: spacing.xs,
+                            }}
+                          >
+                            <Text weight="semibold" block>
+                              {r.fieldDisplayName}
+                            </Text>
+
+                            <Text size={200} block>
+                              {r.entityDisplayName}
+                            </Text>
+
+                            <Text size={200} block>
+                              <code>{r.fieldLogicalName}</code>
+                            </Text>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
           </div>
         </div>
       </div>

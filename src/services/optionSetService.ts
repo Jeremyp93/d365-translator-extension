@@ -90,6 +90,7 @@ export async function getOptionSetMetadata(
     }
     
     return {
+      metadataId: '',
       isGlobal: false,
       name: null,
       displayName: 'Two Options',
@@ -149,6 +150,7 @@ export async function getOptionSetMetadata(
   }));
 
   return {
+    metadataId: '',
     isGlobal,
     name,
     displayName,
@@ -207,7 +209,7 @@ export async function getGlobalOptionSet(
     `${baseUrl}/api/data/${apiVersion}/GlobalOptionSetDefinitions(Name='${encodeURIComponent(
       optionSetName
     )}')/Microsoft.Dynamics.CRM.OptionSetMetadata` +
-    `?$select=Name,DisplayName,IsGlobal,Options`;
+    `?$select=MetadataId,Name,DisplayName,IsGlobal,Options`;
 
   const j = await fetchJson(url);
 
@@ -227,6 +229,7 @@ export async function getGlobalOptionSet(
   }));
 
   return {
+    metadataId: String(j?.MetadataId ?? ''),
     isGlobal: Boolean(j?.IsGlobal ?? true),
     name: optionSetName,
     displayName: j?.DisplayName?.UserLocalizedLabel?.Label ?? optionSetName,
