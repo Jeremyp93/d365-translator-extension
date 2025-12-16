@@ -1,18 +1,17 @@
 // src/pages/FieldReportPage.tsx
 import { useEffect, useState } from "react";
 import {
-  Text,
   makeStyles,
   shorthands,
   tokens,
   Button,
 } from "@fluentui/react-components";
 import {
-  DocumentText24Regular,
   Table24Regular,
   Code24Regular,
   WeatherMoon20Regular,
   WeatherSunny20Regular,
+  ColumnEdit24Regular,
 } from "@fluentui/react-icons";
 
 import { ErrorBox } from "../../components/ui/Notice";
@@ -122,7 +121,8 @@ export default function FieldReportPage(): JSX.Element {
       <PageHeader
         title="Field Translations"
         subtitle="Manage multi-language labels for entity fields and form controls"
-        icon={<DocumentText24Regular />}
+        icon={<ColumnEdit24Regular />}
+        connectionInfo={{ clientUrl, apiVersion }}
         actions={
           <Button
             appearance="subtle"

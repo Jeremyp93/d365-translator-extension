@@ -18,6 +18,7 @@ import {
   Search20Regular,
   WeatherMoon20Regular,
   WeatherSunny20Regular,
+  Globe24Regular,
 } from "@fluentui/react-icons";
 
 import { ErrorBox, Info } from "../../components/ui/Notice";
@@ -110,6 +111,16 @@ const useStyles = makeStyles({
     },
     "&.selected": {
       backgroundColor: tokens.colorBrandBackground2,
+      ...shorthands.border("1px", "solid", tokens.colorBrandStroke1),
+    },
+  },
+  usageItem: {
+    ...shorthands.padding(spacing.sm, spacing.md),
+    ...shorthands.borderRadius(tokens.borderRadiusSmall),
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.border("1px", "solid", "transparent"),
+    "&:hover": {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
       ...shorthands.border("1px", "solid", tokens.colorBrandStroke1),
     },
   },
@@ -396,7 +407,8 @@ const filteredUsage = useMemo(() => {
       <PageHeader
         title="Global OptionSet Translation Manager"
         subtitle="Manage translations for global option sets shared across entities"
-        icon={<Database24Regular />}
+        icon={<Globe24Regular />}
+        connectionInfo={{ clientUrl: clientUrlFromParam, apiVersion: apiVersionFromParam }}
         actions={
           <Button
             appearance="subtle"
@@ -535,58 +547,43 @@ const filteredUsage = useMemo(() => {
           </div>
           {/* Usage Panel: OptionSet Usage */}
           <div className={styles.usagePanel}>
-            <Card style={{ padding: spacing.md, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text weight="semibold">Used by fields</Text>
-                      <Badge appearance="outline">{usage.length} total</Badge>
-                    </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+                <Input
+                  placeholder="Search fields/entities..."
+                  value={usageSearch}
+                  onChange={(e) => setUsageSearch(e.target.value)}
+                  contentBefore={<Search20Regular />}
+                  style={{ flex: 1, minWidth: 0 }}
+                />
+                <Badge appearance="outline" style={{ marginLeft: spacing.md }}>{usage.length} total</Badge>
+              </div>
 
-                    {usageError && <ErrorBox>{usageError}</ErrorBox>}
-
-                    <div style={{ display: 'flex', gap: spacing.sm, alignItems: 'center', marginTop: spacing.sm }}>
-                      <Input
-                        placeholder="Search fields/entities..."
-                        value={usageSearch}
-                        onChange={(e) => setUsageSearch(e.target.value)}
-                        contentBefore={<Search20Regular />}
-                      />
-                    </div>
-
-                    {usageLoading ? (
-                      <div style={{ textAlign: 'center', padding: spacing.lg }}>
-                        <Spinner size="medium" label="Loading dependencies..." />
+            <Section title="Used by Fields" icon={<Database24Regular />}>
+            {usageError && <ErrorBox>{usageError}</ErrorBox>}
+              {usageLoading ? (
+                <div style={{ textAlign: "center", padding: spacing.lg }}>
+                  <Spinner size="medium" label="Loading dependencies..." />
+                </div>
+              ) : filteredUsage.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <Text>No fields found using this global option set.</Text>
+                </div>
+              ) : (
+                <div className={styles.optionSetList}>
+                  {filteredUsage.map((r) => (
+                    <div
+                      key={r.fieldLogicalName}
+                      className={`${styles.usageItem}`}
+                    >
+                      <div className={styles.optionSetName}>{r.fieldLogicalName}</div>
+                      <div className={styles.optionSetMeta}>
+                        <Text size={200}>{r.entityDisplayName}</Text>
                       </div>
-                    ) : filteredUsage.length === 0 ? (
-                      <Text size={200} style={{ marginTop: spacing.sm }}>
-                        No fields found using this global option set.
-                      </Text>
-                    ) : (
-                      <div style={{ marginTop: spacing.sm, flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                        {filteredUsage.map((r) => (
-                          <Card
-                            key={r.fieldMetadataId}
-                            appearance="subtle"
-                            style={{
-                              padding: spacing.sm,
-                              marginBottom: spacing.xs,
-                            }}
-                          >
-                            <Text weight="semibold" block>
-                              {r.fieldDisplayName}
-                            </Text>
-
-                            <Text size={200} block>
-                              {r.entityDisplayName}
-                            </Text>
-
-                            <Text size={200} block>
-                              <code>{r.fieldLogicalName}</code>
-                            </Text>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </Card>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Section>
           </div>
         </div>
       </div>
