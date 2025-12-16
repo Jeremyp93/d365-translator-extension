@@ -22,6 +22,8 @@ import {
   WeatherSunny20Regular,
   Home20Regular,
   Settings20Regular,
+  Database24Regular,
+  Grid24Regular,
 } from "@fluentui/react-icons";
 import { useSharedStyles, spacing } from "../styles/theme";
 import { useTheme } from "../context/ThemeContext";
@@ -361,18 +363,20 @@ function useD365Controller() {
   const callController = async (
     tabId: number,
     frameId: number,
-    method: "enable" | "disable" | "showAllFields" | "openFormReportPage" | "openPluginTraceLogsPage"
+    method: "enable" | "disable" | "showAllFields" | "openFormReportPage" | "openPluginTraceLogsPage" | "openGlobalOptionSetsPage" | "openEntityBrowserPage"
   ): Promise<void> => {
     await chrome.scripting.executeScript({
       target: { tabId, frameIds: [frameId] },
       world: "MAIN",
-      func: (m: "enable" | "disable" | "showAllFields" | "openFormReportPage" | "openPluginTraceLogsPage") => {
+      func: (m: "enable" | "disable" | "showAllFields" | "openFormReportPage" | "openPluginTraceLogsPage" | "openGlobalOptionSetsPage" | "openEntityBrowserPage") => {
         const ctl = (window as any).__d365Ctl as {
           enable: () => void;
           disable: () => void;
           showAllFields: () => void;
           openFormReportPage: () => void;
           openPluginTraceLogsPage: () => void;
+          openGlobalOptionSetsPage: () => void;
+          openEntityBrowserPage: () => void;
         };
         if (!ctl) throw new Error("controller missing");
         ctl[m]();
@@ -437,6 +441,24 @@ function useD365Controller() {
     setBusy(false);
   };
 
+  const openGlobalOptionSetsPage = async (): Promise<void> => {
+    setBusy(true);
+    setInfo("Opening global option sets manager…");
+    await withGuard(async (tabId, frameId) => {
+      await callController(tabId, frameId, "openGlobalOptionSetsPage");
+      setInfo("Global option sets page opened.");
+    });
+    setBusy(false);
+  };
+  const openEntityBrowserPage = async (): Promise<void> => {
+    setBusy(true);
+    setInfo("Opening entity browser…");
+    await withGuard(async (tabId, frameId) => {
+      await callController(tabId, frameId, "openEntityBrowserPage");
+      setInfo("Entity browser opened.");
+    });
+    setBusy(false);
+  };
   // const openPluginTraceLogsPage = async (): Promise<void> => {
   //   const url = chrome.runtime.getURL('report.html') + '#/plugin-trace-logs';
   //   await chrome.tabs.create({ url });
@@ -494,6 +516,8 @@ function useD365Controller() {
     clearCacheAndHardRefresh,
     openFormReportPage,
     openPluginTraceLogsPage,
+    openGlobalOptionSetsPage,
+    openEntityBrowserPage,
     isValidContext,
     isDynamicsEnv,
     contextChecking,
@@ -505,7 +529,7 @@ export default function App(): JSX.Element {
   const styles = useStyles();
   const sharedStyles = useSharedStyles();
   const { theme, mode, toggleTheme } = useTheme();
-  const { active, busy, info, error, activate, deactivate, showAllFields, clearCacheAndHardRefresh, openFormReportPage, openPluginTraceLogsPage, isValidContext, isDynamicsEnv, contextChecking, setInfo } =
+  const { active, busy, info, error, activate, deactivate, showAllFields, clearCacheAndHardRefresh, openFormReportPage, openPluginTraceLogsPage, openGlobalOptionSetsPage, openEntityBrowserPage, isValidContext, isDynamicsEnv, contextChecking, setInfo } =
     useD365Controller();
 
   const [hoveredButton, setHoveredButton] = React.useState<string | null>(null);
@@ -543,7 +567,9 @@ export default function App(): JSX.Element {
     highlight: "Highlight all translatable fields on the form. Click any highlighted field to open its translation editor.",
     removeHighlight: "Remove field highlighting and disable the translation overlay",
     formTranslations: "Open the comprehensive form translations editor in a new tab",
+    globalOptionSets: "Manage translations for global option sets shared across entities",
     pluginTraceLogs: "View plugin execution trace logs with filtering options",
+    entityBrowser: "Browse all entities and attributes with translation capabilities",
   };
 
   return (
@@ -676,6 +702,31 @@ export default function App(): JSX.Element {
                     onMouseLeave={() => setHoveredButton(null)}
                   >
                     Form Translations
+                  </Button>
+
+                  <Button
+                    appearance="secondary"
+                    size="large"
+                    icon={<Database24Regular />}
+                    onClick={openGlobalOptionSetsPage}
+                    disabled={busy || !isDynamicsEnv || contextChecking}
+                    className={styles.actionButton}
+                    onMouseEnter={() => setHoveredButton("globalOptionSets")}
+                    onMouseLeave={() => setHoveredButton(null)}
+                  >
+                    Global OptionSets
+                  </Button>
+                  <Button
+                    appearance="secondary"
+                    size="large"
+                    icon={<Grid24Regular />}
+                    onClick={openEntityBrowserPage}
+                    disabled={busy || !isDynamicsEnv || contextChecking}
+                    className={styles.actionButton}
+                    onMouseEnter={() => setHoveredButton("entityBrowser")}
+                    onMouseLeave={() => setHoveredButton(null)}
+                  >
+                    Entity Browser
                   </Button>
                 </div>
               </div>

@@ -793,7 +793,7 @@ export default function PluginTraceLogPage(): JSX.Element {
     filteredLogs,
     loading,
     error,
-  } = usePluginTraceLogs(clientUrl);
+  } = usePluginTraceLogs(clientUrl, apiVersion);
   const { theme, mode, toggleTheme } = useTheme();
 
   // Ref to call resetSort on ResultsTable

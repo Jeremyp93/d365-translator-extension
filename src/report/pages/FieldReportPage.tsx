@@ -1,5 +1,5 @@
 // src/pages/FieldReportPage.tsx
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Text,
   makeStyles,
@@ -18,6 +18,7 @@ import {
 import { ErrorBox } from "../../components/ui/Notice";
 import EntityLabelEditor from "../../components/EntityLabelEditor";
 import FormLabelEditor from "../../components/FormLabelEditor";
+import OptionSetEditor from "../../components/OptionSetEditor";
 import PageHeader from "../../components/ui/PageHeader";
 import Section from "../../components/ui/Section";
 
@@ -25,6 +26,7 @@ import Section from "../../components/ui/Section";
 import { useOrgContext } from "../../hooks/useOrgContext";
 import { useSharedStyles, spacing } from "../../styles/theme";
 import { useTheme } from "../../context/ThemeContext";
+import { getAttributeType, isOptionSetType } from "../../services/optionSetService";
 
 const useStyles = makeStyles({
   page: {
@@ -71,12 +73,40 @@ export default function FieldReportPage(): JSX.Element {
   const sharedStyles = useSharedStyles();
   const { theme, mode, toggleTheme } = useTheme();
 
-  const { clientUrl, entity, attribute, formId, labelId } = useOrgContext();
+  const { clientUrl, entity, attribute, formId, labelId, apiVersion } = useOrgContext();
+  
+  const [attributeType, setAttributeType] = useState<string>("");
+  const [isLoadingType, setIsLoadingType] = useState(false);
 
   // Set document title
   useEffect(() => {
     document.title = 'Field Labels - D365 Translator';
   }, []);
+
+  // Detect if field is an OptionSet
+  useEffect(() => {
+    if (!clientUrl || !entity || !attribute) return;
+    
+    let cancelled = false;
+    (async () => {
+      try {
+        setIsLoadingType(true);
+        const type = await getAttributeType(clientUrl, entity, attribute, apiVersion || 'v9.2');
+        if (!cancelled) {
+          setAttributeType(type);
+        }
+      } catch (e) {
+        // Silently fail - not critical
+        console.warn('Failed to detect attribute type:', e);
+      } finally {
+        if (!cancelled) setIsLoadingType(false);
+      }
+    })();
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [clientUrl, entity, attribute]);
 
   // Simple inline validation
   const problems: string[] = [];
@@ -156,6 +186,18 @@ export default function FieldReportPage(): JSX.Element {
               attribute={attribute!}
               formId={(formId || "").replace(/[{}]/g, "").toLowerCase()}
               labelId={(labelId || "").replace(/[{}]/g, "").toLowerCase()}
+            />
+          </Section>
+        )}
+
+        {/* OptionSet editor - only show if field is an OptionSet */}
+        {canEditEntityLabels && attributeType && isOptionSetType(attributeType) && (
+          <Section title="OptionSet Translations" icon={<Table24Regular />}>
+            <OptionSetEditor
+              clientUrl={clientUrl!}
+              entity={entity!}
+              attribute={attribute!}
+              apiVersion={apiVersion}
             />
           </Section>
         )}

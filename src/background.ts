@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 chrome.runtime.onMessage.addListener((msg: any, _sender, _sendResponse) => {
   if (msg?.type === "OPEN_REPORT") {
-    const { clientUrl, entity, attribute, labelId, formId } = msg.payload ?? {};
-    if (!clientUrl || !entity || !attribute || !labelId || !formId) return;
+    const { clientUrl, entity, attribute, labelId, formId, apiVersion } = msg.payload ?? {};
+    if (!clientUrl || !entity || !attribute || !labelId || !formId || !apiVersion) return;
 
     const base = chrome.runtime.getURL("src/report/report.html");
     const qs =
@@ -10,7 +10,8 @@ chrome.runtime.onMessage.addListener((msg: any, _sender, _sendResponse) => {
       `&entity=${encodeURIComponent(entity)}` +
       `&attribute=${encodeURIComponent(attribute)}` +
       `&labelId=${encodeURIComponent(labelId)}` +
-      `&formId=${encodeURIComponent(formId)}`;
+      `&formId=${encodeURIComponent(formId)}` +
+      `&apiVersion=${encodeURIComponent(apiVersion)}`;
 
     const url = `${base}#/report/field${qs}`;
     chrome.tabs.create({ url }).catch(() => {});
@@ -37,6 +38,26 @@ chrome.runtime.onMessage.addListener((msg: any, _sender, _sendResponse) => {
       `&apiVersion=${encodeURIComponent(apiVersion)}`;
 
     const url = `${base}#/report/plugin-trace-logs${qs}`;
+    chrome.tabs.create({ url }).catch(() => {});
+  } else if (msg?.type === "OPEN_GLOBAL_OPTIONSETS") {
+    const { clientUrl, apiVersion } = msg.payload ?? {};
+    if (!clientUrl) return;
+
+    const base = chrome.runtime.getURL("src/report/report.html");
+    const qs = `?clientUrl=${encodeURIComponent(clientUrl)}${
+      apiVersion ? `&apiVersion=${encodeURIComponent(apiVersion)}` : ""
+    }`;
+
+    const url = `${base}#/report/global-optionsets${qs}`;
+    chrome.tabs.create({ url }).catch(() => {});
+  } else if (msg?.type === "OPEN_ENTITY_BROWSER") {
+    const { clientUrl, apiVersion } = msg.payload ?? {};
+    if (!clientUrl) return;
+
+    const base = chrome.runtime.getURL("src/report/report.html");
+    const qs = `?clientUrl=${encodeURIComponent(clientUrl)}&apiVersion=${encodeURIComponent(apiVersion)}`;
+
+    const url = `${base}#/report/entity-browser${qs}`;
     chrome.tabs.create({ url }).catch(() => {});
   }
 });

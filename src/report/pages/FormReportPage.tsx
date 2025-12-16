@@ -243,7 +243,7 @@ export default function FormReportPage(): JSX.Element {
   const styles = useStyles();
   const sharedStyles = useSharedStyles();
   const { theme, mode, toggleTheme } = useTheme();
-  const { clientUrl, entity, formId } = useOrgContext();
+  const { clientUrl, entity, formId, apiVersion } = useOrgContext();
   const { state, load, resetError } = useFormStructure();
 
   // Set document title

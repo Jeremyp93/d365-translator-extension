@@ -40,7 +40,7 @@ interface UsePluginTraceLogsResult {
  * - Server filters: API-based filtering with explicit apply
  * - Pagination: server-side pagination with infinite scroll support
  */
-export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsResult {
+export function usePluginTraceLogs(baseUrl: string, apiVersion: string = 'v9.2'): UsePluginTraceLogsResult {
   const [serverLogs, setServerLogs] = useState<PluginTraceLog[]>([]);
   const [serverFilters, setServerFilters] = useState<PluginTraceLogFilters>({});
   const [appliedFilters, setAppliedFilters] = useState<PluginTraceLogFilters>({});
@@ -62,7 +62,7 @@ export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsResult {
     setError(null);
 
     try {
-      const response = await getPluginTraceLogs(baseUrl, appliedFilters, pageSize);
+      const response = await getPluginTraceLogs(baseUrl, appliedFilters, pageSize, apiVersion);
       setServerLogs(response.records);
       setNextLink(response.nextLink);
       setHasMore(response.nextLink !== null);
@@ -75,7 +75,7 @@ export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsResult {
     } finally {
       setLoading(false);
     }
-  }, [baseUrl, appliedFilters, pageSize]);
+  }, [baseUrl, appliedFilters, pageSize, apiVersion]);
 
   // Initial load on mount only
   useEffect(() => {
@@ -129,7 +129,7 @@ export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsResult {
     setError(null);
 
     try {
-      const response = await getPluginTraceLogs(baseUrl, serverFilters, pageSize);
+      const response = await getPluginTraceLogs(baseUrl, serverFilters, pageSize, apiVersion);
       setServerLogs(response.records);
       setNextLink(response.nextLink);
       setHasMore(response.nextLink !== null);
@@ -142,7 +142,7 @@ export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsResult {
     } finally {
       setLoading(false);
     }
-  }, [baseUrl, serverFilters, pageSize]);
+  }, [baseUrl, serverFilters, pageSize, apiVersion]);
 
   const clearServerFilters = useCallback(() => {
     setServerFilters({});
@@ -156,7 +156,7 @@ export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsResult {
       setError(null);
 
       try {
-        const response = await getPluginTraceLogs(baseUrl, {}, 100);
+        const response = await getPluginTraceLogs(baseUrl, {}, 100, apiVersion);
         setServerLogs(response.records);
         setNextLink(response.nextLink);
         setHasMore(response.nextLink !== null);
@@ -170,7 +170,7 @@ export function usePluginTraceLogs(baseUrl: string): UsePluginTraceLogsResult {
         setLoading(false);
       }
     })();
-  }, [baseUrl, pageSize]);
+  }, [baseUrl, pageSize, apiVersion]);
 
   const setPageSize = useCallback((size: number) => {
     setPageSizeState(size);
