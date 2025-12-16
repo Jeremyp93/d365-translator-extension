@@ -50,5 +50,14 @@ chrome.runtime.onMessage.addListener((msg: any, _sender, _sendResponse) => {
 
     const url = `${base}#/report/global-optionsets${qs}`;
     chrome.tabs.create({ url }).catch(() => {});
+  } else if (msg?.type === "OPEN_ENTITY_BROWSER") {
+    const { clientUrl, apiVersion } = msg.payload ?? {};
+    if (!clientUrl) return;
+
+    const base = chrome.runtime.getURL("src/report/report.html");
+    const qs = `?clientUrl=${encodeURIComponent(clientUrl)}&apiVersion=${encodeURIComponent(apiVersion)}`;
+
+    const url = `${base}#/report/entity-browser${qs}`;
+    chrome.tabs.create({ url }).catch(() => {});
   }
 });

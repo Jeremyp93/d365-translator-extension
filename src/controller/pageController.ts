@@ -28,8 +28,32 @@ import { storageGet } from "../services/storageCache";
     openFormReportPage: () => Promise<void>;
     openPluginTraceLogsPage: () => Promise<void>;
     openGlobalOptionSetsPage: () => Promise<void>;
+    openEntityBrowserPage: () => Promise<void>;
   } = {
     enabled: false,
+
+    async openEntityBrowserPage() {
+      const X = (window as any).Xrm;
+      if (!X) {
+        console.warn("[ctl] Xrm not found in this frame.");
+        return;
+      }
+
+      const clientUrl =
+        (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.() || "";
+
+      window.postMessage(
+        {
+          __d365x__: true,
+          type: "OPEN_ENTITY_BROWSER",
+          payload: {
+            clientUrl,
+            apiVersion: getVersion(),
+          },
+        },
+        "*"
+      );
+    },
 
     async openGlobalOptionSetsPage() {
       const X = (window as any).Xrm;
