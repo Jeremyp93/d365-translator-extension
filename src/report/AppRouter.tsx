@@ -9,9 +9,13 @@ import { FluentProvider } from "@fluentui/react-components";
 import { useTheme } from "../context/ThemeContext";
 import FieldReportPage from "./pages/FieldReportPage";
 import FormReportPage from "./pages/FormReportPage";
-import PluginTraceLogPage from "./pages/PluginTraceLogPage";
 import GlobalOptionSetPage from "./pages/GlobalOptionSetPage";
 import EntityAttributeBrowserPage from "./pages/EntityAttributeBrowserPage";
+import { lazy } from "react";
+
+const PluginTraceLogPage = lazy(
+  () => import('./pages/PluginTraceLogPage'),
+);
 
 function KeepSearchNavigate({ to }: { to: string }) {
   const { search } = useLocation();

@@ -294,7 +294,7 @@ const nodeTypes = {
   default: CustomNode
 };
 
-export function CorrelationFlowPanel({
+function CorrelationFlowPanel({
   isOpen,
   correlationId,
   selectedRowId,
@@ -501,3 +501,5 @@ export function CorrelationFlowPanel({
     </>
   );
 }
+
+export default CorrelationFlowPanel;

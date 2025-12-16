@@ -11,12 +11,6 @@ import {
   Checkbox,
   Spinner,
   Badge,
-  DataGrid,
-  DataGridHeader,
-  DataGridRow,
-  DataGridHeaderCell,
-  DataGridBody,
-  DataGridCell,
   createTableColumn,
   TableColumnDefinition,
   TableCellLayout,
@@ -34,7 +28,10 @@ import {
   getOperationTypeLabel,
   getDurationColor,
 } from '../../services/pluginTraceLogService';
-import { CorrelationFlowPanel } from '../components/CorrelationFlowPanel';
+//import { CorrelationFlowPanel } from '../components/CorrelationFlowPanel';
+import { lazy } from 'react';
+
+const FlowSidePanel = lazy(() => import('../components/CorrelationFlowPanel'));
 
 const useStyles = makeStyles({
   page: {
@@ -1039,7 +1036,7 @@ export default function PluginTraceLogPage(): JSX.Element {
       </div>
 
       {/* Correlation Flow Panel */}
-      <CorrelationFlowPanel
+      <FlowSidePanel
         isOpen={isPanelOpen}
         correlationId={panelCorrelationId}
         selectedRowId={selectedRowId}

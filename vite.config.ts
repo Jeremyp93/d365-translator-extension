@@ -1,10 +1,18 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig({
   base: '', // keep empty for extension paths
-  plugins: [react()],
+  plugins: [
+    react(),
+    // visualizer({
+    //   filename: 'dist/stats.html',
+    //   gzipSize: true,
+    //   brotliSize: true,
+    // }),
+  ],
   resolve: {
     alias: {
       // convenience aliases for your new shared structure
@@ -49,6 +57,10 @@ export default defineConfig({
         assetFileNames: 'assets/[name][extname]', // ensures highlight.css => assets/highlight.css
         // (optional) keep chunk names predictable for debugging
         // chunkFileNames: 'assets/[name].js',
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          fluent: ['@fluentui/react-components', '@fluentui/react-icons', 'tabster'],
+        },
       },
     },
   },
