@@ -12,6 +12,8 @@ export interface UseFormStructureApi {
   state: UseFormStructureState;
   load: (clientUrl: string, formId: string) => Promise<void>;
   resetError: () => void;
+  loadedFormId: string | null;
+  reset: () => void;
 }
 
 /**
@@ -22,6 +24,7 @@ export function useFormStructure(): UseFormStructureApi {
   const [structure, setStructure] = useState<FormStructure | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadedFormId, setLoadedFormId] = useState<string | null>(null);
 
   const load = useCallback(async (clientUrl: string, formId: string) => {
     if (!clientUrl || !formId) {
@@ -31,13 +34,16 @@ export function useFormStructure(): UseFormStructureApi {
 
     setLoading(true);
     setError(null);
+    setLoadedFormId(null);
 
     try {
       const structure = await getFormXmlAllLanguages(clientUrl, formId);
       setStructure(structure);
+      setLoadedFormId(formId);
     } catch (e: any) {
       setError(e?.message ?? String(e));
       setStructure(null);
+      setLoadedFormId(null);
     } finally {
       setLoading(false);
     }
@@ -47,9 +53,18 @@ export function useFormStructure(): UseFormStructureApi {
     setError(null);
   }, []);
 
+  const reset = useCallback(() => {
+    setStructure(null);
+    setLoadedFormId(null);
+    setError(null);
+    setLoading(false);
+  }, []);
+
   return {
     state: { structure, loading, error },
     load,
     resetError,
+    loadedFormId,
+    reset
   };
 }

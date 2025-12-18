@@ -145,12 +145,66 @@ export async function setUserUiLanguage(baseUrl: string, systemUserId: string, l
    Form XML reads/writes (shared)
    ──────────────────────────────────────────────────────────────────────────── */
 
+export type SystemForm = {
+  formid: string;
+  name: string;
+  description?: string;
+  type: number; // 2 = Main, 7 = Quick Create, 8 = Quick View, etc.
+  objecttypecode: string;
+  iscustomizable?: {
+    Value: boolean;
+    CanBeChanged: boolean;
+    ManagedPropertyLogicalName?: string;
+  };
+  ismanaged?: boolean;
+  canbedeleted?: {
+    Value: boolean;
+    CanBeChanged?: boolean;
+    ManagedPropertyLogicalName?: string;
+  };
+};
+
 export async function getFormXml(baseUrl: string, formId: string): Promise<string> {
   const url = `${baseUrl}/api/data/v9.2/systemforms(${formatGuid(formId)})?$select=formxml`;
   const j = await fetchJsonNoCache(url);
   const xml = j?.formxml || j?.FormXml || '';
   if (!xml) throw new Error('systemform.formxml not found');
   return String(xml);
+}
+
+export async function getFormsForEntity(
+  baseUrl: string,
+  entityLogicalName: string,
+  apiVersion: string = 'v9.2'
+): Promise<SystemForm[]> {
+  const url = `${baseUrl}/api/data/${apiVersion}/systemforms?$select=formid,name,description,type,objecttypecode,iscustomizable,ismanaged,canbedeleted&$filter=objecttypecode eq '${entityLogicalName}' and type eq 2&$orderby=name asc`;
+  const j = await fetchJson(url);
+  const forms = j?.value || [];
+  return forms.map((f: any) => ({
+    formid: f.formid,
+    name: f.name || 'Unnamed Form',
+    description: f.description,
+    type: f.type,
+    objecttypecode: f.objecttypecode,
+    iscustomizable: f.iscustomizable,
+    ismanaged: f.ismanaged,
+    canbedeleted: f.canbedeleted,
+  }));
+}
+
+/**
+ * Checks if a form is customizable based on its metadata.
+ * A form is customizable if iscustomizable.Value is true.
+ *
+ * Note: We only check isCustomizable, not isManaged, because forms from managed solutions
+ * can be customized if they are added to an unmanaged solution.
+ */
+export function isFormCustomizable(form: SystemForm | undefined | null): boolean {
+  if (!form) return false;
+
+  const isCustomizableValue = form.iscustomizable?.Value ?? true; // Default to true if not set
+
+  return isCustomizableValue;
 }
 
 export async function getFormXmlWithEtag(

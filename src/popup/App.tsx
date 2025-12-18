@@ -716,7 +716,7 @@ export default function App(): JSX.Element {
                     size="large"
                     icon={<DocumentTable24Regular />}
                     onClick={openFormReportPage}
-                    disabled={busy || !isValidContext || contextChecking}
+                    disabled={busy || !isDynamicsEnv || contextChecking}
                     className={styles.actionButton}
                     onMouseEnter={() => setHoveredButton("formTranslations")}
                     onMouseLeave={() => setHoveredButton(null)}

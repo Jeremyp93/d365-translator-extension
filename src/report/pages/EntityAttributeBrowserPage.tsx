@@ -30,6 +30,7 @@ import { ErrorBox, Info } from "../../components/ui/Notice";
 import PageHeader from "../../components/ui/PageHeader";
 import Section from "../../components/ui/Section";
 import EntityLabelEditor from "../../components/EntityLabelEditor";
+import FlexBadge from "../../components/ui/FlexBadge";
 
 import { useOrgContext } from "../../hooks/useOrgContext";
 import { useLanguages } from "../../hooks/useLanguages";
@@ -42,6 +43,7 @@ import {
   getAttributeDisplayName,
 } from "../../services/entityMetadataService";
 import type { EntitySummary, AttributeSummary } from "../../services/entityMetadataService";
+import { getAttributeDependencies, AttributeDependencyRow } from "../../services/dependencyService";
 
 const useStyles = makeStyles({
   page: {
@@ -64,15 +66,36 @@ const useStyles = makeStyles({
   splitLayout: {
     display: "grid",
     gridTemplateColumns: "minmax(250px, 400px) minmax(0, 1fr)",
+    gridTemplateAreas: `
+      "sidebar detail"
+      "dependencies dependencies"
+    `,
     ...shorthands.gap(spacing.lg),
+    // Large desktops: show all 3 columns side by side
+    '@media (min-width: 1600px)': {
+      gridTemplateColumns: 'minmax(250px, 400px) minmax(0, 1fr) minmax(250px, 340px)',
+      gridTemplateAreas: `"sidebar detail dependencies"`,
+    },
+    // Medium screens
     "@media (max-width: 1024px)": {
       gridTemplateColumns: "minmax(200px, 300px) minmax(0, 1fr)",
+      gridTemplateAreas: `
+        "sidebar detail"
+        "dependencies dependencies"
+      `,
     },
+    // Tablets: stack everything
     "@media (max-width: 768px)": {
       gridTemplateColumns: "1fr",
+      gridTemplateAreas: `
+        "sidebar"
+        "detail"
+        "dependencies"
+      `,
     },
   },
   sidebar: {
+    gridArea: 'sidebar',
     display: "flex",
     flexDirection: "column",
     ...shorthands.gap(spacing.md),
@@ -123,11 +146,46 @@ const useStyles = makeStyles({
     textOverflow: "ellipsis",
   },
   detailPanel: {
+    gridArea: 'detail',
     display: "flex",
     flexDirection: "column",
     ...shorthands.gap(spacing.md),
     minWidth: 0,
     overflow: "hidden",
+  },
+  dependenciesPanel: {
+    gridArea: 'dependencies',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+    minWidth: 0,
+    overflow: "hidden",
+  },
+  dependencyItem: {
+    ...shorthands.padding(spacing.sm, spacing.md),
+    ...shorthands.borderRadius(tokens.borderRadiusSmall),
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.border("1px", "solid", "transparent"),
+    "&:hover": {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+      ...shorthands.border("1px", "solid", tokens.colorBrandStroke1),
+    },
+  },
+  dependencyName: {
+    fontWeight: tokens.fontWeightSemibold,
+    fontSize: tokens.fontSizeBase300,
+    color: tokens.colorNeutralForeground1,
+  },
+  dependencyList: {
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap(spacing.xs),
+    maxHeight: "400px",
+    overflowY: "auto",
+    ...shorthands.padding(spacing.sm),
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke2),
   },
   attributeGrid: {
     maxHeight: "400px",
@@ -222,6 +280,11 @@ export default function EntityAttributeBrowserPage(): JSX.Element {
   const [loadingAttributes, setLoadingAttributes] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  const [dependencies, setDependencies] = useState<AttributeDependencyRow[]>([]);
+  const [dependenciesLoading, setDependenciesLoading] = useState(false);
+  const [dependenciesError, setDependenciesError] = useState<string | null>(null);
+  const [dependenciesSearch, setDependenciesSearch] = useState('');
 
   // Set document title
   useEffect(() => {
@@ -409,6 +472,54 @@ export default function EntityAttributeBrowserPage(): JSX.Element {
     setTimeout(() => setInfo(null), 3000);
   };
 
+  // Load dependencies when an attribute is selected
+  useEffect(() => {
+    if (!clientUrl || !selectedAttribute) {
+      setDependencies([]);
+      return;
+    }
+
+    const selectedAttr = attributes.find(attr => attr.LogicalName === selectedAttribute);
+    if (!selectedAttr?.MetadataId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        setDependenciesError(null);
+        setDependenciesLoading(true);
+
+        const deps = await getAttributeDependencies(
+          clientUrl,
+          selectedAttr.MetadataId,
+          apiVersion ?? 'v9.2',
+        );
+
+        if (!cancelled) setDependencies(deps);
+      } catch (e: any) {
+        if (!cancelled) setDependenciesError(e?.message ?? String(e));
+      } finally {
+        if (!cancelled) setDependenciesLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clientUrl, apiVersion, selectedAttribute, attributes]);
+
+  // Filter dependencies by search term
+  const filteredDependencies = useMemo(() => {
+    const term = dependenciesSearch.trim().toLowerCase();
+    if (!term) return dependencies;
+
+    return dependencies.filter((d) =>
+      d.componentDisplayName.toLowerCase().includes(term) ||
+      d.componentName.toLowerCase().includes(term) ||
+      d.componentTypeName.toLowerCase().includes(term) ||
+      d.solutionUniqueName.toLowerCase().includes(term)
+    );
+  }, [dependencies, dependenciesSearch]);
+
   return (
     <div className={styles.page}>
       <PageHeader
@@ -575,6 +686,62 @@ export default function EntityAttributeBrowserPage(): JSX.Element {
               </>
             )}
           </div>
+
+          {/* Dependencies Panel: Forms and Views */}
+          {selectedAttribute && (
+            <div className={styles.dependenciesPanel}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+                <Input
+                  placeholder="Search forms/views..."
+                  value={dependenciesSearch}
+                  onChange={(e) => setDependenciesSearch(e.target.value)}
+                  contentBefore={<Search20Regular />}
+                  style={{ flex: 1, minWidth: 0 }}
+                />
+                <Badge appearance="outline" style={{ marginLeft: spacing.md }}>{dependencies.length} total</Badge>
+              </div>
+
+              <Section title="Used by Forms & Views" icon={<Database24Regular />}>
+                {dependenciesError && <ErrorBox>{dependenciesError}</ErrorBox>}
+                {dependenciesLoading ? (
+                  <div style={{ textAlign: "center", padding: spacing.lg }}>
+                    <Spinner size="medium" label="Loading dependencies..." />
+                  </div>
+                ) : filteredDependencies.length === 0 ? (
+                  <div className={styles.emptyState}>
+                    <Text>No forms or views found using this attribute.</Text>
+                  </div>
+                ) : (
+                  <div className={styles.dependencyList}>
+                    {filteredDependencies.map((d, idx) => (
+                      <div
+                        key={`${d.componentObjectId}-${idx}`}
+                        className={styles.dependencyItem}
+                      >
+                        <FlexBadge
+                          label={d.componentDisplayName}
+                          badge={d.componentTypeName}
+                          badgeColor="informative"
+                          badgeAppearance="filled"
+                          labelClassName={styles.dependencyName}
+                        />
+                        <div className={styles.entityMeta}>
+                          <Text size={200}>{d.componentParentName || d.componentName || d.componentObjectId}</Text>
+                        </div>
+                        {d.solutionUniqueName && (
+                          <div style={{ marginTop: spacing.xs }}>
+                            <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                              Solution: {d.solutionUniqueName}
+                            </Text>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Section>
+            </div>
+          )}
         </div>
       </div>
     </div>

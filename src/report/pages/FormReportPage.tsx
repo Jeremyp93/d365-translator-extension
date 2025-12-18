@@ -1,159 +1,161 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Text,
+  Badge,
+  Button,
+  Caption1,
   Card,
   CardHeader,
+  Combobox,
   Divider,
-  makeStyles,
-  shorthands,
-  tokens,
-  Button,
+  Dropdown,
   Input,
-  Spinner,
+  makeStyles,
   MessageBar,
   MessageBarBody,
   MessageBarTitle,
-  Badge,
-  Caption1,
+  Option,
+  shorthands,
+  Spinner,
+  Text,
+  tokens,
   Tooltip,
   Accordion,
-  AccordionItem,
   AccordionHeader,
+  AccordionItem,
   AccordionPanel,
-} from "@fluentui/react-components";
+} from '@fluentui/react-components';
 import {
-  ChevronRight20Regular,
-  ChevronDown20Regular,
-  Copy20Regular,
+  ArrowExport20Regular,
+  CheckmarkCircle20Regular,
   ChevronDoubleDown20Regular,
   ChevronDoubleUp20Regular,
-  Search20Regular,
-  Save20Regular,
+  ChevronDown20Regular,
+  ChevronRight20Regular,
+  Copy20Regular,
   DocumentTable24Regular,
-  Code24Regular,
-  CheckmarkCircle20Regular,
   ErrorCircle20Regular,
   Info20Regular,
-  ArrowExport20Regular,
+  Save20Regular,
+  Search20Regular,
+  Warning20Regular,
   WeatherMoon20Regular,
   WeatherSunny20Regular,
-} from "@fluentui/react-icons";
+} from '@fluentui/react-icons';
 
-import { ErrorBox, Info } from "../../components/ui/Notice";
-import PageHeader from "../../components/ui/PageHeader";
-import { useOrgContext } from "../../hooks/useOrgContext";
-import { useFormStructure } from "../../hooks/useFormStructure";
-import { getDisplayLabel, buildPath, saveFormStructure } from "../../services/formStructureService";
-import { publishEntityViaWebApi } from "../../services/d365Api";
-import { getLanguageDisplayName } from "../../utils/languageNames";
-import { getControlTypeName, isEditableControlType } from "../../utils/controlClassIds";
-import { useSharedStyles, spacing } from "../../styles/theme";
-import { useTheme } from "../../context/ThemeContext";
-import TranslationsTable from "../../components/TranslationsTable";
-import type { FormTab, FormSection, FormControl, Label } from "../../types";
+import PageHeader from '../../components/ui/PageHeader';
+import { ErrorBox } from '../../components/ui/Notice';
+import TranslationsTable from '../../components/TranslationsTable';
+import { useOrgContext } from '../../hooks/useOrgContext';
+import { useFormStructure } from '../../hooks/useFormStructure';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../styles/theme';
+
+import type { FormControl, FormSection, FormTab, Label } from '../../types';
+import type { EntitySummary } from '../../services/entityMetadataService';
+import { getEntityDisplayName, listAllEntities } from '../../services/entityMetadataService';
+import type { SystemForm } from '../../services/d365Api';
+import { getFormsForEntity, isFormCustomizable, publishEntityViaWebApi } from '../../services/d365Api';
+import { buildPath, getDisplayLabel, saveFormStructure } from '../../services/formStructureService';
+import { getControlTypeName, isEditableControlType } from '../../utils/controlClassIds';
 
 const useStyles = makeStyles({
   page: {
-    display: "flex",
-    flexDirection: "column",
-    minHeight: "100vh",
-    width: "100%",
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: '100vh',
+    width: '100%',
     backgroundColor: tokens.colorNeutralBackground3,
   },
   content: {
-    display: "flex",
+    display: 'flex',
     flex: 1,
     minHeight: 0,
-    flexDirection: "row",
-    "@media (max-width: 1024px)": {
-      flexDirection: "column",
+    flexDirection: 'row',
+    '@media (max-width: 1024px)': {
+      flexDirection: 'column',
     },
   },
   sidebar: {
-    width: "360px",
-    minWidth: "300px",
-    maxWidth: "360px",
-    ...shorthands.borderRight("2px", "solid", tokens.colorNeutralStroke1),
+    width: '360px',
+    minWidth: '300px',
+    maxWidth: '360px',
+    ...shorthands.borderRight('2px', 'solid', tokens.colorNeutralStroke1),
     backgroundColor: tokens.colorNeutralBackground1,
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
     boxShadow: tokens.shadow8,
-    "@media (max-width: 1200px)": {
-      width: "300px",
-      minWidth: "280px",
-      maxWidth: "300px",
+    '@media (max-width: 1200px)': {
+      width: '300px',
+      minWidth: '280px',
+      maxWidth: '300px',
     },
-    "@media (max-width: 1024px)": {
-      width: "100%",
-      minWidth: "unset",
-      maxWidth: "unset",
-      height: "40vh",
-      ...shorthands.borderRight("none"),
-      ...shorthands.borderBottom("2px", "solid", tokens.colorNeutralStroke1),
+    '@media (max-width: 1024px)': {
+      width: '100%',
+      minWidth: 'unset',
+      maxWidth: 'unset',
+      height: '40vh',
+      ...shorthands.borderRight('none'),
+      ...shorthands.borderBottom('2px', 'solid', tokens.colorNeutralStroke1),
     },
   },
   sidebarHeader: {
     ...shorthands.padding(spacing.md, spacing.lg),
-    ...shorthands.borderBottom("2px", "solid", tokens.colorNeutralStroke1),
+    ...shorthands.borderBottom('2px', 'solid', tokens.colorNeutralStroke1),
     backgroundColor: tokens.colorNeutralBackground2,
+    position: 'relative',
+    zIndex: 100,
   },
   sidebarTitle: {
     fontSize: tokens.fontSizeBase400,
     fontWeight: tokens.fontWeightSemibold,
     marginBottom: spacing.sm,
-    display: "flex",
-    alignItems: "center",
+    display: 'flex',
+    alignItems: 'center',
     ...shorthands.gap(spacing.sm),
   },
   searchBox: {
     marginTop: spacing.sm,
   },
   expandButtons: {
-    display: "flex",
+    display: 'flex',
     ...shorthands.gap(spacing.sm),
     marginBottom: spacing.sm,
   },
   treeContainer: {
     flex: 1,
-    overflowY: "auto",
+    overflowY: 'auto',
     ...shorthands.padding(spacing.sm),
-    "::-webkit-scrollbar": {
-      width: "8px",
-    },
-    "::-webkit-scrollbar-track": {
-      backgroundColor: tokens.colorNeutralBackground1,
-    },
-    "::-webkit-scrollbar-thumb": {
+    '::-webkit-scrollbar': { width: '8px' },
+    '::-webkit-scrollbar-track': { backgroundColor: tokens.colorNeutralBackground1 },
+    '::-webkit-scrollbar-thumb': {
       backgroundColor: tokens.colorNeutralStroke1,
-      ...shorthands.borderRadius("4px"),
-      ":hover": {
-        backgroundColor: tokens.colorNeutralStroke2,
-      },
+      ...shorthands.borderRadius('4px'),
+      ':hover': { backgroundColor: tokens.colorNeutralStroke2 },
     },
   },
   treeItem: {
     ...shorthands.padding(spacing.sm, spacing.md),
     ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
     ...shorthands.gap(spacing.sm),
     fontSize: tokens.fontSizeBase300,
-    marginBottom: "2px",
-    transition: "all 0.15s ease",
-    ...shorthands.border("1px", "solid", "transparent"),
-    ":hover": {
+    marginBottom: '2px',
+    transition: 'all 0.15s ease',
+    ...shorthands.border('1px', 'solid', 'transparent'),
+    ':hover': {
       backgroundColor: tokens.colorNeutralBackground3,
-      ...shorthands.border("1px", "solid", tokens.colorNeutralStroke1),
+      ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
     },
   },
   treeItemSelected: {
     backgroundColor: tokens.colorBrandBackground,
     color: tokens.colorNeutralForegroundOnBrand,
     fontWeight: tokens.fontWeightSemibold,
-    ...shorthands.border("1px", "solid", tokens.colorBrandStroke1),
-    ":hover": {
+    ...shorthands.border('1px', 'solid', tokens.colorBrandStroke1),
+    ':hover': {
       backgroundColor: tokens.colorBrandBackgroundHover,
       color: tokens.colorNeutralForegroundOnBrand,
     },
@@ -162,68 +164,60 @@ const useStyles = makeStyles({
     marginLeft: spacing.xl,
   },
   treeItemNested2: {
-    marginLeft: "48px",
+    marginLeft: '48px',
   },
   detailsPane: {
     flex: 1,
-    overflowY: "auto",
-    overflowX: "hidden",
+    overflowY: 'auto',
+    overflowX: 'hidden',
     ...shorthands.padding(spacing.xl),
     backgroundColor: tokens.colorNeutralBackground2,
     minWidth: 0,
-    "@media (max-width: 768px)": {
+    '@media (max-width: 768px)': {
       ...shorthands.padding(spacing.md),
     },
-    "::-webkit-scrollbar": {
-      width: "8px",
-    },
-    "::-webkit-scrollbar-track": {
-      backgroundColor: tokens.colorNeutralBackground1,
-    },
-    "::-webkit-scrollbar-thumb": {
+    '::-webkit-scrollbar': { width: '8px' },
+    '::-webkit-scrollbar-track': { backgroundColor: tokens.colorNeutralBackground1 },
+    '::-webkit-scrollbar-thumb': {
       backgroundColor: tokens.colorNeutralStroke1,
-      ...shorthands.borderRadius("4px"),
-      ":hover": {
-        backgroundColor: tokens.colorNeutralStroke2,
-      },
+      ...shorthands.borderRadius('4px'),
+      ':hover': { backgroundColor: tokens.colorNeutralStroke2 },
     },
   },
   detailsCard: {
     marginBottom: spacing.lg,
     boxShadow: tokens.shadow8,
-    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke1),
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
     backgroundColor: tokens.colorNeutralBackground1,
   },
   propertiesTable: {
-    width: "100%",
-    borderCollapse: "collapse",
+    width: '100%',
+    borderCollapse: 'collapse',
     marginTop: spacing.sm,
     fontSize: tokens.fontSizeBase300,
-    tableLayout: "fixed",
-    "@media (max-width: 768px)": {
-      fontSize: tokens.fontSizeBase200,
-    },
+    tableLayout: 'fixed',
+    '@media (max-width: 768px)': { fontSize: tokens.fontSizeBase200 },
   },
   propertyRow: {
-    ...shorthands.borderBottom("1px", "solid", tokens.colorNeutralStroke2),
+    ...shorthands.borderBottom('1px', 'solid', tokens.colorNeutralStroke2),
   },
   propertyLabel: {
     ...shorthands.padding(spacing.md),
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground2,
-    width: "180px",
-    verticalAlign: "top",
-    "@media (max-width: 768px)": {
-      width: "120px",
+    width: '180px',
+    verticalAlign: 'top',
+    '@media (max-width: 768px)': {
+      width: '120px',
       ...shorthands.padding(spacing.sm),
     },
   },
   propertyValue: {
     ...shorthands.padding(spacing.md),
     color: tokens.colorNeutralForeground1,
-    wordWrap: "break-word",
-    overflowWrap: "break-word",
-    "@media (max-width: 768px)": {
+    wordWrap: 'break-word',
+    overflowWrap: 'break-word',
+    '@media (max-width: 768px)': {
       ...shorthands.padding(spacing.sm),
     },
   },
@@ -233,92 +227,282 @@ const useStyles = makeStyles({
     ...shorthands.borderRadius(tokens.borderRadiusMedium),
     fontSize: tokens.fontSizeBase200,
     fontFamily: tokens.fontFamilyMonospace,
-    overflowX: "auto",
-    maxHeight: "500px",
-    overflowY: "auto",
-    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke2),
-    wordBreak: "break-all",
-    whiteSpace: "pre-wrap",
+    overflowX: 'auto',
+    maxHeight: '500px',
+    overflowY: 'auto',
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    wordBreak: 'break-all',
+    whiteSpace: 'pre-wrap',
   },
   actionBar: {
-    display: "flex",
+    display: 'flex',
     ...shorthands.gap(spacing.sm),
     marginBottom: spacing.lg,
-    flexWrap: "wrap",
+    flexWrap: 'wrap',
   },
   emptyState: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    ...shorthands.padding("64px", spacing.xl),
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shorthands.padding('64px', spacing.xl),
     color: tokens.colorNeutralForeground3,
   },
   messageContainer: {
     ...shorthands.padding(spacing.lg, spacing.xl),
-    ...shorthands.borderBottom("1px", "solid", tokens.colorNeutralStroke1),
+    ...shorthands.borderBottom('1px', 'solid', tokens.colorNeutralStroke1),
   },
-  metaInfo: {
-    display: "flex",
-    ...shorthands.gap(spacing.xl),
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground3,
+  dropdownListbox: {
+    backgroundColor: tokens.colorNeutralBackground1,
+    border: `2px solid ${tokens.colorNeutralStroke1}`,
+    boxShadow: tokens.shadow16,
   },
 });
 
 type SelectedItem =
-  | { type: "tab"; tab: FormTab; path: string[] }
-  | { type: "section"; tab: FormTab; section: FormSection; path: string[] }
-  | { type: "control"; tab: FormTab; section: FormSection; control: FormControl; path: string[] }
+  | { type: 'tab'; tab: FormTab; path: string[] }
+  | { type: 'section'; tab: FormTab; section: FormSection; path: string[] }
+  | { type: 'control'; tab: FormTab; section: FormSection; control: FormControl; path: string[] }
   | null;
+
+/**
+ * Updates hash query params without triggering hash navigation/remounts.
+ * Keeps the current hash path (e.g. "#/report/form") intact.
+ */
+function replaceHashQuery(next: { entity?: string | null; formId?: string | null }) {
+  const rawHash = window.location.hash || '';
+  const withoutHash = rawHash.startsWith('#') ? rawHash.slice(1) : rawHash;
+  const [hashPath, hashQuery] = withoutHash.split('?');
+  const params = new URLSearchParams(hashQuery || '');
+
+  if (next.entity) params.set('entity', next.entity);
+  else params.delete('entity');
+
+  if (next.formId) params.set('formId', next.formId);
+  else params.delete('formId');
+
+  const nextHash = params.toString() ? `#${hashPath}?${params.toString()}` : `#${hashPath}`;
+  window.history.replaceState(null, '', nextHash);
+}
 
 export default function FormReportPage(): JSX.Element {
   const styles = useStyles();
-  const sharedStyles = useSharedStyles();
-  const { theme, mode, toggleTheme } = useTheme();
-  const { clientUrl, entity, formId, apiVersion } = useOrgContext();
-  const { state, load, resetError } = useFormStructure();
+  const { mode, toggleTheme } = useTheme();
+  const { clientUrl, entity: entityFromUrl, formId: formIdFromUrl, apiVersion } = useOrgContext();
 
-  // Set document title
-  useEffect(() => {
-    document.title = 'Form Structure - D365 Translator';
-  }, []);
+  // Hook state
+  const { state, load, loadedFormId, reset } = useFormStructure();
   const { structure, loading, error } = state;
 
+  // Capture initial selection once (supports "sometimes passed, sometimes not")
+  const initialSelectionRef = useRef<{ entity: string | null; formId: string | null }>({
+    entity: entityFromUrl || null,
+    formId: formIdFromUrl || null,
+  });
+  const appliedInitialEntityRef = useRef(false);
+  const appliedInitialFormRef = useRef(false);
+
+  // Local selection state (source of truth)
+  const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
+
+  // Entity list state
+  const [availableEntities, setAvailableEntities] = useState<EntitySummary[]>([]);
+  const [loadingEntities, setLoadingEntities] = useState(false);
+  const [entitiesError, setEntitiesError] = useState<string | null>(null);
+  const [entityDropdownValue, setEntityDropdownValue] = useState('');
+
+  // Forms list state
+  const [availableForms, setAvailableForms] = useState<SystemForm[]>([]);
+  const [loadingForms, setLoadingForms] = useState(false);
+  const [formsError, setFormsError] = useState<string | null>(null);
+
+  // Tree/UI state
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [expandedTabs, setExpandedTabs] = useState<Set<string>>(new Set());
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
+
+  // Save state
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  // Structure editing state
   const [editedStructure, setEditedStructure] = useState(structure);
   const [showRawXml, setShowRawXml] = useState(false);
 
-  // Sync editedStructure when structure loads
   useEffect(() => {
-    if (structure) {
-      setEditedStructure(JSON.parse(JSON.stringify(structure))); // Deep clone
-    }
-  }, [structure]);
+    document.title = 'Form Structure - D365 Translator';
+  }, []);
 
-  // Load form structure on mount
+  // Derived: structure belongs to the currently selected form
+  const structureIsForSelectedForm = !!selectedFormId && loadedFormId === selectedFormId;
+
+  // Sync editedStructure when (new) structure arrives
   useEffect(() => {
-    if (clientUrl && formId) {
-      load(clientUrl, formId);
+    if (structureIsForSelectedForm && structure) {
+      setEditedStructure(JSON.parse(JSON.stringify(structure)));
     }
-  }, [clientUrl, formId, load]);
+  }, [structure, structureIsForSelectedForm]);
 
-  // Validation
-  const problems: string[] = [];
-  if (!clientUrl) problems.push("Missing clientUrl parameter.");
-  if (!formId) problems.push("Missing formId parameter. Please open this page from a Dataverse form.");
+  // Load entities
+  useEffect(() => {
+    if (!clientUrl) {
+      setAvailableEntities([]);
+      return;
+    }
 
-  // Filter logic
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoadingEntities(true);
+        setEntitiesError(null);
+        const entities = await listAllEntities(clientUrl, apiVersion);
+
+        if (cancelled) return;
+        setAvailableEntities(entities);
+
+        // Apply initial entity only if it was provided (no auto-open otherwise)
+        if (!appliedInitialEntityRef.current) {
+          appliedInitialEntityRef.current = true;
+          const initialEntity = initialSelectionRef.current.entity;
+          if (initialEntity && entities.some(e => e.LogicalName === initialEntity)) {
+            setSelectedEntity(initialEntity);
+          }
+        }
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setEntitiesError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (!cancelled) setLoadingEntities(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clientUrl, apiVersion]);
+
+  // Load forms for selected entity
+  useEffect(() => {
+    if (!clientUrl || !selectedEntity) {
+      setAvailableForms([]);
+      setSelectedFormId(null);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoadingForms(true);
+        setFormsError(null);
+        setAvailableForms([]);
+        setSelectedFormId(null);
+
+        const forms = await getFormsForEntity(clientUrl, selectedEntity, apiVersion);
+
+        if (cancelled) return;
+        setAvailableForms(forms);
+
+        // Apply initial form only if it was provided (and only once)
+        if (!appliedInitialFormRef.current) {
+          appliedInitialFormRef.current = true;
+          const initialFormId = initialSelectionRef.current.formId;
+          if (initialFormId && forms.some(f => f.formid === initialFormId)) {
+            setSelectedFormId(initialFormId);
+          }
+        }
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setFormsError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (!cancelled) setLoadingForms(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clientUrl, selectedEntity, apiVersion]);
+
+  // Load structure when selected form changes (deduped by loadedFormId)
+  useEffect(() => {
+    if (!clientUrl || !selectedFormId) return;
+    if (loadedFormId === selectedFormId) return;
+
+    load(clientUrl, selectedFormId);
+  }, [clientUrl, selectedFormId, loadedFormId, load]);
+
+  const selectedForm = useMemo(() => {
+    return availableForms.find(f => f.formid === selectedFormId);
+  }, [availableForms, selectedFormId]);
+
+  const formIsCustomizable = useMemo(() => {
+    return isFormCustomizable(selectedForm);
+  }, [selectedForm]);
+
+  // Handlers (reset structure immediately to avoid flicker/stale UI)
+  const handleEntityChange = useCallback(
+    (_: unknown, data: { optionValue?: unknown }) => {
+      const newEntity = String(data.optionValue || '');
+
+      // User interaction means: no more initial form application
+      appliedInitialFormRef.current = true;
+      initialSelectionRef.current.formId = null;
+
+      reset();
+      setEditedStructure(null);
+      setSelectedItem(null);
+      setExpandedTabs(new Set());
+      setExpandedSections(new Set());
+      setSearchQuery('');
+
+      setSelectedEntity(newEntity || null);
+      setSelectedFormId(null);
+      setAvailableForms([]);
+
+      setEntityDropdownValue('');
+
+      replaceHashQuery({ entity: newEntity || null, formId: null });
+    },
+    [reset]
+  );
+
+  const handleFormChange = useCallback(
+    (_: unknown, data: { optionValue?: unknown }) => {
+      const newFormId = String(data.optionValue || '');
+
+      reset();
+      setEditedStructure(null);
+      setSelectedItem(null);
+      setExpandedTabs(new Set());
+      setExpandedSections(new Set());
+      setSearchQuery('');
+
+      setSelectedFormId(newFormId || null);
+
+      replaceHashQuery({ entity: selectedEntity, formId: newFormId || null });
+    },
+    [reset, selectedEntity]
+  );
+
+  const filteredEntities = useMemo(() => {
+    if (!entityDropdownValue.trim()) return availableEntities;
+    const query = entityDropdownValue.toLowerCase();
+    return availableEntities.filter(e => {
+      const displayName = getEntityDisplayName(e).toLowerCase();
+      const logicalName = e.LogicalName.toLowerCase();
+      return displayName.includes(query) || logicalName.includes(query);
+    });
+  }, [availableEntities, entityDropdownValue]);
+
   const filteredStructure = useMemo(() => {
-    const baseStructure = editedStructure || structure;
+    const baseStructure = structureIsForSelectedForm ? (editedStructure || structure) : null;
     if (!baseStructure || !searchQuery.trim()) return baseStructure;
 
     const query = searchQuery.toLowerCase();
@@ -328,13 +512,13 @@ export default function FormReportPage(): JSX.Element {
       const tabLabel = getDisplayLabel(tab.labels);
       const tabMatches = tabLabel.toLowerCase().includes(query) || tab.name?.toLowerCase().includes(query);
 
-      const matchedColumns = tab.columns.map((col) => {
-        const matchedSections = col.sections.filter((section) => {
+      const matchedColumns = tab.columns.map(col => {
+        const matchedSections = col.sections.filter(section => {
           const sectionLabel = getDisplayLabel(section.labels);
           const sectionMatches =
             sectionLabel.toLowerCase().includes(query) || section.name?.toLowerCase().includes(query);
 
-          const controlMatches = section.controls.some((control) => {
+          const controlMatches = section.controls.some(control => {
             const controlLabel = getDisplayLabel(control.labels);
             return (
               controlLabel.toLowerCase().includes(query) ||
@@ -349,26 +533,23 @@ export default function FormReportPage(): JSX.Element {
         return { ...col, sections: matchedSections };
       });
 
-      if (tabMatches || matchedColumns.some((c) => c.sections.length > 0)) {
+      if (tabMatches || matchedColumns.some(c => c.sections.length > 0)) {
         matchedTabs.push({ ...tab, columns: matchedColumns });
       }
     }
 
     return { ...baseStructure, tabs: matchedTabs };
-  }, [structure, editedStructure, searchQuery]);
+  }, [structure, editedStructure, searchQuery, structureIsForSelectedForm]);
 
-  // Auto-expand and select first match when searching
   useEffect(() => {
     if (!filteredStructure || !searchQuery.trim()) return;
 
     const newExpandedTabs = new Set<string>();
     const newExpandedSections = new Set<string>();
 
-    // Expand all tabs and sections that have matches
     for (const tab of filteredStructure.tabs) {
-      if (tab.columns.some((c) => c.sections.length > 0)) {
+      if (tab.columns.some(c => c.sections.length > 0)) {
         newExpandedTabs.add(tab.id);
-        // Expand sections that have matches
         for (const col of tab.columns) {
           for (const section of col.sections) {
             newExpandedSections.add(`${tab.id}-${section.id}`);
@@ -381,58 +562,49 @@ export default function FormReportPage(): JSX.Element {
     setExpandedSections(newExpandedSections);
   }, [filteredStructure, searchQuery]);
 
-  // Expand/collapse all
-  const handleExpandAll = () => {
+  const handleExpandAll = useCallback(() => {
     if (!filteredStructure) return;
-    const allTabIds = new Set(filteredStructure.tabs.map((t) => t.id));
-    const allSectionIds = new Set(
-      filteredStructure.tabs.flatMap((t) => t.columns.flatMap((c) => c.sections.map((s) => `${t.id}-${s.id}`)))
+    setExpandedTabs(new Set(filteredStructure.tabs.map(t => t.id)));
+    setExpandedSections(
+      new Set(filteredStructure.tabs.flatMap(t => t.columns.flatMap(c => c.sections.map(s => `${t.id}-${s.id}`))))
     );
-    setExpandedTabs(allTabIds);
-    setExpandedSections(allSectionIds);
-  };
+  }, [filteredStructure]);
 
-  const handleCollapseAll = () => {
+  const handleCollapseAll = useCallback(() => {
     setExpandedTabs(new Set());
     setExpandedSections(new Set());
-  };
+  }, []);
 
-  const toggleTab = (tabId: string) => {
-    setExpandedTabs((prev) => {
+  const toggleTab = useCallback((tabId: string) => {
+    setExpandedTabs(prev => {
       const next = new Set(prev);
-      if (next.has(tabId)) {
-        next.delete(tabId);
-      } else {
-        next.add(tabId);
-      }
+      if (next.has(tabId)) next.delete(tabId);
+      else next.add(tabId);
       return next;
     });
-  };
+  }, []);
 
-  const toggleSection = (tabId: string, sectionId: string) => {
+  const toggleSection = useCallback((tabId: string, sectionId: string) => {
     const key = `${tabId}-${sectionId}`;
-    setExpandedSections((prev) => {
+    setExpandedSections(prev => {
       const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
-  };
+  }, []);
 
-  const handleCopyPath = () => {
+  const handleCopyPath = useCallback(() => {
     if (!selectedItem) return;
     const pathString = buildPath(selectedItem.path);
     navigator.clipboard.writeText(pathString).then(() => {
       setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
+      window.setTimeout(() => setCopySuccess(false), 2000);
     });
-  };
+  }, [selectedItem]);
 
   const handleSave = useCallback(async () => {
-    if (!clientUrl || !formId || !editedStructure || !entity) return;
+    if (!clientUrl || !selectedEntity || !selectedFormId || !editedStructure) return;
 
     setIsSaving(true);
     setSaveError(null);
@@ -440,29 +612,31 @@ export default function FormReportPage(): JSX.Element {
     setSaveStatus(null);
 
     try {
-      await saveFormStructure(clientUrl, formId, editedStructure, (status) => {
-        setSaveStatus(status);
-      });
+      await saveFormStructure(clientUrl, selectedFormId, editedStructure, status => setSaveStatus(status));
       setSaveStatus('Publishing...');
-      // Publish the entity after saving
-      await publishEntityViaWebApi(clientUrl, entity);
+      await publishEntityViaWebApi(clientUrl, selectedEntity);
+
       setSaveStatus(null);
       setSaveSuccess(true);
-      // Reload to get fresh data
-      load(clientUrl, formId);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save form structure");
+
+      // Reload from server after save
+      load(clientUrl, selectedFormId);
+
+      window.setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (e: unknown) {
+      setSaveError(e instanceof Error ? e.message : 'Failed to save form structure');
       setSaveStatus(null);
     } finally {
       setIsSaving(false);
     }
-  }, [clientUrl, formId, entity, editedStructure, load]);
-
-
+  }, [clientUrl, selectedEntity, selectedFormId, editedStructure, load]);
 
   const updateLabel = useCallback(
-    (path: { tabIdx: number; colIdx?: number; secIdx?: number; ctrlIdx?: number }, lcid: number, newValue: string) => {
+    (
+      path: { tabIdx: number; colIdx?: number; secIdx?: number; ctrlIdx?: number },
+      lcid: number,
+      newValue: string
+    ) => {
       if (!editedStructure) return;
 
       const cloned = JSON.parse(JSON.stringify(editedStructure));
@@ -471,21 +645,16 @@ export default function FormReportPage(): JSX.Element {
       let labels: Label[] | undefined;
 
       if (ctrlIdx !== undefined && colIdx !== undefined && secIdx !== undefined) {
-        // Control label
         labels = cloned.tabs[tabIdx]?.columns[colIdx]?.sections[secIdx]?.controls[ctrlIdx]?.labels;
       } else if (secIdx !== undefined && colIdx !== undefined) {
-        // Section label
         labels = cloned.tabs[tabIdx]?.columns[colIdx]?.sections[secIdx]?.labels;
       } else {
-        // Tab label
         labels = cloned.tabs[tabIdx]?.labels;
       }
 
       if (labels) {
-        const existing = labels.find((l) => l.languageCode === lcid);
-        if (existing) {
-          existing.label = newValue;
-        }
+        const existing = labels.find(l => l.languageCode === lcid);
+        if (existing) existing.label = newValue;
       }
 
       setEditedStructure(cloned);
@@ -493,37 +662,34 @@ export default function FormReportPage(): JSX.Element {
     [editedStructure]
   );
 
-  // Get fresh data from editedStructure for the selected item
   const getCurrentItemData = useCallback(() => {
     if (!selectedItem || !editedStructure) return selectedItem;
 
     const { type } = selectedItem;
-    
+
     if (type === 'tab') {
-      const freshTab = editedStructure.tabs.find((t) => t.id === selectedItem.tab.id);
-      if (freshTab) {
-        return { ...selectedItem, tab: freshTab };
-      }
-    } else if (type === 'section') {
-      const freshTab = editedStructure.tabs.find((t) => t.id === selectedItem.tab.id);
+      const freshTab = editedStructure.tabs.find(t => t.id === selectedItem.tab.id);
+      if (freshTab) return { ...selectedItem, tab: freshTab };
+    }
+
+    if (type === 'section') {
+      const freshTab = editedStructure.tabs.find(t => t.id === selectedItem.tab.id);
       if (freshTab) {
         for (const col of freshTab.columns) {
-          const freshSection = col.sections.find((s) => s.id === selectedItem.section.id);
-          if (freshSection) {
-            return { ...selectedItem, tab: freshTab, section: freshSection };
-          }
+          const freshSection = col.sections.find(s => s.id === selectedItem.section.id);
+          if (freshSection) return { ...selectedItem, tab: freshTab, section: freshSection };
         }
       }
-    } else if (type === 'control') {
-      const freshTab = editedStructure.tabs.find((t) => t.id === selectedItem.tab.id);
+    }
+
+    if (type === 'control') {
+      const freshTab = editedStructure.tabs.find(t => t.id === selectedItem.tab.id);
       if (freshTab) {
         for (const col of freshTab.columns) {
-          const freshSection = col.sections.find((s) => s.id === selectedItem.section.id);
+          const freshSection = col.sections.find(s => s.id === selectedItem.section.id);
           if (freshSection) {
-            const freshControl = freshSection.controls.find((c) => c.id === selectedItem.control.id);
-            if (freshControl) {
-              return { ...selectedItem, tab: freshTab, section: freshSection, control: freshControl };
-            }
+            const freshControl = freshSection.controls.find(c => c.id === selectedItem.control.id);
+            if (freshControl) return { ...selectedItem, tab: freshTab, section: freshSection, control: freshControl };
           }
         }
       }
@@ -532,45 +698,55 @@ export default function FormReportPage(): JSX.Element {
     return selectedItem;
   }, [selectedItem, editedStructure]);
 
+  const problems: string[] = [];
+  if (!clientUrl) problems.push('Missing clientUrl parameter.');
+
   return (
     <div className={styles.page}>
-      {/* Header */}
       <PageHeader
-        title="Form Structure Viewer"
-        subtitle="Manage form translations across all languages"
+        title='Form Structure Viewer'
+        subtitle='Manage form translations across all languages'
         icon={<DocumentTable24Regular />}
         actions={
           <>
             {loading && (
-              <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>
-                <Spinner size="tiny" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                <Spinner size='tiny' />
                 <Caption1>Loading form…</Caption1>
               </div>
             )}
+
             <Button
-              appearance="subtle"
-              icon={mode === "dark" ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />}
+              appearance='subtle'
+              icon={mode === 'dark' ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />}
               onClick={toggleTheme}
-              title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             />
+
             <Button
-              appearance="primary"
-              size="large"
+              appearance='primary'
+              size='large'
               icon={<Save20Regular />}
               onClick={handleSave}
-              disabled={isSaving || loading || !editedStructure}
+              disabled={
+                isSaving ||
+                loading ||
+                loadingForms ||
+                !structureIsForSelectedForm ||
+                !editedStructure ||
+                !formIsCustomizable
+              }
             >
-              {isSaving ? "Saving..." : "Save All"}
+              {isSaving ? 'Saving...' : 'Save All'}
             </Button>
           </>
         }
       />
 
-      {/* Messages */}
       {(saveSuccess || saveError || saveStatus) && (
         <div className={styles.messageContainer}>
           {saveSuccess && (
-            <MessageBar intent="success">
+            <MessageBar intent='success'>
               <MessageBarBody>
                 <MessageBarTitle>
                   <CheckmarkCircle20Regular /> Saved & Published Successfully
@@ -581,7 +757,7 @@ export default function FormReportPage(): JSX.Element {
           )}
 
           {saveError && (
-            <MessageBar intent="error">
+            <MessageBar intent='error'>
               <MessageBarBody>
                 <MessageBarTitle>
                   <ErrorCircle20Regular /> Save Failed
@@ -592,7 +768,7 @@ export default function FormReportPage(): JSX.Element {
           )}
 
           {saveStatus && !saveError && (
-            <MessageBar intent="info">
+            <MessageBar intent='info'>
               <MessageBarBody>
                 <MessageBarTitle>
                   <Info20Regular /> Saving
@@ -604,37 +780,121 @@ export default function FormReportPage(): JSX.Element {
         </div>
       )}
 
-      {/* Error states */}
+      {selectedFormId && structureIsForSelectedForm && !loading && !loadingForms && !formIsCustomizable && (
+        <div className={styles.messageContainer}>
+          <MessageBar intent='warning'>
+            <MessageBarBody>
+              <MessageBarTitle>
+                <Warning20Regular /> Form Not Customizable
+              </MessageBarTitle>
+              This form is marked as non-customizable and cannot be edited. You can view the form structure but cannot
+              save changes.
+            </MessageBarBody>
+          </MessageBar>
+        </div>
+      )}
+
       {problems.length > 0 && (
         <div style={{ padding: spacing.xl }}>
-          <ErrorBox>{problems.join(" ")}</ErrorBox>
+          <ErrorBox>{problems.join(' ')}</ErrorBox>
         </div>
       )}
 
       {error && (
         <div style={{ padding: spacing.xl }}>
-          <ErrorBox title="Failed to load form">{error}</ErrorBox>
+          <ErrorBox title='Failed to load form'>{error}</ErrorBox>
         </div>
       )}
 
-      {/* Main content */}
       {!problems.length && !error && (
         <div className={styles.content}>
-          {/* Left sidebar - tree navigation */}
+          {/* Sidebar */}
           <div className={styles.sidebar}>
             <div className={styles.sidebarHeader}>
               <div className={styles.sidebarTitle}>
                 <DocumentTable24Regular />
                 Form Structure
               </div>
-              <div className={styles.metaInfo}>
-                <span>Entity: <code>{entity || "?"}</code></span>
-              </div>
+
+              {/* Entity */}
+              {loadingEntities ? (
+                <div style={{ marginTop: spacing.sm, textAlign: 'center' }}>
+                  <Spinner size='small' label='Loading entities...' />
+                </div>
+              ) : entitiesError ? (
+                <div style={{ marginTop: spacing.sm }}>
+                  <ErrorBox>{entitiesError}</ErrorBox>
+                </div>
+              ) : availableEntities.length > 0 ? (
+                <div style={{ marginTop: spacing.sm, position: 'relative', zIndex: 1000 }}>
+                  <Combobox
+                    placeholder='Search or select an entity...'
+                    value={
+                      entityDropdownValue ||
+                      (availableEntities.find(e => e.LogicalName === selectedEntity)
+                        ? getEntityDisplayName(availableEntities.find(e => e.LogicalName === selectedEntity)!)
+                        : '')
+                    }
+                    selectedOptions={selectedEntity ? [selectedEntity] : []}
+                    onOptionSelect={handleEntityChange}
+                    onInput={(e: React.ChangeEvent<HTMLInputElement>) => setEntityDropdownValue(e.target.value)}
+                    positioning='below-start'
+                    listbox={{ className: styles.dropdownListbox }}
+                    style={{ width: '100%' }}
+                  >
+                    {filteredEntities.length > 0 ? (
+                      filteredEntities.map(e => (
+                        <Option key={e.LogicalName} value={e.LogicalName} text={getEntityDisplayName(e)}>
+                          {getEntityDisplayName(e)}
+                        </Option>
+                      ))
+                    ) : (
+                      <Option disabled value=''>
+                        No entities found
+                      </Option>
+                    )}
+                  </Combobox>
+                </div>
+              ) : null}
+
+              {/* Form */}
+              {selectedEntity && (
+                <>
+                  {loadingForms ? (
+                    <div style={{ marginTop: spacing.sm, textAlign: 'center' }}>
+                      <Spinner size='small' label='Loading forms...' />
+                    </div>
+                  ) : formsError ? (
+                    <div style={{ marginTop: spacing.sm }}>
+                      <ErrorBox>{formsError}</ErrorBox>
+                    </div>
+                  ) : availableForms.length > 0 ? (
+                    <div style={{ marginTop: spacing.sm, position: 'relative', zIndex: 999 }}>
+                      <Dropdown
+                        placeholder='Select a form'
+                        value={availableForms.find(f => f.formid === selectedFormId)?.name || 'Select a form'}
+                        selectedOptions={selectedFormId ? [selectedFormId] : []}
+                        onOptionSelect={handleFormChange}
+                        positioning={{ position: 'below', align: 'start', flipBoundary: null }}
+                        listbox={{ className: styles.dropdownListbox }}
+                        style={{ width: '100%' }}
+                      >
+                        {availableForms.map(form => (
+                          <Option key={form.formid} value={form.formid} text={form.name}>
+                            {form.name}
+                          </Option>
+                        ))}
+                      </Dropdown>
+                    </div>
+                  ) : null}
+                </>
+              )}
+
               <div className={styles.expandButtons}>
-                <Tooltip content="Expand all tabs and sections" relationship="label">
+                <Tooltip content='Expand all tabs and sections' relationship='label'>
                   <Button
-                    size="small"
-                    appearance="subtle"
+                    size='small'
+                    appearance='subtle'
                     icon={<ChevronDoubleDown20Regular />}
                     onClick={handleExpandAll}
                     disabled={!filteredStructure}
@@ -642,10 +902,10 @@ export default function FormReportPage(): JSX.Element {
                     Expand
                   </Button>
                 </Tooltip>
-                <Tooltip content="Collapse all" relationship="label">
+                <Tooltip content='Collapse all' relationship='label'>
                   <Button
-                    size="small"
-                    appearance="subtle"
+                    size='small'
+                    appearance='subtle'
                     icon={<ChevronDoubleUp20Regular />}
                     onClick={handleCollapseAll}
                     disabled={!filteredStructure}
@@ -654,79 +914,92 @@ export default function FormReportPage(): JSX.Element {
                   </Button>
                 </Tooltip>
               </div>
+
               <Input
                 className={styles.searchBox}
-                placeholder="Search tabs, sections, fields..."
+                placeholder='Search tabs, sections, fields...'
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                 contentBefore={<Search20Regular />}
-                size="medium"
+                size='medium'
+                disabled={!structureIsForSelectedForm}
               />
             </div>
 
             <div className={styles.treeContainer}>
-              {loading && (
+              {!selectedEntity && !loading && (
                 <div className={styles.emptyState}>
-                  <Spinner size="medium" />
+                  <Caption1>Please select an entity above</Caption1>
+                </div>
+              )}
+
+              {selectedEntity && !selectedFormId && !loading && (
+                <div className={styles.emptyState}>
+                  <Caption1>Please select a form above</Caption1>
+                </div>
+              )}
+
+              {selectedFormId && loading && (
+                <div className={styles.emptyState}>
+                  <Spinner size='medium' />
                   <Caption1 style={{ marginTop: spacing.md }}>Loading form structure...</Caption1>
                 </div>
               )}
 
-              {!loading && filteredStructure && filteredStructure.tabs.length === 0 && (
+              {selectedFormId && structureIsForSelectedForm && !loading && filteredStructure?.tabs.length === 0 && (
                 <div className={styles.emptyState}>
                   <Caption1>No tabs found</Caption1>
                 </div>
               )}
 
-              {!loading &&
+              {selectedFormId &&
+                structureIsForSelectedForm &&
+                !loading &&
                 filteredStructure &&
-                filteredStructure.tabs.map((tab) => {
+                filteredStructure.tabs.map(tab => {
                   const isTabExpanded = expandedTabs.has(tab.id);
                   const tabLabel = getDisplayLabel(tab.labels) || tab.name || tab.id;
 
                   return (
                     <div key={tab.id}>
-                      {/* Tab */}
                       <div
                         className={`${styles.treeItem} ${
-                          selectedItem?.type === "tab" && selectedItem.tab.id === tab.id
-                            ? styles.treeItemSelected
-                            : ""
+                          selectedItem?.type === 'tab' && selectedItem.tab.id === tab.id ? styles.treeItemSelected : ''
                         }`}
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
-                          setSelectedItem({ type: "tab", tab, path: [tabLabel] });
+                          setSelectedItem({ type: 'tab', tab, path: [tabLabel] });
                           toggleTab(tab.id);
                         }}
                       >
                         {isTabExpanded ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
-                        <Text weight="semibold" style={{ flex: 1 }}>{tabLabel}</Text>
-                        <Badge size="small" appearance="tint" color="brand">
+                        <Text weight='semibold' style={{ flex: 1 }}>
+                          {tabLabel}
+                        </Text>
+                        <Badge size='small' appearance='tint' color='brand'>
                           Tab
                         </Badge>
                       </div>
 
-                      {/* Sections */}
                       {isTabExpanded &&
-                        tab.columns.map((col, colIdx) =>
-                          col.sections.map((section) => {
+                        tab.columns.flatMap(col =>
+                          col.sections.map(section => {
                             const sectionKey = `${tab.id}-${section.id}`;
                             const isSectionExpanded = expandedSections.has(sectionKey);
                             const sectionLabel = getDisplayLabel(section.labels) || section.name || section.id;
 
                             return (
                               <div key={sectionKey}>
-                                {/* Section */}
                                 <div
                                   className={`${styles.treeItem} ${styles.treeItemNested} ${
-                                    selectedItem?.type === "section" && selectedItem.section.id === section.id
+                                    selectedItem?.type === 'section' && selectedItem.section.id === section.id
                                       ? styles.treeItemSelected
-                                      : ""
+                                      : ''
                                   }`}
-                                  onClick={(e) => {
+                                  onClick={e => {
                                     e.stopPropagation();
                                     setSelectedItem({
-                                      type: "section",
+                                      type: 'section',
                                       tab,
                                       section,
                                       path: [tabLabel, sectionLabel],
@@ -736,14 +1009,13 @@ export default function FormReportPage(): JSX.Element {
                                 >
                                   {isSectionExpanded ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
                                   <Text style={{ flex: 1 }}>{sectionLabel}</Text>
-                                  <Badge size="small" appearance="tint" color="informative">
+                                  <Badge size='small' appearance='tint' color='informative'>
                                     Section
                                   </Badge>
                                 </div>
 
-                                {/* Controls */}
                                 {isSectionExpanded &&
-                                  section.controls.map((control) => {
+                                  section.controls.map(control => {
                                     const controlLabel =
                                       getDisplayLabel(control.labels) ||
                                       control.datafieldname ||
@@ -754,14 +1026,14 @@ export default function FormReportPage(): JSX.Element {
                                       <div
                                         key={control.id}
                                         className={`${styles.treeItem} ${styles.treeItemNested2} ${
-                                          selectedItem?.type === "control" && selectedItem.control.id === control.id
+                                          selectedItem?.type === 'control' && selectedItem.control.id === control.id
                                             ? styles.treeItemSelected
-                                            : ""
+                                            : ''
                                         }`}
-                                        onClick={(e) => {
+                                        onClick={e => {
                                           e.stopPropagation();
                                           setSelectedItem({
-                                            type: "control",
+                                            type: 'control',
                                             tab,
                                             section,
                                             control,
@@ -769,9 +1041,11 @@ export default function FormReportPage(): JSX.Element {
                                           });
                                         }}
                                       >
-                                        <Text size={200} style={{ flex: 1 }}>{controlLabel}</Text>
+                                        <Text size={200} style={{ flex: 1 }}>
+                                          {controlLabel}
+                                        </Text>
                                         {control.datafieldname && (
-                                          <Badge size="tiny" appearance="outline" color="success">
+                                          <Badge size='tiny' appearance='outline' color='success'>
                                             Field
                                           </Badge>
                                         )}
@@ -788,153 +1062,174 @@ export default function FormReportPage(): JSX.Element {
             </div>
           </div>
 
-          {/* Right pane - details */}
+          {/* Details */}
           <div className={styles.detailsPane}>
-            {!selectedItem && !loading && (
+            {!selectedEntity && !loading && (
               <div className={styles.emptyState}>
-                <DocumentTable24Regular style={{ fontSize: "48px", marginBottom: spacing.md }} />
-                <Text size={500} weight="semibold">Select an Item</Text>
+                <DocumentTable24Regular style={{ fontSize: '48px', marginBottom: spacing.md }} />
+                <Text size={500} weight='semibold'>
+                  No Entity Selected
+                </Text>
+                <Caption1 style={{ marginTop: spacing.sm }}>Please select an entity from the dropdown to get started</Caption1>
+              </div>
+            )}
+
+            {selectedEntity && !selectedFormId && !loading && (
+              <div className={styles.emptyState}>
+                <DocumentTable24Regular style={{ fontSize: '48px', marginBottom: spacing.md }} />
+                <Text size={500} weight='semibold'>
+                  No Form Selected
+                </Text>
+                <Caption1 style={{ marginTop: spacing.sm }}>
+                  Please select a form from the dropdown to view and edit its structure
+                </Caption1>
+              </div>
+            )}
+
+            {selectedFormId && structureIsForSelectedForm && !selectedItem && !loading && (
+              <div className={styles.emptyState}>
+                <DocumentTable24Regular style={{ fontSize: '48px', marginBottom: spacing.md }} />
+                <Text size={500} weight='semibold'>
+                  Select an Item
+                </Text>
                 <Caption1 style={{ marginTop: spacing.sm }}>
                   Choose a tab, section, or control from the tree to view and edit its details
                 </Caption1>
               </div>
             )}
 
-            {selectedItem && (() => {
-              const currentItem = getCurrentItemData();
-              if (!currentItem) return null;
+            {selectedItem &&
+              structureIsForSelectedForm &&
+              (() => {
+                const currentItem = getCurrentItemData();
+                if (!currentItem) return null;
 
-              return (
-                <>
-                  <div className={styles.actionBar}>
-                    <Button
-                      icon={<Copy20Regular />}
-                      onClick={handleCopyPath}
-                      appearance="subtle"
-                      size="small"
-                    >
-                      {copySuccess ? "✓ Copied!" : "Copy Path"}
-                    </Button>
-                  </div>
+                return (
+                  <>
+                    <div className={styles.actionBar}>
+                      <Button icon={<Copy20Regular />} onClick={handleCopyPath} appearance='subtle' size='small'>
+                        {copySuccess ? '✓ Copied!' : 'Copy Path'}
+                      </Button>
+                    </div>
 
-                  <Card className={styles.detailsCard}>
-                    <CardHeader
-                      header={<Text weight="semibold">Path</Text>}
-                      description={<code style={{ fontSize: tokens.fontSizeBase300 }}>{buildPath(currentItem.path)}</code>}
-                    />
-                  </Card>
-
-                  {currentItem.type === "tab" && (
-                    <TabDetails
-                      tab={currentItem.tab}
-                      styles={styles}
-                      isSaving={isSaving}
-                      onUpdateLabel={(lcid: number, value: string) => {
-                        const tabIdx = editedStructure?.tabs.findIndex((t) => t.id === currentItem.tab.id);
-                        if (tabIdx !== undefined && tabIdx !== -1) {
-                          updateLabel({ tabIdx }, lcid, value);
-                        }
-                      }}
-                    />
-                  )}
-                  {currentItem.type === "section" && (
-                    <SectionDetails
-                      section={currentItem.section}
-                      styles={styles}
-                      isSaving={isSaving}
-                      onUpdateLabel={(lcid: number, value: string) => {
-                        const tabIdx = editedStructure?.tabs.findIndex((t) => t.id === currentItem.tab.id);
-                        if (tabIdx === undefined || tabIdx === -1) return;
-                        const tab = editedStructure!.tabs[tabIdx];
-                        let colIdx = -1;
-                        let secIdx = -1;
-                        tab.columns.forEach((col, ci) => {
-                          col.sections.forEach((sec, si) => {
-                            if (sec.id === currentItem.section.id) {
-                              colIdx = ci;
-                              secIdx = si;
-                            }
-                          });
-                        });
-                        if (colIdx !== -1 && secIdx !== -1) {
-                          updateLabel({ tabIdx, colIdx, secIdx }, lcid, value);
-                        }
-                      }}
-                    />
-                  )}
-                  {currentItem.type === "control" && (
-                    <ControlDetails
-                      control={currentItem.control}
-                      styles={styles}
-                      isSaving={isSaving}
-                      clientUrl={clientUrl}
-                      entity={entity}
-                      formId={formId}
-                      onUpdateLabel={(lcid: number, value: string) => {
-                        const tabIdx = editedStructure?.tabs.findIndex((t) => t.id === currentItem.tab.id);
-                        if (tabIdx === undefined || tabIdx === -1) return;
-                        const tab = editedStructure!.tabs[tabIdx];
-                        let colIdx = -1;
-                        let secIdx = -1;
-                        let ctrlIdx = -1;
-                        tab.columns.forEach((col, ci) => {
-                          col.sections.forEach((sec, si) => {
-                            if (sec.id === currentItem.section.id) {
-                              colIdx = ci;
-                              secIdx = si;
-                              ctrlIdx = sec.controls.findIndex((c) => c.id === currentItem.control.id);
-                            }
-                          });
-                        });
-                        if (colIdx !== -1 && secIdx !== -1 && ctrlIdx !== -1) {
-                          updateLabel({ tabIdx, colIdx, secIdx, ctrlIdx }, lcid, value);
-                        }
-                      }}
-                    />
-                  )}
-
-                  {/* Raw XML Debug Section */}
-                  {structure?.rawXmlByLcid && (
                     <Card className={styles.detailsCard}>
                       <CardHeader
-                        header={<Text weight="semibold">Debug: Raw Form XML</Text>}
-                        description="View the complete form XML retrieved for each provisioned language (for debugging purposes)"
+                        header={<Text weight='semibold'>Path</Text>}
+                        description={<code style={{ fontSize: tokens.fontSizeBase300 }}>{buildPath(currentItem.path)}</code>}
                       />
-                      <Divider />
-                      <div style={{ padding: "12px" }}>
-                        <Button
-                          appearance="subtle"
-                          onClick={() => setShowRawXml(!showRawXml)}
-                        >
-                          {showRawXml ? "Hide Raw XML" : "Show Raw XML"}
-                        </Button>
-                      </div>
-                      {showRawXml && (
-                        <>
-                          <Divider />
-                          <div style={{ padding: "12px" }}>
-                            <Accordion collapsible multiple>
-                              {Object.entries(structure.rawXmlByLcid)
-                                .sort(([lcidA], [lcidB]) => Number(lcidA) - Number(lcidB))
-                                .map(([lcid, xml]) => (
-                                  <AccordionItem key={lcid} value={`xml-${lcid}`}>
-                                    <AccordionHeader>
-                                      <Text>Language {lcid}</Text>
-                                    </AccordionHeader>
-                                    <AccordionPanel>
-                                      <pre className={styles.codeBlock}>{xml}</pre>
-                                    </AccordionPanel>
-                                  </AccordionItem>
-                                ))}
-                            </Accordion>
-                          </div>
-                        </>
-                      )}
                     </Card>
-                  )}
-                </>
-              );
-            })()}
+
+                    {currentItem.type === 'tab' && (
+                      <TabDetails
+                        tab={currentItem.tab}
+                        styles={styles}
+                        isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
+                        onUpdateLabel={(lcid, value) => {
+                          const tabIdx = editedStructure?.tabs.findIndex(t => t.id === currentItem.tab.id) ?? -1;
+                          if (tabIdx >= 0) updateLabel({ tabIdx }, lcid, value);
+                        }}
+                      />
+                    )}
+
+                    {currentItem.type === 'section' && (
+                      <SectionDetails
+                        section={currentItem.section}
+                        styles={styles}
+                        isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
+                        onUpdateLabel={(lcid, value) => {
+                          const tabIdx = editedStructure?.tabs.findIndex(t => t.id === currentItem.tab.id) ?? -1;
+                          if (tabIdx < 0) return;
+
+                          const tab = editedStructure!.tabs[tabIdx];
+                          let colIdx = -1;
+                          let secIdx = -1;
+
+                          tab.columns.forEach((col, ci) => {
+                            col.sections.forEach((sec, si) => {
+                              if (sec.id === currentItem.section.id) {
+                                colIdx = ci;
+                                secIdx = si;
+                              }
+                            });
+                          });
+
+                          if (colIdx >= 0 && secIdx >= 0) updateLabel({ tabIdx, colIdx, secIdx }, lcid, value);
+                        }}
+                      />
+                    )}
+
+                    {currentItem.type === 'control' && (
+                      <ControlDetails
+                        control={currentItem.control}
+                        styles={styles}
+                        isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
+                        clientUrl={clientUrl}
+                        entity={selectedEntity || undefined}
+                        formId={selectedFormId || undefined}
+                        onUpdateLabel={(lcid, value) => {
+                          const tabIdx = editedStructure?.tabs.findIndex(t => t.id === currentItem.tab.id) ?? -1;
+                          if (tabIdx < 0) return;
+
+                          const tab = editedStructure!.tabs[tabIdx];
+                          let colIdx = -1;
+                          let secIdx = -1;
+                          let ctrlIdx = -1;
+
+                          tab.columns.forEach((col, ci) => {
+                            col.sections.forEach((sec, si) => {
+                              if (sec.id === currentItem.section.id) {
+                                colIdx = ci;
+                                secIdx = si;
+                                ctrlIdx = sec.controls.findIndex(c => c.id === currentItem.control.id);
+                              }
+                            });
+                          });
+
+                          if (colIdx >= 0 && secIdx >= 0 && ctrlIdx >= 0) {
+                            updateLabel({ tabIdx, colIdx, secIdx, ctrlIdx }, lcid, value);
+                          }
+                        }}
+                      />
+                    )}
+
+                    {structure?.rawXmlByLcid && (
+                      <Card className={styles.detailsCard}>
+                        <CardHeader
+                          header={<Text weight='semibold'>Debug: Raw Form XML</Text>}
+                          description='View the complete form XML retrieved for each provisioned language'
+                        />
+                        <Divider />
+                        <div style={{ padding: '12px' }}>
+                          <Button appearance='subtle' onClick={() => setShowRawXml(!showRawXml)}>
+                            {showRawXml ? 'Hide Raw XML' : 'Show Raw XML'}
+                          </Button>
+                        </div>
+                        {showRawXml && (
+                          <>
+                            <Divider />
+                            <div style={{ padding: '12px' }}>
+                              <Accordion collapsible multiple>
+                                {Object.entries(structure.rawXmlByLcid)
+                                  .sort(([a], [b]) => Number(a) - Number(b))
+                                  .map(([lcid, xml]) => (
+                                    <AccordionItem key={lcid} value={`xml-${lcid}`}>
+                                      <AccordionHeader>
+                                        <Text>Language {lcid}</Text>
+                                      </AccordionHeader>
+                                      <AccordionPanel>
+                                        <pre className={styles.codeBlock}>{xml}</pre>
+                                      </AccordionPanel>
+                                    </AccordionItem>
+                                  ))}
+                              </Accordion>
+                            </div>
+                          </>
+                        )}
+                      </Card>
+                    )}
+                  </>
+                );
+              })()}
           </div>
         </div>
       )}
@@ -956,7 +1251,7 @@ function TabDetails({
   return (
     <>
       <Card className={styles.detailsCard}>
-        <CardHeader header={<Text weight="semibold">Tab Properties</Text>} />
+        <CardHeader header={<Text weight='semibold'>Tab Properties</Text>} />
         <Divider />
         <table className={styles.propertiesTable}>
           <tbody>
@@ -969,13 +1264,13 @@ function TabDetails({
             <tr className={styles.propertyRow}>
               <td className={styles.propertyLabel}>Name</td>
               <td className={styles.propertyValue}>
-                <code>{tab.name || "(none)"}</code>
+                <code>{tab.name || '(none)'}</code>
               </td>
             </tr>
             <tr className={styles.propertyRow}>
               <td className={styles.propertyLabel}>Visible</td>
               <td className={styles.propertyValue}>
-                <Badge appearance="tint" color={tab.visible ?? true ? "success" : "danger"}>
+                <Badge appearance='tint' color={tab.visible ?? true ? 'success' : 'danger'}>
                   {String(tab.visible ?? true)}
                 </Badge>
               </td>
@@ -983,7 +1278,7 @@ function TabDetails({
             <tr className={styles.propertyRow}>
               <td className={styles.propertyLabel}>Show Label</td>
               <td className={styles.propertyValue}>
-                <Badge appearance="tint" color={tab.showlabel ?? true ? "success" : "danger"}>
+                <Badge appearance='tint' color={tab.showlabel ?? true ? 'success' : 'danger'}>
                   {String(tab.showlabel ?? true)}
                 </Badge>
               </td>
@@ -1011,7 +1306,7 @@ function SectionDetails({
   return (
     <>
       <Card className={styles.detailsCard}>
-        <CardHeader header={<Text weight="semibold">Section Properties</Text>} />
+        <CardHeader header={<Text weight='semibold'>Section Properties</Text>} />
         <Divider />
         <table className={styles.propertiesTable}>
           <tbody>
@@ -1024,13 +1319,13 @@ function SectionDetails({
             <tr className={styles.propertyRow}>
               <td className={styles.propertyLabel}>Name</td>
               <td className={styles.propertyValue}>
-                <code>{section.name || "(none)"}</code>
+                <code>{section.name || '(none)'}</code>
               </td>
             </tr>
             <tr className={styles.propertyRow}>
               <td className={styles.propertyLabel}>Visible</td>
               <td className={styles.propertyValue}>
-                <Badge appearance="tint" color={section.visible ?? true ? "success" : "danger"}>
+                <Badge appearance='tint' color={section.visible ?? true ? 'success' : 'danger'}>
                   {String(section.visible ?? true)}
                 </Badge>
               </td>
@@ -1038,7 +1333,7 @@ function SectionDetails({
             <tr className={styles.propertyRow}>
               <td className={styles.propertyLabel}>Show Label</td>
               <td className={styles.propertyValue}>
-                <Badge appearance="tint" color={section.showlabel ?? true ? "success" : "danger"}>
+                <Badge appearance='tint' color={section.showlabel ?? true ? 'success' : 'danger'}>
                   {String(section.showlabel ?? true)}
                 </Badge>
               </td>
@@ -1046,7 +1341,9 @@ function SectionDetails({
             <tr className={styles.propertyRow}>
               <td className={styles.propertyLabel}>Controls</td>
               <td className={styles.propertyValue}>
-                <Badge appearance="filled" color="brand">{section.controls.length}</Badge>
+                <Badge appearance='filled' color='brand'>
+                  {section.controls.length}
+                </Badge>
               </td>
             </tr>
           </tbody>
@@ -1078,7 +1375,7 @@ function ControlDetails({
   return (
     <>
       <Card className={styles.detailsCard}>
-        <CardHeader header={<Text weight="semibold">Control Properties</Text>} />
+        <CardHeader header={<Text weight='semibold'>Control Properties</Text>} />
         <Divider />
         <table className={styles.propertiesTable}>
           <tbody>
@@ -1091,19 +1388,19 @@ function ControlDetails({
             <tr className={styles.propertyRow}>
               <td className={styles.propertyLabel}>Name</td>
               <td className={styles.propertyValue}>
-                <code>{control.name || "(none)"}</code>
+                <code>{control.name || '(none)'}</code>
               </td>
             </tr>
             <tr className={styles.propertyRow}>
               <td className={styles.propertyLabel}>Data Field</td>
               <td className={styles.propertyValue}>
-                <code>{control.datafieldname || "(none)"}</code>
+                <code>{control.datafieldname || '(none)'}</code>
               </td>
             </tr>
             <tr className={styles.propertyRow}>
               <td className={styles.propertyLabel}>Label ID (Cell ID)</td>
               <td className={styles.propertyValue}>
-                <code>{control.cellId || "(none)"}</code>
+                <code>{control.cellId || '(none)'}</code>
               </td>
             </tr>
             <tr className={styles.propertyRow}>
@@ -1115,7 +1412,7 @@ function ControlDetails({
             <tr className={styles.propertyRow}>
               <td className={styles.propertyLabel}>Visible</td>
               <td className={styles.propertyValue}>
-                <Badge appearance="tint" color={control.visible ?? true ? "success" : "danger"}>
+                <Badge appearance='tint' color={control.visible ?? true ? 'success' : 'danger'}>
                   {String(control.visible ?? true)}
                 </Badge>
               </td>
@@ -1123,7 +1420,7 @@ function ControlDetails({
             <tr className={styles.propertyRow}>
               <td className={styles.propertyLabel}>Disabled</td>
               <td className={styles.propertyValue}>
-                <Badge appearance="tint" color={control.disabled ?? false ? "danger" : "success"}>
+                <Badge appearance='tint' color={control.disabled ?? false ? 'danger' : 'success'}>
                   {String(control.disabled ?? false)}
                 </Badge>
               </td>
@@ -1131,17 +1428,18 @@ function ControlDetails({
           </tbody>
         </table>
       </Card>
+
       {isEditableControlType(control.classId) && (
-        <LabelsList 
-        labels={control.labels} 
-        isSaving={isSaving} 
-        onUpdateLabel={onUpdateLabel}
-        clientUrl={clientUrl}
-        entity={entity}
-        formId={formId}
-        attribute={control.datafieldname}
-        cellId={control.cellId}
-      />
+        <LabelsList
+          labels={control.labels}
+          isSaving={isSaving}
+          onUpdateLabel={onUpdateLabel}
+          clientUrl={clientUrl}
+          entity={entity}
+          formId={formId}
+          attribute={control.datafieldname}
+          cellId={control.cellId}
+        />
       )}
     </>
   );
@@ -1170,16 +1468,15 @@ function LabelsList({
 }) {
   const openFieldReport = () => {
     if (!clientUrl || !entity || !attribute || !formId) return;
-    
-    // Build the field report URL with cellId as labelId
+
     const params = new URLSearchParams({
       clientUrl,
       entity,
       attribute,
       formId,
-      ...(cellId && { labelId: cellId }),
+      ...(cellId ? { labelId: cellId } : {}),
     });
-    
+
     const url = `${window.location.origin}${window.location.pathname}#/report/field?${params.toString()}`;
     window.open(url, '_blank');
   };
@@ -1187,19 +1484,15 @@ function LabelsList({
   if (labels.length === 0) {
     return (
       <Card>
-        <CardHeader
-          header={<Text weight="semibold">Labels (0)</Text>}
-          description="No language translations defined in the form XML"
-        />
+        <CardHeader header={<Text weight='semibold'>Labels (0)</Text>} description='No language translations defined in the form XML' />
         <Divider />
-        <div style={{ padding: spacing.lg, textAlign: "center", color: tokens.colorNeutralForeground3 }}>
+        <div style={{ padding: spacing.lg, textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
           <Caption1>No labels defined</Caption1>
         </div>
       </Card>
     );
   }
 
-  // Convert Label[] to the format TranslationsTable expects
   const lcids = labels.map(l => l.languageCode);
   const values = labels.reduce((acc, l) => {
     acc[l.languageCode] = l.label;
@@ -1212,33 +1505,26 @@ function LabelsList({
         header={
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
-              <Text weight="semibold">Labels</Text>
-              <Badge appearance="filled" color="brand">{labels.length}</Badge>
+              <Text weight='semibold'>Labels</Text>
+              <Badge appearance='filled' color='brand'>
+                {labels.length}
+              </Badge>
             </div>
             {clientUrl && entity && attribute && formId && (
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<ArrowExport20Regular />}
-                onClick={openFieldReport}
-              >
+              <Button appearance='subtle' size='small' icon={<ArrowExport20Regular />} onClick={openFieldReport}>
                 Open in Field Editor
               </Button>
             )}
           </div>
         }
-        description="Multi-language translations defined in the form XML"
+        description='Multi-language translations defined in the form XML'
       />
       <Divider />
       <div style={{ padding: spacing.lg }}>
         <TranslationsTable
           lcids={lcids}
           values={values}
-          onChange={(lcid, value) => {
-            if (onUpdateLabel) {
-              onUpdateLabel(lcid, value);
-            }
-          }}
+          onChange={(lcid, value) => onUpdateLabel?.(lcid, value)}
           defaultLcid={defaultLcid}
           readOnly={isSaving}
           disabled={isSaving}
@@ -1247,4 +1533,3 @@ function LabelsList({
     </Card>
   );
 }
-

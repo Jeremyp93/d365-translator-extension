@@ -7,6 +7,7 @@ import {
   getFormXmlWithEtag,
   patchFormXmlStrict,
   waitForLanguageToApply,
+  sleep,
 } from './d365Api';
 import { getProvisionedLanguagesCached } from './languageService';
 import { isEditableControlType } from '../utils/controlClassIds';
@@ -40,7 +41,8 @@ export async function getFormXmlAllLanguages(
   try {
     for (const lcid of Array.from(allLcidsToRetrieve)) {
       await setUserUiLanguage(baseUrl, userId, lcid);
-      await waitForLanguageToApply(baseUrl, formId);
+      //await waitForLanguageToApply(baseUrl, formId);
+      await sleep(300); // optional small delay
       const xml = await getFormXml(baseUrl, formId);
       rawXmlByLcid[lcid] = xml; // Store raw XML for this language
       // Pass the current LCID so parseFormXml knows what language context the descriptions are in

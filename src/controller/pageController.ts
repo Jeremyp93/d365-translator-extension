@@ -114,24 +114,26 @@ import { storageGet } from "../services/storageCache";
       }
 
       const page = await waitFormReady(6000);
+      let entityLogicalName = "";
+      let formId = "";
       if (!page) {
         console.warn("[ctl] Form context not ready in this frame.");
-        return;
-      }
-
-      const entityLogicalName: string =
+        //return;
+      } else {
+        entityLogicalName =
         page.data.entity.getEntityName?.() ?? "";
-        
-      const clientUrl =
-          (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.() ||
-          "";
-
-        const formId =
+        formId =
           (window as any).Xrm?.Page?.ui?.formSelector
             ?.getCurrentItem?.()
             ?.getId?.() ||
           (window as any).Xrm?.Page?.ui?.formSelector?.getId?.() ||
           "";
+      }
+
+      const clientUrl =
+          (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.() ||
+          "";
+        
       window.postMessage(
           {
             __d365x__: true,
