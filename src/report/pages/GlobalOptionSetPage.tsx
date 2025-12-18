@@ -44,32 +44,33 @@ const useStyles = makeStyles({
     display: "flex",
     flexDirection: "column",
     minHeight: "100vh",
+    width: "100%",
     backgroundColor: tokens.colorNeutralBackground3,
   },
   content: {
     flex: 1,
     ...shorthands.padding(spacing.xl),
-    maxWidth: "1600px",
-    width: "100%",
-    margin: "0 auto",
     display: "flex",
     flexDirection: "column",
     ...shorthands.gap(spacing.lg),
-    boxSizing: "border-box",
+    "@media (max-width: 768px)": {
+      ...shorthands.padding(spacing.md),
+    },
   },
   splitLayout: {
     display: "grid",
-    gridTemplateColumns: "450px 1fr 340px",
-    gridTemplateAreas: `"sidebar detail usage"`,
+    gridTemplateColumns: "minmax(200px, 300px) minmax(0, 1fr)",
+    gridTemplateAreas: `
+      "sidebar detail"
+      "usage  usage"
+    `,
     ...shorthands.gap(spacing.lg),
-    // medium screens: put usage below (full width) but keep sidebar + main
-    '@media (max-width: 1200px)': {
-      gridTemplateColumns: '450px 1fr',
-      gridTemplateAreas: `
-        "sidebar detail"
-        "usage  usage"
-      `,
+    // Large desktops: show all 3 columns side by side
+    '@media (min-width: 1600px)': {
+      gridTemplateColumns: 'minmax(250px, 400px) minmax(0, 1fr) minmax(250px, 340px)',
+      gridTemplateAreas: `"sidebar detail usage"`,
     },
+    // Tablets: stack everything
     "@media (max-width: 768px)": {
       gridTemplateColumns: "1fr",
       gridTemplateAreas: `
@@ -147,12 +148,16 @@ const useStyles = makeStyles({
     display: "flex",
     flexDirection: "column",
     ...shorthands.gap(spacing.md),
+    minWidth: 0,
+    overflow: "hidden",
   },
   usagePanel: {
     gridArea: 'usage',
     display: 'flex',
     flexDirection: 'column',
-    minHeight: 0,              // important: allows inner scroll
+    minHeight: 0,
+    minWidth: 0,
+    overflow: "hidden",
   },
   optionRow: {
     marginBottom: "32px",

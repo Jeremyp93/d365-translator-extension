@@ -234,9 +234,9 @@ function useD365Controller() {
     checkContext();
   }, []);
 
-  // Load active state from storage on mount
+  // On mount, probe the controller in the page for real highlight state and sync popup state
   React.useEffect(() => {
-    const loadState = async () => {
+    const syncState = async () => {
       try {
         const [tab] = await chrome.tabs.query({
           active: true,
@@ -244,16 +244,36 @@ function useD365Controller() {
         });
         if (!tab?.id) return;
 
+        // Try to find the frame with Xrm
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id, allFrames: true },
+          world: "MAIN",
+          func: () => Boolean((window as any).Xrm),
+        });
+        const hit = results.find((r) => r.result === true);
+        const frameId = hit?.frameId;
+        if (frameId == null) return;
+
+        // Probe the controller for highlight state
+        const ctlProbe = await chrome.scripting.executeScript({
+          target: { tabId: tab.id, frameIds: [frameId] },
+          world: "MAIN",
+          func: () => Boolean((window as any).__d365Ctl?.enabled),
+        });
+        const isActive = ctlProbe[0]?.result === true;
+
+        setActive(isActive);
         const storageKey = `highlightActive_${tab.id}`;
-        const result = await chrome.storage.session.get(storageKey);
-        if (result[storageKey] === true) {
-          setActive(true);
+        if (isActive) {
+          await chrome.storage.session.set({ [storageKey]: true });
+        } else {
+          await chrome.storage.session.remove(storageKey);
         }
       } catch (e) {
-        console.error("Failed to load highlight state:", e);
+        console.error("Failed to sync highlight state:", e);
       }
     };
-    loadState();
+    syncState();
   }, []);
 
   // Save active state to storage

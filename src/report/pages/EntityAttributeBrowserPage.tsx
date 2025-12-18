@@ -48,23 +48,26 @@ const useStyles = makeStyles({
     display: "flex",
     flexDirection: "column",
     minHeight: "100vh",
+    width: "100%",
     backgroundColor: tokens.colorNeutralBackground3,
   },
   content: {
     flex: 1,
     ...shorthands.padding(spacing.xl),
-    maxWidth: "1600px",
-    width: "100%",
-    margin: "0 auto",
     display: "flex",
     flexDirection: "column",
     ...shorthands.gap(spacing.lg),
-    boxSizing: "border-box",
+    "@media (max-width: 768px)": {
+      ...shorthands.padding(spacing.md),
+    },
   },
   splitLayout: {
     display: "grid",
-    gridTemplateColumns: "450px 1fr",
+    gridTemplateColumns: "minmax(250px, 400px) minmax(0, 1fr)",
     ...shorthands.gap(spacing.lg),
+    "@media (max-width: 1024px)": {
+      gridTemplateColumns: "minmax(200px, 300px) minmax(0, 1fr)",
+    },
     "@media (max-width: 768px)": {
       gridTemplateColumns: "1fr",
     },
@@ -123,10 +126,14 @@ const useStyles = makeStyles({
     display: "flex",
     flexDirection: "column",
     ...shorthands.gap(spacing.md),
+    minWidth: 0,
+    overflow: "hidden",
   },
   attributeGrid: {
     maxHeight: "400px",
     overflowY: "auto",
+    overflowX: "auto",
+    width: "100%",
   },
   typeBadge: {
     fontFamily: tokens.fontFamilyMonospace,

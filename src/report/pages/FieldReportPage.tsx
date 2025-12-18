@@ -32,19 +32,18 @@ const useStyles = makeStyles({
     display: "flex",
     flexDirection: "column",
     minHeight: "100vh",
+    width: "100%",
     backgroundColor: tokens.colorNeutralBackground3,
   },
   content: {
     flex: 1,
     ...shorthands.padding(spacing.xl),
-    maxWidth: "1400px",
-    width: "100%",
-    margin: "0 auto",
     display: "flex",
     flexDirection: "column",
     ...shorthands.gap(spacing.lg),
-    boxSizing: "border-box",
-    overflowX: "hidden",
+    "@media (max-width: 768px)": {
+      ...shorthands.padding(spacing.md),
+    },
   },
   metaGrid: {
     display: "grid",

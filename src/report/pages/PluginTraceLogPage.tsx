@@ -39,6 +39,7 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     minHeight: '100vh',
+    width: '100%',
     backgroundColor: tokens.colorNeutralBackground3,
   },
   header: {
@@ -74,6 +75,9 @@ const useStyles = makeStyles({
   content: {
     flex: 1,
     ...shorthands.padding('24px'),
+    '@media (max-width: 768px)': {
+      ...shorthands.padding('16px'),
+    },
   },
   quickSearchSection: {
     display: 'flex',

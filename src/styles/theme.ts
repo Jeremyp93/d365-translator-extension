@@ -70,7 +70,10 @@ export const useSharedStyles = makeStyles({
     ...shorthands.padding(spacing.lg, spacing.xl),
     ...shorthands.borderBottom("2px", "solid", tokens.colorNeutralStroke1),
     backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: tokens.shadow8,
+    boxShadow: tokens.shadow4,
+    "@media (max-width: 768px)": {
+      ...shorthands.padding(spacing.md, spacing.lg),
+    },
   },
   
   pageTitle: {

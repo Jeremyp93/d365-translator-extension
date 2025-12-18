@@ -56,22 +56,42 @@ const useStyles = makeStyles({
   page: {
     display: "flex",
     flexDirection: "column",
-    height: "100vh",
+    minHeight: "100vh",
+    width: "100%",
     backgroundColor: tokens.colorNeutralBackground3,
   },
   content: {
     display: "flex",
     flex: 1,
-    overflow: "hidden",
+    minHeight: 0,
+    flexDirection: "row",
+    "@media (max-width: 1024px)": {
+      flexDirection: "column",
+    },
   },
   sidebar: {
     width: "360px",
+    minWidth: "300px",
+    maxWidth: "360px",
     ...shorthands.borderRight("2px", "solid", tokens.colorNeutralStroke1),
     backgroundColor: tokens.colorNeutralBackground1,
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
     boxShadow: tokens.shadow8,
+    "@media (max-width: 1200px)": {
+      width: "300px",
+      minWidth: "280px",
+      maxWidth: "300px",
+    },
+    "@media (max-width: 1024px)": {
+      width: "100%",
+      minWidth: "unset",
+      maxWidth: "unset",
+      height: "40vh",
+      ...shorthands.borderRight("none"),
+      ...shorthands.borderBottom("2px", "solid", tokens.colorNeutralStroke1),
+    },
   },
   sidebarHeader: {
     ...shorthands.padding(spacing.md, spacing.lg),
@@ -151,6 +171,9 @@ const useStyles = makeStyles({
     ...shorthands.padding(spacing.xl),
     backgroundColor: tokens.colorNeutralBackground2,
     minWidth: 0,
+    "@media (max-width: 768px)": {
+      ...shorthands.padding(spacing.md),
+    },
     "::-webkit-scrollbar": {
       width: "8px",
     },
@@ -177,6 +200,9 @@ const useStyles = makeStyles({
     marginTop: spacing.sm,
     fontSize: tokens.fontSizeBase300,
     tableLayout: "fixed",
+    "@media (max-width: 768px)": {
+      fontSize: tokens.fontSizeBase200,
+    },
   },
   propertyRow: {
     ...shorthands.borderBottom("1px", "solid", tokens.colorNeutralStroke2),
@@ -187,12 +213,19 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     width: "180px",
     verticalAlign: "top",
+    "@media (max-width: 768px)": {
+      width: "120px",
+      ...shorthands.padding(spacing.sm),
+    },
   },
   propertyValue: {
     ...shorthands.padding(spacing.md),
     color: tokens.colorNeutralForeground1,
     wordWrap: "break-word",
     overflowWrap: "break-word",
+    "@media (max-width: 768px)": {
+      ...shorthands.padding(spacing.sm),
+    },
   },
   codeBlock: {
     backgroundColor: tokens.colorNeutralBackground3,

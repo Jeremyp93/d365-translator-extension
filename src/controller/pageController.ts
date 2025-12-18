@@ -404,6 +404,7 @@ import { storageGet } from "../services/storageCache";
       `[data-id="${controlName}.fieldControl"]`,
       `[data-id="${controlName}-field"]`,
       `[data-id="${attribute}-FieldSectionItemContainer"]`, // <<< NEW (exact hit from your DOM)
+      `div[id*="${attribute}-FieldSectionItemContainer"]`, // For BPF
       // data-lp-id tokenized/contains
       `[data-lp-id*="|${attribute}|"]`, // e.g., MscrmControls.Containers.FieldSectionItem|elia_day|...
       `[data-lp-id*="${attribute}.fieldControl"]`, // e.g., PowerApps.CoreControls.TextInput|elia_day.fieldControl|...
@@ -422,6 +423,7 @@ import { storageGet } from "../services/storageCache";
     return [
       // most reliable in your DOM:
       `[data-attribute="${attribute}"]`, // <<< NEW (your label has this)
+      `label[id*="${attribute}-field-label"]`, // matches BPF
       `label[id$="${attribute}-field-label"]`, // ends-with on id
       `[id*="-${attribute}-field-label"]`,
       // older guesses you had
