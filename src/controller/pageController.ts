@@ -113,7 +113,7 @@ import { storageGet } from "../services/storageCache";
         return;
       }
 
-      const page = await waitFormReady(6000);
+      const page = await waitFormReady(500);
       let entityLogicalName = "";
       let formId = "";
       if (!page) {
