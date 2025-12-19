@@ -5,17 +5,19 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
+import { lazy } from "react";
 import { FluentProvider } from "@fluentui/react-components";
 import { useTheme } from "../context/ThemeContext";
-import FieldReportPage from "./pages/FieldReportPage";
-import FormReportPage from "./pages/FormReportPage";
-import GlobalOptionSetPage from "./pages/GlobalOptionSetPage";
-import EntityAttributeBrowserPage from "./pages/EntityAttributeBrowserPage";
-import { lazy } from "react";
+// import FieldReportPage from "./pages/FieldReportPage";
+// import FormReportPage from "./pages/FormReportPage";
+// import GlobalOptionSetPage from "./pages/GlobalOptionSetPage";
+// import EntityAttributeBrowserPage from "./pages/EntityAttributeBrowserPage";
 
-const PluginTraceLogPage = lazy(
-  () => import('./pages/PluginTraceLogPage'),
-);
+const FieldReportPage = lazy(() => import('./pages/FieldReportPage'));
+const FormReportPage = lazy(() => import('./pages/FormReportPage'));
+const GlobalOptionSetPage = lazy(() => import('./pages/GlobalOptionSetPage'));
+const EntityAttributeBrowserPage = lazy(() => import('./pages/EntityAttributeBrowserPage'));
+const PluginTraceLogPage = lazy(() => import('./pages/PluginTraceLogPage'));
 
 function KeepSearchNavigate({ to }: { to: string }) {
   const { search } = useLocation();
