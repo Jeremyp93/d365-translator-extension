@@ -3,16 +3,16 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   base: '', // keep empty for extension paths
   plugins: [
     react(),
-    visualizer({
-      filename: 'dist/stats.html',
-      gzipSize: true,
-      brotliSize: true,
-      open: false,
-    }),
+    // visualizer({
+    //   filename: 'dist/stats.html',
+    //   gzipSize: true,
+    //   brotliSize: true,
+    //   open: false,
+    // }),
   ],
   resolve: {
     alias: {
@@ -28,6 +28,8 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    sourcemap: mode === 'development',
+    minify: mode === 'development' ? false : 'esbuild',
     rollupOptions: {
       input: {
         // popup UI (html entry)
@@ -65,4 +67,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

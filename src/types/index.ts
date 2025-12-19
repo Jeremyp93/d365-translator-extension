@@ -45,8 +45,14 @@ export interface FormTab {
   columns: FormColumn[];
 }
 
+export interface FormHeaderFooter {
+  controls: FormControl[];
+}
+
 export interface FormStructure {
+  header?: FormHeaderFooter;
   tabs: FormTab[];
+  footer?: FormHeaderFooter;
   rawXml: string;
   rawXmlByLcid?: Record<number, string>; // XML for each language
 }

@@ -1,4 +1,4 @@
-import type { FormStructure, FormTab, FormColumn, FormSection, FormControl, Label } from '../types';
+import type { FormStructure, FormTab, FormColumn, FormSection, FormControl, FormHeaderFooter, Label } from '../types';
 import {
   whoAmI,
   getUserSettingsRow,
@@ -75,6 +75,7 @@ function mergeFormStructures(
   // Use first structure as base
   const base = structuresByLcid[0].structure;
   const merged: FormStructure = {
+    header: base.header ? { controls: base.header.controls.map(ctrl => ({ ...ctrl, labels: [] })) } : undefined,
     tabs: base.tabs.map((tab) => ({
       ...tab,
       labels: [],
@@ -90,12 +91,30 @@ function mergeFormStructures(
         })),
       })),
     })),
+    footer: base.footer ? { controls: base.footer.controls.map(ctrl => ({ ...ctrl, labels: [] })) } : undefined,
     rawXml: base.rawXml,
     rawXmlByLcid,
   };
 
   // Merge labels from all language versions
   for (const { lcid, structure } of structuresByLcid) {
+    // Merge header labels
+    if (structure.header && merged.header) {
+      structure.header.controls.forEach((control, ctrlIdx) => {
+        if (merged.header!.controls[ctrlIdx]) {
+          control.labels.forEach((label) => {
+            const exists = merged.header!.controls[ctrlIdx].labels.some(
+              (existing) => existing.languageCode === label.languageCode && existing.label === label.label
+            );
+            if (!exists) {
+              merged.header!.controls[ctrlIdx].labels.push(label);
+            }
+          });
+        }
+      });
+    }
+
+    // Merge tab labels
     structure.tabs.forEach((tab, tabIdx) => {
       if (merged.tabs[tabIdx]) {
         // Add tab labels (keep original languageCode from XML, deduplicate)
@@ -143,9 +162,62 @@ function mergeFormStructures(
         });
       }
     });
+
+    // Merge footer labels
+    if (structure.footer && merged.footer) {
+      structure.footer.controls.forEach((control, ctrlIdx) => {
+        if (merged.footer!.controls[ctrlIdx]) {
+          control.labels.forEach((label) => {
+            const exists = merged.footer!.controls[ctrlIdx].labels.some(
+              (existing) => existing.languageCode === label.languageCode && existing.label === label.label
+            );
+            if (!exists) {
+              merged.footer!.controls[ctrlIdx].labels.push(label);
+            }
+          });
+        }
+      });
+    }
   }
 
   return merged;
+}
+
+/**
+ * Parse header or footer section
+ * @param containerEl - The header or footer XML element
+ * @param currentLcid - The LCID context for labels
+ * @returns FormHeaderFooter with controls
+ */
+function parseHeaderFooter(containerEl: Element | null, currentLcid?: number): FormHeaderFooter | undefined {
+  if (!containerEl) return undefined;
+
+  const controls: FormControl[] = [];
+  const rowElements = Array.from(containerEl.getElementsByTagName('row'));
+
+  for (const rowEl of rowElements) {
+    const cellElements = Array.from(rowEl.getElementsByTagName('cell'));
+    for (const cellEl of cellElements) {
+      const controlElements = Array.from(cellEl.getElementsByTagName('control'));
+      for (const ctrlEl of controlElements) {
+        const cellLabels = parseLabels(cellEl, currentLcid);
+
+        const control: FormControl = {
+          id: ctrlEl.getAttribute('id') || cellEl.getAttribute('id') || `control-${controls.length}`,
+          cellId: cellEl.getAttribute('id') || undefined,
+          name: ctrlEl.getAttribute('name') || undefined,
+          classId: ctrlEl.getAttribute('classid') || undefined,
+          datafieldname: ctrlEl.getAttribute('datafieldname') || undefined,
+          disabled: parseBool(ctrlEl.getAttribute('disabled')),
+          visible: parseBool(ctrlEl.getAttribute('visible')),
+          labels: cellLabels,
+        };
+        controls.push(control);
+      }
+    }
+  }
+
+  return controls.length > 0 ? { controls } : undefined;
 }
 
 /**
@@ -163,6 +235,11 @@ export function parseFormXml(formxml: string, currentLcid?: number): FormStructu
     throw new Error('Invalid XML: ' + parseError.textContent);
   }
 
+  // Parse header
+  const headerEl = doc.querySelector('form > header');
+  const header = parseHeaderFooter(headerEl, currentLcid);
+
+  // Parse tabs
   const tabs: FormTab[] = [];
   const tabElements = Array.from(doc.getElementsByTagName('tab'));
 
@@ -230,8 +307,14 @@ export function parseFormXml(formxml: string, currentLcid?: number): FormStructu
     tabs.push(tab);
   }
 
+  // Parse footer
+  const footerEl = doc.querySelector('form > footer');
+  const footer = parseHeaderFooter(footerEl, currentLcid);
+
   return {
+    header,
     tabs,
+    footer,
     rawXml: formxml,
   };
 }
@@ -263,12 +346,26 @@ function parseLabels(element: Element, currentLcid?: number): Label[] {
   );
   
   for (const labelEl of labelElements) {
-    // Use currentLcid if provided, otherwise use the XML's languagecode attribute
-    // This is important because Dataverse doesn't update languagecode when returning translated XML
-    const languageCode = currentLcid ?? Number(labelEl.getAttribute('languagecode'));
+    const xmlLanguageCode = Number(labelEl.getAttribute('languagecode'));
     const label = labelEl.getAttribute('description') || '';
-    if (Number.isFinite(languageCode)) {
-      labels.push({ languageCode, label });
+
+    if (!Number.isFinite(xmlLanguageCode)) continue;
+
+    // If currentLcid is provided, prioritize matching labels but allow fallback to base language (1033)
+    // This handles cases where a translation doesn't exist for the current language
+    if (currentLcid !== undefined) {
+      // Always include if it matches the current LCID
+      if (xmlLanguageCode === currentLcid) {
+        labels.push({ languageCode: xmlLanguageCode, label });
+      }
+      // Also include base language (1033 English) as fallback if no current LCID label exists yet
+      else if (xmlLanguageCode === 1033 && !labels.some(l => l.languageCode === currentLcid)) {
+        labels.push({ languageCode: currentLcid, label });
+      }
+      // Skip all other languages
+    } else {
+      // No currentLcid specified, include all labels
+      labels.push({ languageCode: xmlLanguageCode, label });
     }
   }
 
@@ -318,6 +415,28 @@ function updateLabelsInXml(formxml: string, structure: FormStructure, targetLcid
   const doc = parser.parseFromString(formxml, 'text/xml');
   const formEl = doc.documentElement;
 
+  // Update header labels
+  if (structure.header) {
+    const headerEl = formEl.querySelector('header');
+    if (headerEl) {
+      const rowElements = Array.from(headerEl.getElementsByTagName('row'));
+      let controlIdx = 0;
+      for (const rowEl of rowElements) {
+        const cellElements = Array.from(rowEl.getElementsByTagName('cell'));
+        for (const cellEl of cellElements) {
+          const controlElements = Array.from(cellEl.getElementsByTagName('control'));
+          if (controlElements.length > 0 && controlIdx < structure.header.controls.length) {
+            const control = structure.header.controls[controlIdx];
+            if (isEditableControlType(control.classId)) {
+              updateElementLabels(cellEl, control.labels, targetLcid);
+            }
+            controlIdx++;
+          }
+        }
+      }
+    }
+  }
+
   // Update tab labels
   const tabElements = Array.from(formEl.getElementsByTagName('tab'));
   structure.tabs.forEach((tab, tabIdx) => {
@@ -327,14 +446,14 @@ function updateLabelsInXml(formxml: string, structure: FormStructure, targetLcid
 
     // Get column elements for this tab
     const columnElements = Array.from(tabEl.getElementsByTagName('column'));
-    
+
     tab.columns.forEach((col, colIdx) => {
       if (colIdx >= columnElements.length) return;
       const colEl = columnElements[colIdx];
 
       // Get section elements for this column
       const sectionElements = Array.from(colEl.getElementsByTagName('section'));
-      
+
       col.sections.forEach((section, secIdx) => {
         if (secIdx >= sectionElements.length) return;
         const secEl = sectionElements[secIdx];
@@ -361,12 +480,34 @@ function updateLabelsInXml(formxml: string, structure: FormStructure, targetLcid
     });
   });
 
+  // Update footer labels
+  if (structure.footer) {
+    const footerEl = formEl.querySelector('footer');
+    if (footerEl) {
+      const rowElements = Array.from(footerEl.getElementsByTagName('row'));
+      let controlIdx = 0;
+      for (const rowEl of rowElements) {
+        const cellElements = Array.from(rowEl.getElementsByTagName('cell'));
+        for (const cellEl of cellElements) {
+          const controlElements = Array.from(cellEl.getElementsByTagName('control'));
+          if (controlElements.length > 0 && controlIdx < structure.footer.controls.length) {
+            const control = structure.footer.controls[controlIdx];
+            if (isEditableControlType(control.classId)) {
+              updateElementLabels(cellEl, control.labels, targetLcid);
+            }
+            controlIdx++;
+          }
+        }
+      }
+    }
+  }
+
   const serializer = new XMLSerializer();
   let xmlString = serializer.serializeToString(doc);
-  
+
   // Add space before self-closing tags to match Dynamics 365 format
   xmlString = xmlString.replace(/([^\/\s])\/>/g, '$1 />');
-  
+
   return xmlString;
 }
 

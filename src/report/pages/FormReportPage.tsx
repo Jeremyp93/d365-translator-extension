@@ -261,9 +261,11 @@ const useStyles = makeStyles({
 });
 
 type SelectedItem =
+  | { type: 'header-control'; control: FormControl; path: string[] }
   | { type: 'tab'; tab: FormTab; path: string[] }
   | { type: 'section'; tab: FormTab; section: FormSection; path: string[] }
   | { type: 'control'; tab: FormTab; section: FormSection; control: FormControl; path: string[] }
+  | { type: 'footer-control'; control: FormControl; path: string[] }
   | null;
 
 /**
@@ -533,8 +535,19 @@ export default function FormReportPage(): JSX.Element {
     if (!baseStructure || !searchQuery.trim()) return baseStructure;
 
     const query = searchQuery.toLowerCase();
-    const matchedTabs: FormTab[] = [];
 
+    // Filter header controls
+    const matchedHeaderControls = baseStructure.header?.controls.filter(control => {
+      const controlLabel = getDisplayLabel(control.labels);
+      return (
+        controlLabel.toLowerCase().includes(query) ||
+        control.name?.toLowerCase().includes(query) ||
+        control.datafieldname?.toLowerCase().includes(query)
+      );
+    });
+
+    // Filter tabs
+    const matchedTabs: FormTab[] = [];
     for (const tab of baseStructure.tabs) {
       const tabLabel = getDisplayLabel(tab.labels);
       const tabMatches = tabLabel.toLowerCase().includes(query) || tab.name?.toLowerCase().includes(query);
@@ -565,7 +578,22 @@ export default function FormReportPage(): JSX.Element {
       }
     }
 
-    return { ...baseStructure, tabs: matchedTabs };
+    // Filter footer controls
+    const matchedFooterControls = baseStructure.footer?.controls.filter(control => {
+      const controlLabel = getDisplayLabel(control.labels);
+      return (
+        controlLabel.toLowerCase().includes(query) ||
+        control.name?.toLowerCase().includes(query) ||
+        control.datafieldname?.toLowerCase().includes(query)
+      );
+    });
+
+    return {
+      ...baseStructure,
+      header: matchedHeaderControls && matchedHeaderControls.length > 0 ? { controls: matchedHeaderControls } : undefined,
+      tabs: matchedTabs,
+      footer: matchedFooterControls && matchedFooterControls.length > 0 ? { controls: matchedFooterControls } : undefined,
+    };
   }, [structure, editedStructure, searchQuery, structureIsForSelectedForm]);
 
   useEffect(() => {
@@ -694,6 +722,11 @@ export default function FormReportPage(): JSX.Element {
 
     const { type } = selectedItem;
 
+    if (type === 'header-control') {
+      const freshControl = editedStructure.header?.controls.find(c => c.id === selectedItem.control.id);
+      if (freshControl) return { ...selectedItem, control: freshControl };
+    }
+
     if (type === 'tab') {
       const freshTab = editedStructure.tabs.find(t => t.id === selectedItem.tab.id);
       if (freshTab) return { ...selectedItem, tab: freshTab };
@@ -720,6 +753,11 @@ export default function FormReportPage(): JSX.Element {
           }
         }
       }
+    }
+
+    if (type === 'footer-control') {
+      const freshControl = editedStructure.footer?.controls.find(c => c.id === selectedItem.control.id);
+      if (freshControl) return { ...selectedItem, control: freshControl };
     }
 
     return selectedItem;
@@ -984,6 +1022,70 @@ export default function FormReportPage(): JSX.Element {
                 </div>
               )}
 
+              {/* Header Section */}
+              {selectedFormId &&
+                structureIsForSelectedForm &&
+                !loading &&
+                filteredStructure?.header &&
+                filteredStructure.header.controls.length > 0 && (
+                  <div>
+                    <div
+                      className={styles.treeItem}
+                      onClick={() => {
+                        setExpandedTabs(prev => {
+                          const next = new Set(prev);
+                          if (next.has('__header__')) next.delete('__header__');
+                          else next.add('__header__');
+                          return next;
+                        });
+                      }}
+                    >
+                      {expandedTabs.has('__header__') ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
+                      <Text weight='semibold' style={{ flex: 1 }}>
+                        Header
+                      </Text>
+                      <Badge size='small' appearance='filled' color='warning'>
+                        Header
+                      </Badge>
+                    </div>
+
+                    {expandedTabs.has('__header__') &&
+                      filteredStructure.header.controls.map(control => {
+                        const controlLabel =
+                          getDisplayLabel(control.labels) || control.datafieldname || control.name || control.id;
+
+                        return (
+                          <div
+                            key={`header-${control.id}`}
+                            className={`${styles.treeItem} ${styles.treeItemNested} ${
+                              selectedItem?.type === 'header-control' && selectedItem.control.id === control.id
+                                ? styles.treeItemSelected
+                                : ''
+                            }`}
+                            onClick={e => {
+                              e.stopPropagation();
+                              setSelectedItem({
+                                type: 'header-control',
+                                control,
+                                path: ['Header', controlLabel],
+                              });
+                            }}
+                          >
+                            <Text size={200} style={{ flex: 1 }}>
+                              {controlLabel}
+                            </Text>
+                            {control.datafieldname && (
+                              <Badge size='tiny' appearance='outline' color='success'>
+                                Field
+                              </Badge>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+
+              {/* Tabs */}
               {selectedFormId &&
                 structureIsForSelectedForm &&
                 !loading &&
@@ -1091,6 +1193,69 @@ export default function FormReportPage(): JSX.Element {
                     </div>
                   );
                 })}
+
+              {/* Footer Section */}
+              {selectedFormId &&
+                structureIsForSelectedForm &&
+                !loading &&
+                filteredStructure?.footer &&
+                filteredStructure.footer.controls.length > 0 && (
+                  <div>
+                    <div
+                      className={styles.treeItem}
+                      onClick={() => {
+                        setExpandedTabs(prev => {
+                          const next = new Set(prev);
+                          if (next.has('__footer__')) next.delete('__footer__');
+                          else next.add('__footer__');
+                          return next;
+                        });
+                      }}
+                    >
+                      {expandedTabs.has('__footer__') ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
+                      <Text weight='semibold' style={{ flex: 1 }}>
+                        Footer
+                      </Text>
+                      <Badge size='small' appearance='filled' color='severe'>
+                        Footer
+                      </Badge>
+                    </div>
+
+                    {expandedTabs.has('__footer__') &&
+                      filteredStructure.footer.controls.map(control => {
+                        const controlLabel =
+                          getDisplayLabel(control.labels) || control.datafieldname || control.name || control.id;
+
+                        return (
+                          <div
+                            key={`footer-${control.id}`}
+                            className={`${styles.treeItem} ${styles.treeItemNested} ${
+                              selectedItem?.type === 'footer-control' && selectedItem.control.id === control.id
+                                ? styles.treeItemSelected
+                                : ''
+                            }`}
+                            onClick={e => {
+                              e.stopPropagation();
+                              setSelectedItem({
+                                type: 'footer-control',
+                                control,
+                                path: ['Footer', controlLabel],
+                              });
+                            }}
+                          >
+                            <Text size={200} style={{ flex: 1 }}>
+                              {controlLabel}
+                            </Text>
+                            {control.datafieldname && (
+                              <Badge size='tiny' appearance='outline' color='success'>
+                                Field
+                              </Badge>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
             </div>
           </div>
 
@@ -1150,6 +1315,29 @@ export default function FormReportPage(): JSX.Element {
                         description={<code style={{ fontSize: tokens.fontSizeBase300 }}>{buildPath(currentItem.path)}</code>}
                       />
                     </Card>
+
+                    {currentItem.type === 'header-control' && (
+                      <ControlDetails
+                        control={currentItem.control}
+                        styles={styles}
+                        isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
+                        clientUrl={clientUrl}
+                        entity={selectedEntity || undefined}
+                        formId={selectedFormId || undefined}
+                        onUpdateLabel={(lcid, value) => {
+                          if (!editedStructure?.header) return;
+                          const ctrlIdx = editedStructure.header.controls.findIndex(c => c.id === currentItem.control.id);
+                          if (ctrlIdx < 0) return;
+
+                          const cloned = JSON.parse(JSON.stringify(editedStructure));
+                          const labels = cloned.header.controls[ctrlIdx].labels;
+                          const existing = labels.find((l: Label) => l.languageCode === lcid);
+                          if (existing) existing.label = value;
+
+                          setEditedStructure(cloned);
+                        }}
+                      />
+                    )}
 
                     {currentItem.type === 'tab' && (
                       <TabDetails
@@ -1220,6 +1408,29 @@ export default function FormReportPage(): JSX.Element {
                           if (colIdx >= 0 && secIdx >= 0 && ctrlIdx >= 0) {
                             updateLabel({ tabIdx, colIdx, secIdx, ctrlIdx }, lcid, value);
                           }
+                        }}
+                      />
+                    )}
+
+                    {currentItem.type === 'footer-control' && (
+                      <ControlDetails
+                        control={currentItem.control}
+                        styles={styles}
+                        isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
+                        clientUrl={clientUrl}
+                        entity={selectedEntity || undefined}
+                        formId={selectedFormId || undefined}
+                        onUpdateLabel={(lcid, value) => {
+                          if (!editedStructure?.footer) return;
+                          const ctrlIdx = editedStructure.footer.controls.findIndex(c => c.id === currentItem.control.id);
+                          if (ctrlIdx < 0) return;
+
+                          const cloned = JSON.parse(JSON.stringify(editedStructure));
+                          const labels = cloned.footer.controls[ctrlIdx].labels;
+                          const existing = labels.find((l: Label) => l.languageCode === lcid);
+                          if (existing) existing.label = value;
+
+                          setEditedStructure(cloned);
                         }}
                       />
                     )}
