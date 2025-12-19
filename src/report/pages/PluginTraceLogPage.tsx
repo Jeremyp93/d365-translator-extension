@@ -802,10 +802,13 @@ export default function PluginTraceLogPage(): JSX.Element {
   const resultsTableRef = React.useRef<ResultsTableHandle>(null);
 
   // Track current sort state to disable infinite scroll when sorting changes
-  const [currentSort, setCurrentSort] = React.useState<{ column?: TableColumnId; direction: 'ascending' | 'descending' }>({ 
-    column: 'createdon', 
-    direction: 'descending' 
+  const [currentSort, setCurrentSort] = React.useState<{ column?: TableColumnId; direction: 'ascending' | 'descending' }>({
+    column: 'createdon',
+    direction: 'descending'
   });
+
+  // Manual control for infinite scroll
+  const [infiniteScrollEnabled, setInfiniteScrollEnabled] = React.useState<boolean>(true);
 
   const handleTableSortChange = React.useCallback((column: TableColumnId | undefined, direction: 'ascending' | 'descending') => {
     setCurrentSort({ column, direction });
@@ -838,20 +841,20 @@ export default function PluginTraceLogPage(): JSX.Element {
     });
   }, []);
 
-  // Infinite scroll implementation - only active when using default sort
+  // Infinite scroll implementation - only active when using default sort and enabled by user
   const sentinelRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    if (!hasMore || isLoadingMore || !isDefaultSort) return;
+    if (!hasMore || isLoadingMore || !isDefaultSort || !infiniteScrollEnabled) return;
     if (!sentinelRef.current) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore && isDefaultSort) {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore && isDefaultSort && infiniteScrollEnabled) {
           loadMoreLogs();
         }
       },
-      { 
+      {
         rootMargin: '50px',
         threshold: 0.1
       }
@@ -861,7 +864,7 @@ export default function PluginTraceLogPage(): JSX.Element {
     return () => {
       observer.disconnect();
     };
-  }, [hasMore, isLoadingMore, loadMoreLogs, filteredLogs.length, isDefaultSort]); // Re-run when filteredLogs or sort changes
+  }, [hasMore, isLoadingMore, loadMoreLogs, filteredLogs.length, isDefaultSort, infiniteScrollEnabled]); // Re-run when filteredLogs or sort changes
 
   const handlePageSizeChange = React.useCallback((size: number) => {
     setPageSize(size);
@@ -963,6 +966,12 @@ export default function PluginTraceLogPage(): JSX.Element {
                 `Results (Loaded ${filteredLogs.length}${hasMore ? '+' : ''} ${hasMore ? '' : '(all)'})`
               )}
             </Text>
+            <Checkbox
+              label="Infinite scroll"
+              checked={infiniteScrollEnabled}
+              onChange={(_, data) => setInfiniteScrollEnabled(data.checked === true)}
+              disabled={!isDefaultSort || !!searchQuery}
+            />
           </div>
 
           {loading && (

@@ -177,7 +177,8 @@ export async function getFormsForEntity(
   entityLogicalName: string,
   apiVersion: string = 'v9.2'
 ): Promise<SystemForm[]> {
-  const url = `${baseUrl}/api/data/${apiVersion}/systemforms?$select=formid,name,description,type,objecttypecode,iscustomizable,ismanaged,canbedeleted&$filter=objecttypecode eq '${entityLogicalName}' and type eq 2&$orderby=name asc`;
+  // Include multiple form types: Main (2), Quick Create (6), Quick View (7), Card (11), Main Interactive (12)
+  const url = `${baseUrl}/api/data/${apiVersion}/systemforms?$select=formid,name,description,type,objecttypecode,iscustomizable,ismanaged,canbedeleted&$filter=objecttypecode eq '${entityLogicalName}' and (type eq 2 or type eq 6 or type eq 7 or type eq 11 or type eq 12)&$orderby=type asc,name asc`;
   const j = await fetchJson(url);
   const forms = j?.value || [];
   return forms.map((f: any) => ({

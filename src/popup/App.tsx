@@ -624,14 +624,10 @@ export default function App(): JSX.Element {
         <div className={styles.content}>
           <div className={styles.contentWrapper}>
             {/* Context Warning - General Tab */}
-            {!contextChecking && !isValidContext && activeTab === "general" && (
+            {!contextChecking && !isDynamicsEnv && activeTab === "general" && (
               <div className={`${styles.message} ${styles.warningMessage}`}>
-                <Text weight="semibold">⚠️ {isDynamicsEnv ? "Not on a Dynamics 365 Form" : "Not in Dynamics 365"}</Text>
-                <Text>
-                  {isDynamicsEnv 
-                    ? "General tools require a Dynamics 365 form page. Please navigate to a form or switch to the Developer tab."
-                    : "This extension requires a Dynamics 365 environment. Please navigate to a Dynamics 365 page."}
-                </Text>
+                <Text weight="semibold">⚠️ Not in Dynamics 365</Text>
+                <Text>This extension requires a Dynamics 365 environment. Please navigate to a Dynamics 365 page.</Text>
               </div>
             )}
 

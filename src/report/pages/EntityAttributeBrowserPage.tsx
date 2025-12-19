@@ -713,30 +713,52 @@ export default function EntityAttributeBrowserPage(): JSX.Element {
                   </div>
                 ) : (
                   <div className={styles.dependencyList}>
-                    {filteredDependencies.map((d, idx) => (
-                      <div
-                        key={`${d.componentObjectId}-${idx}`}
-                        className={styles.dependencyItem}
-                      >
-                        <FlexBadge
-                          label={d.componentDisplayName}
-                          badge={d.componentTypeName}
-                          badgeColor="informative"
-                          badgeAppearance="filled"
-                          labelClassName={styles.dependencyName}
-                        />
-                        <div className={styles.entityMeta}>
-                          <Text size={200}>{d.componentParentName || d.componentName || d.componentObjectId}</Text>
-                        </div>
-                        {d.solutionUniqueName && (
-                          <div style={{ marginTop: spacing.xs }}>
-                            <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
-                              Solution: {d.solutionUniqueName}
-                            </Text>
+                    {filteredDependencies.map((d, idx) => {
+                      const isForm = d.componentType === 24 || d.componentType === 60;
+
+                      const handleClick = () => {
+                        if (!isForm || !clientUrl || !selectedEntity) return;
+
+                        // Build URL to FormReportPage with entity and formId
+                        const params = new URLSearchParams({
+                          clientUrl,
+                          entity: selectedEntity,
+                          formId: d.componentObjectId,
+                          ...(apiVersion ? { apiVersion } : {}),
+                        });
+
+                        const url = `${window.location.origin}${window.location.pathname}#/report/form?${params.toString()}`;
+                        window.open(url, '_blank');
+                      };
+
+                      return (
+                        <div
+                          key={`${d.componentObjectId}-${idx}`}
+                          className={styles.dependencyItem}
+                          onClick={handleClick}
+                          style={{ cursor: isForm ? 'pointer' : 'default' }}
+                          title={isForm ? 'Click to open form in new tab' : undefined}
+                        >
+                          <FlexBadge
+                            label={d.componentDisplayName}
+                            badge={d.componentTypeName}
+                            badgeColor="informative"
+                            badgeAppearance="filled"
+                            labelClassName={styles.dependencyName}
+                          />
+                          <div className={styles.entityMeta}>
+                            <Text size={200}>{d.componentParentName || d.componentName || d.componentObjectId}</Text>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          {d.solutionUniqueName && (
+                            <div style={{ marginTop: spacing.xs }}>
+                              <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                                Solution: {d.solutionUniqueName}
+                              </Text>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </Section>

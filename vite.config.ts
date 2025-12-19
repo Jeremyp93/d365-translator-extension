@@ -7,11 +7,12 @@ export default defineConfig({
   base: '', // keep empty for extension paths
   plugins: [
     react(),
-    // visualizer({
-    //   filename: 'dist/stats.html',
-    //   gzipSize: true,
-    //   brotliSize: true,
-    // }),
+    visualizer({
+      filename: 'dist/stats.html',
+      gzipSize: true,
+      brotliSize: true,
+      open: false,
+    }),
   ],
   resolve: {
     alias: {

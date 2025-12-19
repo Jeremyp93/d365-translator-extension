@@ -14,6 +14,7 @@ import {
   MessageBarBody,
   MessageBarTitle,
   Option,
+  OptionGroup,
   shorthands,
   Spinner,
   Text,
@@ -501,6 +502,32 @@ export default function FormReportPage(): JSX.Element {
     });
   }, [availableEntities, entityDropdownValue]);
 
+  // Helper function to get form type label
+  const getFormTypeLabel = (type: number): string => {
+    switch (type) {
+      case 2: return 'Main Forms';
+      case 6: return 'Quick Create Forms';
+      case 7: return 'Quick View Forms';
+      case 11: return 'Card Forms';
+      case 12: return 'Main Interactive Forms';
+      default: return `Form Type ${type}`;
+    }
+  };
+
+  // Group forms by type
+  const groupedForms = useMemo(() => {
+    const groups = new Map<number, SystemForm[]>();
+
+    availableForms.forEach(form => {
+      const existing = groups.get(form.type) || [];
+      existing.push(form);
+      groups.set(form.type, existing);
+    });
+
+    // Sort groups by type number
+    return Array.from(groups.entries()).sort((a, b) => a[0] - b[0]);
+  }, [availableForms]);
+
   const filteredStructure = useMemo(() => {
     const baseStructure = structureIsForSelectedForm ? (editedStructure || structure) : null;
     if (!baseStructure || !searchQuery.trim()) return baseStructure;
@@ -707,6 +734,7 @@ export default function FormReportPage(): JSX.Element {
         title='Form Structure Viewer'
         subtitle='Manage form translations across all languages'
         icon={<DocumentTable24Regular />}
+        connectionInfo={{ clientUrl, apiVersion }}
         actions={
           <>
             {loading && (
@@ -879,10 +907,14 @@ export default function FormReportPage(): JSX.Element {
                         listbox={{ className: styles.dropdownListbox }}
                         style={{ width: '100%' }}
                       >
-                        {availableForms.map(form => (
-                          <Option key={form.formid} value={form.formid} text={form.name}>
-                            {form.name}
-                          </Option>
+                        {groupedForms.map(([type, forms]) => (
+                          <OptionGroup key={type} label={getFormTypeLabel(type)}>
+                            {forms.map(form => (
+                              <Option key={form.formid} value={form.formid} text={form.name}>
+                                {form.name}
+                              </Option>
+                            ))}
+                          </OptionGroup>
                         ))}
                       </Dropdown>
                     </div>
