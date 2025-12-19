@@ -8,10 +8,6 @@ import {
 import { lazy } from "react";
 import { FluentProvider } from "@fluentui/react-components";
 import { useTheme } from "../context/ThemeContext";
-// import FieldReportPage from "./pages/FieldReportPage";
-// import FormReportPage from "./pages/FormReportPage";
-// import GlobalOptionSetPage from "./pages/GlobalOptionSetPage";
-// import EntityAttributeBrowserPage from "./pages/EntityAttributeBrowserPage";
 
 const FieldReportPage = lazy(() => import('./pages/FieldReportPage'));
 const FormReportPage = lazy(() => import('./pages/FormReportPage'));
