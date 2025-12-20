@@ -84,3 +84,22 @@ export interface GlobalOptionSetSummary {
 }
 
 export type { PluginTraceLog, PluginTraceLogFilters, PaginatedResponse } from '../services/pluginTraceLogService';
+
+/** Bulk Translation Editing types */
+export interface PendingChange {
+  entity: string;
+  attribute: string;
+  languageCode: number;
+  oldValue: string;
+  newValue: string;
+  timestamp: number;
+}
+
+export interface BatchUpdateResult {
+  successCount: number;
+  failureCount: number;
+  failures: Array<{
+    change: PendingChange;
+    error: string;
+  }>;
+}

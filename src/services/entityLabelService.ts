@@ -6,6 +6,7 @@ import {
   soapExecute,
   escXml,
 } from './d365Api';
+import type { PendingChange, BatchUpdateResult } from '../types';
 
 export interface Label {
   languageCode: number;
@@ -199,6 +200,74 @@ export async function updateAttributeLabelsViaSoap(
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
+   Write (Web API PUT - Modern Approach)
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Update entity attribute DisplayName labels using Web API PUT request.
+ * This is the modern, recommended approach (10x faster than SOAP).
+ *
+ * @param baseUrl - Organization base URL
+ * @param entityLogicalName - Entity logical name (e.g., 'account')
+ * @param attributeLogicalName - Attribute logical name (e.g., 'accountnumber')
+ * @param labels - Array of labels with LanguageCode and Label
+ */
+export async function updateAttributeLabelsViaWebApi(
+  baseUrl: string,
+  entityLogicalName: string,
+  attributeLogicalName: string,
+  labels: { LanguageCode: number; Label: string }[]
+): Promise<void> {
+  // Normalize incoming list
+  const edited = labels.map((l) => ({
+    languageCode: Number(l.LanguageCode),
+    label: String(l.Label ?? ''),
+  }));
+
+  // Merge with current + enforce base-language non-empty
+  const [currentMap, baseLcid, { metadataId, soapTypeName }] = await Promise.all([
+    getCurrentDisplayNameLabelsMap(baseUrl, entityLogicalName, attributeLogicalName),
+    getOrgBaseLanguageCode(baseUrl),
+    getAttributeSoapBasics(baseUrl, entityLogicalName, attributeLogicalName),
+  ]);
+
+  const { list: mergedLocalized } = buildMergedLabels(
+    edited,
+    currentMap,
+    baseLcid,
+    attributeLogicalName
+  );
+
+  // Build the request body with proper OData types
+  const requestBody = {
+    '@odata.type': `Microsoft.Dynamics.CRM.${soapTypeName}`,
+    MetadataId: metadataId,
+    DisplayName: {
+      '@odata.type': 'Microsoft.Dynamics.CRM.Label',
+      LocalizedLabels: mergedLocalized.map((l) => ({
+        '@odata.type': 'Microsoft.Dynamics.CRM.LocalizedLabel',
+        Label: l.Label,
+        LanguageCode: l.LanguageCode,
+      })),
+    },
+  };
+
+  // Execute Web API PUT request
+  const url =
+    `${baseUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
+    `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')`;
+
+  await fetchJson(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'MSCRM.MergeLabels': 'true', // Preserve existing labels
+    },
+    body: JSON.stringify(requestBody),
+  });
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
    Small convenience used by pages
    ──────────────────────────────────────────────────────────────────────────── */
 
@@ -214,4 +283,181 @@ export async function saveEntityDisplayNameLabels(
     .map((lcid) => ({ LanguageCode: lcid, Label: valuesByLcid[lcid] ?? '' }));
 
   await updateAttributeLabelsViaSoap(baseUrl, entityLogicalName, attributeLogicalName, labels);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Batch Operations (for Bulk Translation Editing)
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Update multiple attribute labels using D365 $batch endpoint.
+ * Uses sequential changeset to ensure metadata updates don't conflict.
+ *
+ * @param baseUrl - Organization base URL
+ * @param changes - Array of pending changes to apply
+ * @returns BatchUpdateResult with success/failure counts
+ */
+export async function batchUpdateAttributeLabels(
+  baseUrl: string,
+  changes: PendingChange[]
+): Promise<BatchUpdateResult> {
+  // Group changes by entity/attribute
+  const grouped = new Map<string, PendingChange[]>();
+  changes.forEach((change) => {
+    const key = `${change.entity}|${change.attribute}`;
+    const existing = grouped.get(key) || [];
+    existing.push(change);
+    grouped.set(key, existing);
+  });
+
+  const batchId = `batch_${Date.now()}`;
+  const changesetId = `changeset_${Date.now()}`;
+  const batchBoundary = `--${batchId}`;
+  const changesetBoundary = `--${changesetId}`;
+
+  try {
+    // Build batch request body
+    const requests: string[] = [];
+
+    // Prepare all attribute updates
+    let contentId = 1;
+    for (const [key, changeGroup] of grouped.entries()) {
+      const [entity, attribute] = key.split('|');
+      const labels = changeGroup.map((c) => ({
+        LanguageCode: c.languageCode,
+        Label: c.newValue,
+      }));
+
+      // Get metadata needed for this attribute
+      const [currentMap, baseLcid, { metadataId, soapTypeName }] = await Promise.all([
+        getCurrentDisplayNameLabelsMap(baseUrl, entity, attribute),
+        getOrgBaseLanguageCode(baseUrl),
+        getAttributeSoapBasics(baseUrl, entity, attribute),
+      ]);
+
+      const { list: mergedLocalized } = buildMergedLabels(
+        labels.map((l) => ({ languageCode: l.LanguageCode, label: l.Label })),
+        currentMap,
+        baseLcid,
+        attribute
+      );
+
+      const requestBody = {
+        '@odata.type': `Microsoft.Dynamics.CRM.${soapTypeName}`,
+        MetadataId: metadataId,
+        DisplayName: {
+          '@odata.type': 'Microsoft.Dynamics.CRM.Label',
+          LocalizedLabels: mergedLocalized.map((l) => ({
+            '@odata.type': 'Microsoft.Dynamics.CRM.LocalizedLabel',
+            Label: l.Label,
+            LanguageCode: l.LanguageCode,
+          })),
+        },
+      };
+
+      const url = `/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entity)}')/Attributes(LogicalName='${encodeURIComponent(attribute)}')`;
+
+      // Add request to changeset with Content-ID header
+      requests.push(
+        `${changesetBoundary}`,
+        `Content-Type: application/http`,
+        `Content-Transfer-Encoding: binary`,
+        `Content-ID: ${contentId}`,
+        ``,
+        `PUT ${url} HTTP/1.1`,
+        `Content-Type: application/json`,
+        `MSCRM.MergeLabels: true`,
+        ``,
+        JSON.stringify(requestBody),
+        ``
+      );
+
+      contentId++;
+    }
+
+    // Build complete batch request
+    const batchBody = [
+      `${batchBoundary}`,
+      `Content-Type: multipart/mixed; boundary=${changesetId}`,
+      ``,
+      ...requests,
+      `${changesetBoundary}--`,
+      `${batchBoundary}--`,
+      ``
+    ].join('\r\n');
+
+    // Execute batch request
+    const response = await fetch(`${baseUrl}/api/data/v9.2/$batch`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': `multipart/mixed; boundary=${batchId}`,
+        'OData-MaxVersion': '4.0',
+        'OData-Version': '4.0',
+        'Accept': 'application/json',
+      },
+      body: batchBody,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Batch request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const responseText = await response.text();
+
+    // Parse batch response to determine success/failure
+    // If changeset succeeded, all updates succeeded (atomic)
+    // If changeset failed, all updates failed
+    const changesetSucceeded = !responseText.includes('HTTP/1.1 4') && !responseText.includes('HTTP/1.1 5');
+
+    if (changesetSucceeded) {
+      return {
+        successCount: changes.length,
+        failureCount: 0,
+        failures: [],
+      };
+    } else {
+      // Extract error message from response
+      const errorMatch = responseText.match(/"message":"([^"]+)"/);
+      const errorMessage = errorMatch ? errorMatch[1] : 'Batch update failed';
+
+      return {
+        successCount: 0,
+        failureCount: changes.length,
+        failures: changes.map((change) => ({
+          change,
+          error: errorMessage,
+        })),
+      };
+    }
+  } catch (error: any) {
+    // If batch fails, fall back to sequential individual updates
+    console.warn('$batch endpoint failed, falling back to sequential updates:', error);
+
+    let successCount = 0;
+    const failures: Array<{ change: PendingChange; error: string }> = [];
+
+    for (const [key, changeGroup] of grouped.entries()) {
+      const [entity, attribute] = key.split('|');
+      const labels = changeGroup.map((c) => ({
+        LanguageCode: c.languageCode,
+        Label: c.newValue,
+      }));
+
+      try {
+        await updateAttributeLabelsViaWebApi(baseUrl, entity, attribute, labels);
+        successCount += changeGroup.length;
+      } catch (err: any) {
+        const errorMessage = err?.message ?? String(err);
+        changeGroup.forEach((change) => {
+          failures.push({ change, error: errorMessage });
+        });
+      }
+    }
+
+    return {
+      successCount,
+      failureCount: failures.length,
+      failures,
+    };
+  }
 }

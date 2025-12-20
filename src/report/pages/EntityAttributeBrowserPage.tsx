@@ -17,6 +17,7 @@ import {
   TableColumnDefinition,
   TableCellLayout,
   Button,
+  CounterBadge,
 } from "@fluentui/react-components";
 import {
   Database24Regular,
@@ -24,6 +25,7 @@ import {
   TableEdit24Regular,
   WeatherMoon20Regular,
   WeatherSunny20Regular,
+  Cart24Regular,
 } from "@fluentui/react-icons";
 
 import { ErrorBox, Info } from "../../components/ui/Notice";
@@ -31,6 +33,9 @@ import PageHeader from "../../components/ui/PageHeader";
 import Section from "../../components/ui/Section";
 import EntityLabelEditor from "../../components/EntityLabelEditor";
 import FlexBadge from "../../components/ui/FlexBadge";
+import PendingChangesCartModal from "../../components/PendingChangesCartModal";
+import { PendingChangesProvider, usePendingChanges } from "../../hooks/usePendingChanges";
+import type { PendingChange } from "../../types";
 
 import { useOrgContext } from "../../hooks/useOrgContext";
 import { useLanguages } from "../../hooks/useLanguages";
@@ -238,6 +243,15 @@ const useStyles = makeStyles({
   attributeRow: {
     marginBottom: "32px",
   },
+  cartButton: {
+    minWidth: "auto",
+    position: "relative",
+  },
+  headerActions: {
+    display: "flex",
+    alignItems: "center",
+    ...shorthands.gap(spacing.sm),
+  },
 });
 
 // Badge color mapping for attribute types
@@ -261,13 +275,18 @@ interface AttributeItem {
   isLocked: boolean;
 }
 
-export default function EntityAttributeBrowserPage(): JSX.Element {
+function EntityAttributeBrowserPageContent(): JSX.Element {
   const styles = useStyles();
   const sharedStyles = useSharedStyles();
   const { theme, mode, toggleTheme } = useTheme();
   const { clientUrl, apiVersion } = useOrgContext();
-  
+
   const { langs, error: langsError } = useLanguages(clientUrl || "", apiVersion);
+
+  // Pending changes state
+  const { changes, count: pendingCount, addChanges, removeChange, clearAll } = usePendingChanges();
+  const [cartModalOpen, setCartModalOpen] = useState(false);
+  const [editorReloadTrigger, setEditorReloadTrigger] = useState(0);
 
   const [entities, setEntities] = useState<EntitySummary[]>([]);
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
@@ -275,7 +294,7 @@ export default function EntityAttributeBrowserPage(): JSX.Element {
   const [selectedAttribute, setSelectedAttribute] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchTermAttributes, setSearchTermAttributes] = useState("");
-  
+
   const [loading, setLoading] = useState(false);
   const [loadingAttributes, setLoadingAttributes] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -290,6 +309,61 @@ export default function EntityAttributeBrowserPage(): JSX.Element {
   useEffect(() => {
     document.title = 'Entity Browser - D365 Translator';
   }, []);
+
+  // Warn before leaving page with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (pendingCount > 0) {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome requires this
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [pendingCount]);
+
+  // Handlers for cart modal
+  const handleAddToCart = (newChanges: PendingChange[]) => {
+    addChanges(newChanges);
+  };
+
+  const handleOpenCart = () => {
+    setCartModalOpen(true);
+  };
+
+  const handleCloseCart = () => {
+    setCartModalOpen(false);
+  };
+
+  const handleCartSaveSuccess = async (successfulChanges: PendingChange[]) => {
+    // Reload entities list to reflect any metadata changes
+    if (!clientUrl) return;
+
+    try {
+      const entityList = await listAllEntities(clientUrl, apiVersion);
+      setEntities(entityList);
+
+      // If current entity is selected, reload its attributes too
+      if (selectedEntity) {
+        const attributeList = await listEntityAttributes(clientUrl, selectedEntity, apiVersion);
+        setAttributes(attributeList);
+      }
+
+      // Trigger EntityLabelEditor reload ONLY if the currently selected attribute was successfully saved
+      if (selectedEntity && selectedAttribute) {
+        const wasCurrentAttributeSaved = successfulChanges.some(
+          (change) => change.entity === selectedEntity && change.attribute === selectedAttribute
+        );
+
+        if (wasCurrentAttributeSaved) {
+          setEditorReloadTrigger(prev => prev + 1);
+        }
+      }
+    } catch (e: any) {
+      // Silently fail - entity list reload is not critical
+      console.error('Failed to reload entities after save:', e);
+    }
+  };
 
   // Load entities list
   useEffect(() => {
@@ -528,12 +602,29 @@ export default function EntityAttributeBrowserPage(): JSX.Element {
               icon={<TableEdit24Regular />}
               connectionInfo={{ clientUrl, apiVersion }}
               actions={
-                <Button
-                  appearance="subtle"
-                  icon={mode === "dark" ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />}
-                  onClick={toggleTheme}
-                  title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                />
+                <div className={styles.headerActions}>
+                  <Button
+                    appearance="subtle"
+                    icon={<Cart24Regular />}
+                    onClick={handleOpenCart}
+                    title={`Review pending changes (${pendingCount})`}
+                    className={styles.cartButton}
+                  >
+                    {pendingCount > 0 && (
+                      <CounterBadge
+                        count={pendingCount}
+                        color="brand"
+                        appearance="filled"
+                      />
+                    )}
+                  </Button>
+                  <Button
+                    appearance="subtle"
+                    icon={mode === "dark" ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />}
+                    onClick={toggleTheme}
+                    title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                  />
+                </div>
               }
             />
 
@@ -679,6 +770,12 @@ export default function EntityAttributeBrowserPage(): JSX.Element {
                         clientUrl={clientUrl}
                         entity={selectedEntity}
                         attribute={selectedAttribute}
+                        bulkMode={true}
+                        onAddToCart={handleAddToCart}
+                        reloadTrigger={editorReloadTrigger}
+                        pendingChanges={Array.from(changes.values()).filter(
+                          (change) => change.entity === selectedEntity && change.attribute === selectedAttribute
+                        )}
                       />
                     </Section>
                   </div>
@@ -766,6 +863,27 @@ export default function EntityAttributeBrowserPage(): JSX.Element {
           )}
         </div>
       </div>
+
+      {/* Pending Changes Cart Modal */}
+      <PendingChangesCartModal
+        open={cartModalOpen}
+        onClose={handleCloseCart}
+        changes={changes}
+        onRemoveChange={removeChange}
+        onClearAll={clearAll}
+        onSaveSuccess={handleCartSaveSuccess}
+        clientUrl={clientUrl}
+        apiVersion={apiVersion}
+      />
     </div>
+  );
+}
+
+// Wrapper component with PendingChangesProvider
+export default function EntityAttributeBrowserPage(): JSX.Element {
+  return (
+    <PendingChangesProvider>
+      <EntityAttributeBrowserPageContent />
+    </PendingChangesProvider>
   );
 }
