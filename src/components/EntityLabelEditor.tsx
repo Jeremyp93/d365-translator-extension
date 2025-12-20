@@ -12,9 +12,10 @@ import { ErrorBox, Info } from "./ui/Notice";
 import { useLanguages } from "../hooks/useLanguages";
 import {
   getAttributeLabelTranslations,
-  updateAttributeLabelsViaSoap,
+  updateAttributeLabelsViaWebApi,
 } from "../services/entityLabelService";
 import { publishEntityViaWebApi } from "../services/d365Api";
+import type { PendingChange } from "../types";
 
 const useStyles = makeStyles({
   root: {
@@ -41,6 +42,14 @@ interface Props {
   clientUrl: string;
   entity: string;
   attribute: string;
+  /** Enable bulk mode: changes are added to cart instead of immediate save */
+  bulkMode?: boolean;
+  /** Callback when changes are added to cart (bulk mode only) */
+  onAddToCart?: (changes: PendingChange[]) => void;
+  /** Trigger to reload data from D365 (for bulk mode after save) */
+  reloadTrigger?: number;
+  /** Pending changes for this attribute (bulk mode only) - to restore edits when navigating back */
+  pendingChanges?: PendingChange[];
 }
 
 interface Label {
@@ -52,6 +61,10 @@ export default function EntityLabelEditor({
   clientUrl,
   entity,
   attribute,
+  bulkMode = false,
+  onAddToCart,
+  reloadTrigger,
+  pendingChanges = [],
 }: Props): JSX.Element {
   const styles = useStyles();
   const { langs, error: langsError } = useLanguages(clientUrl);
@@ -59,6 +72,7 @@ export default function EntityLabelEditor({
   const langsLoading = !langs && !langsError;
 
   const [values, setValues] = useState<Editable>({});
+  const [originalValues, setOriginalValues] = useState<Editable>({}); // Track original for bulk mode
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +88,7 @@ export default function EntityLabelEditor({
     (async () => {
       try {
         setError(null);
-        setInfo("Loading labels…");
+        // Don't show info message - the loading spinner in TranslationsTable is enough
         setLoading(true);
 
         const labels = await getAttributeLabelTranslations(
@@ -92,9 +106,17 @@ export default function EntityLabelEditor({
           map[lcid] = hit?.label ?? "";
         });
 
+        // Apply pending changes on top of D365 values (restore user edits when navigating back)
+        const valuesWithPendingChanges = { ...map };
+        pendingChanges.forEach((change) => {
+          if (change.entity === entity && change.attribute === attribute) {
+            valuesWithPendingChanges[change.languageCode] = change.newValue;
+          }
+        });
+
         if (!cancelled) {
-          setValues(map);
-          setInfo(null);
+          setValues(valuesWithPendingChanges);
+          setOriginalValues(map); // Store original D365 values for comparison (not the edited ones)
         }
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? String(e));
@@ -106,26 +128,48 @@ export default function EntityLabelEditor({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientUrl, entity, attribute, lcids.join(",")]); // re-run if langs change
+  }, [clientUrl, entity, attribute, lcids.join(","), reloadTrigger, pendingChanges.length]); // re-run if langs change, reload triggered, or pending changes added/removed
 
   const onChange = (lcid: number, v: string) => {
     setValues((prev) => ({ ...prev, [lcid]: v }));
   };
 
-  const onSave = async () => {
+  // Immediate save handler (default mode)
+  const handleImmediateSave = async () => {
     try {
       setSaving(true);
       setError(null);
       setInfo("Saving…");
 
-      const labels = lcids.map((lcid) => ({
-        LanguageCode: lcid,
-        Label: values[lcid] ?? "",
-      }));
-      await updateAttributeLabelsViaSoap(clientUrl, entity, attribute, labels);
+      // Only send changed languages for efficiency (consistent with bulk mode)
+      const labels: { LanguageCode: number; Label: string }[] = [];
+      lcids.forEach((lcid) => {
+        const oldValue = originalValues[lcid] ?? "";
+        const newValue = values[lcid] ?? "";
+
+        // Only include if value actually changed
+        if (oldValue !== newValue) {
+          labels.push({
+            LanguageCode: lcid,
+            Label: newValue,
+          });
+        }
+      });
+
+      // If no changes, don't make the API call
+      if (labels.length === 0) {
+        setInfo("No changes to save");
+        setSaving(false);
+        return;
+      }
+
+      await updateAttributeLabelsViaWebApi(clientUrl, entity, attribute, labels);
 
       setInfo("Publishing…");
       await publishEntityViaWebApi(clientUrl, entity);
+
+      // Update originalValues to match the new saved state
+      setOriginalValues({ ...values });
 
       setInfo(
         "Saved & published. If you still see old text, hard refresh (Ctrl/Cmd+Shift+R)."
@@ -136,6 +180,52 @@ export default function EntityLabelEditor({
       setSaving(false);
     }
   };
+
+  // Add to cart handler (bulk mode)
+  const handleAddToCart = () => {
+    if (!onAddToCart) return;
+
+    // Calculate changes: compare current values with original values
+    const changes: PendingChange[] = [];
+    lcids.forEach((lcid) => {
+      const oldValue = originalValues[lcid] ?? "";
+      const newValue = values[lcid] ?? "";
+
+      // Only add if value actually changed
+      if (oldValue !== newValue) {
+        changes.push({
+          entity,
+          attribute,
+          languageCode: lcid,
+          oldValue,
+          newValue,
+          timestamp: Date.now(),
+        });
+      }
+    });
+
+    if (changes.length === 0) {
+      setInfo("No changes detected");
+      setTimeout(() => setInfo(null), 2000);
+      return;
+    }
+
+    // Call the callback with changes
+    onAddToCart(changes);
+
+    // DO NOT update originalValues here - keep the D365 values as baseline
+    // This allows user to:
+    // 1. Make changes → add to cart
+    // 2. Clear cart or remove changes
+    // 3. Still see the same diff from D365 (not from last "add to cart")
+
+    // Show success feedback
+    setInfo(`Added ${changes.length} translation${changes.length > 1 ? 's' : ''} to the changes`);
+    setTimeout(() => setInfo(null), 2000);
+  };
+
+  const handleSave = bulkMode ? handleAddToCart : handleImmediateSave;
+  const buttonLabel = bulkMode ? "Add to Changes" : (saving ? "Saving…" : "Save & Publish");
 
   return (
     <Card className={styles.root}>
@@ -169,11 +259,11 @@ export default function EntityLabelEditor({
 
       <div className={styles.actions}>
         <Button
-          onClick={onSave}
+          onClick={handleSave}
           disabled={saving || !langs?.length}
           variant="primary"
         >
-          {saving ? "Saving…" : "Save & Publish"}
+          {buttonLabel}
         </Button>
       </div>
     </Card>

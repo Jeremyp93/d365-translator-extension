@@ -102,6 +102,33 @@ export async function publishEntityViaWebApi(baseUrl: string, entityLogicalName:
   });
 }
 
+/**
+ * Publish multiple entities in a single PublishXml call.
+ * More efficient than calling publishEntityViaWebApi multiple times.
+ *
+ * @param baseUrl - Organization base URL
+ * @param entityNames - Array of entity logical names to publish
+ * @param apiVersion - API version (defaults to v9.2)
+ */
+export async function publishMultipleEntities(
+  baseUrl: string,
+  entityNames: string[],
+  apiVersion: string = 'v9.2'
+): Promise<void> {
+  if (entityNames.length === 0) return;
+
+  // Build XML with multiple entity tags
+  const entities = entityNames.map((e) => `<entity>${escXml(e)}</entity>`).join('');
+  const parameterXml = `<importexportxml><entities>${entities}</entities></importexportxml>`;
+
+  const url = `${baseUrl}/api/data/${apiVersion}/PublishXml`;
+  await fetchJson(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    body: JSON.stringify({ ParameterXml: parameterXml }),
+  });
+}
+
 /* ────────────────────────────────────────────────────────────────────────────
    User + UI language (for form label tricks)
    ──────────────────────────────────────────────────────────────────────────── */
