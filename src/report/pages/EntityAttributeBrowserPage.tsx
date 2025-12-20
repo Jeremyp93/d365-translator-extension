@@ -336,21 +336,15 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
   };
 
   const handleCartSaveSuccess = async (successfulChanges: PendingChange[]) => {
-    // Reload entities list to reflect any metadata changes
-    if (!clientUrl) return;
+    if (!clientUrl || !selectedEntity) return;
 
     try {
-      const entityList = await listAllEntities(clientUrl, apiVersion);
-      setEntities(entityList);
-
-      // If current entity is selected, reload its attributes too
-      if (selectedEntity) {
-        const attributeList = await listEntityAttributes(clientUrl, selectedEntity, apiVersion);
-        setAttributes(attributeList);
-      }
+      // Only reload attributes for the currently selected entity
+      const attributeList = await listEntityAttributes(clientUrl, selectedEntity, apiVersion);
+      setAttributes(attributeList);
 
       // Trigger EntityLabelEditor reload ONLY if the currently selected attribute was successfully saved
-      if (selectedEntity && selectedAttribute) {
+      if (selectedAttribute) {
         const wasCurrentAttributeSaved = successfulChanges.some(
           (change) => change.entity === selectedEntity && change.attribute === selectedAttribute
         );
@@ -360,8 +354,7 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
         }
       }
     } catch (e: any) {
-      // Silently fail - entity list reload is not critical
-      console.error('Failed to reload entities after save:', e);
+      console.error('Failed to reload attributes after save:', e);
     }
   };
 

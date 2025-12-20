@@ -224,19 +224,27 @@ export async function updateAttributeLabelsViaWebApi(
     label: String(l.Label ?? ''),
   }));
 
-  // Merge with current + enforce base-language non-empty
-  const [currentMap, baseLcid, { metadataId, soapTypeName }] = await Promise.all([
-    getCurrentDisplayNameLabelsMap(baseUrl, entityLogicalName, attributeLogicalName),
+  // Get metadata and base language
+  const [baseLcid, { metadataId, soapTypeName }] = await Promise.all([
     getOrgBaseLanguageCode(baseUrl),
     getAttributeSoapBasics(baseUrl, entityLogicalName, attributeLogicalName),
   ]);
 
-  const { list: mergedLocalized } = buildMergedLabels(
-    edited,
-    currentMap,
-    baseLcid,
-    attributeLogicalName
-  );
+  // Only send changed languages (MSCRM.MergeLabels: true preserves existing)
+  // But ensure base language is non-empty (D365 requirement)
+  const localizedLabels = edited.map((l) => ({
+    Label: l.label,
+    LanguageCode: l.languageCode,
+  }));
+
+  // If base language is being updated and is empty, fetch current value or use attribute name
+  const baseLanguageLabel = localizedLabels.find((l) => l.LanguageCode === baseLcid);
+  if (baseLanguageLabel && !baseLanguageLabel.Label.trim()) {
+    // Base language cannot be empty - fetch current or use attribute name as fallback
+    const currentMap = await getCurrentDisplayNameLabelsMap(baseUrl, entityLogicalName, attributeLogicalName);
+    const fallbackLabel = currentMap[baseLcid] || attributeLogicalName.replace(/_/g, ' ');
+    baseLanguageLabel.Label = fallbackLabel.trim();
+  }
 
   // Build the request body with proper OData types
   const requestBody = {
@@ -244,7 +252,7 @@ export async function updateAttributeLabelsViaWebApi(
     MetadataId: metadataId,
     DisplayName: {
       '@odata.type': 'Microsoft.Dynamics.CRM.Label',
-      LocalizedLabels: mergedLocalized.map((l) => ({
+      LocalizedLabels: localizedLabels.map((l) => ({
         '@odata.type': 'Microsoft.Dynamics.CRM.LocalizedLabel',
         Label: l.Label,
         LanguageCode: l.LanguageCode,
@@ -321,6 +329,8 @@ export async function batchUpdateAttributeLabels(
 
     // Prepare all attribute updates
     let contentId = 1;
+    const baseLcid = await getOrgBaseLanguageCode(baseUrl);
+
     for (const [key, changeGroup] of grouped.entries()) {
       const [entity, attribute] = key.split('|');
       const labels = changeGroup.map((c) => ({
@@ -329,18 +339,27 @@ export async function batchUpdateAttributeLabels(
       }));
 
       // Get metadata needed for this attribute
-      const [currentMap, baseLcid, { metadataId, soapTypeName }] = await Promise.all([
-        getCurrentDisplayNameLabelsMap(baseUrl, entity, attribute),
-        getOrgBaseLanguageCode(baseUrl),
-        getAttributeSoapBasics(baseUrl, entity, attribute),
-      ]);
-
-      const { list: mergedLocalized } = buildMergedLabels(
-        labels.map((l) => ({ languageCode: l.LanguageCode, label: l.Label })),
-        currentMap,
-        baseLcid,
+      const { metadataId, soapTypeName } = await getAttributeSoapBasics(
+        baseUrl,
+        entity,
         attribute
       );
+
+      // Only send changed languages (MSCRM.MergeLabels: true preserves existing)
+      // But ensure base language is non-empty (D365 requirement)
+      let mergedLocalized = labels.map((l) => ({
+        Label: l.Label,
+        LanguageCode: l.LanguageCode,
+      }));
+
+      // If base language is in the changes and is empty, fetch current value or use attribute name
+      const baseLanguageChange = mergedLocalized.find((l) => l.LanguageCode === baseLcid);
+      if (baseLanguageChange && !baseLanguageChange.Label.trim()) {
+        // Base language cannot be empty - fetch current or use attribute name as fallback
+        const currentMap = await getCurrentDisplayNameLabelsMap(baseUrl, entity, attribute);
+        const fallbackLabel = currentMap[baseLcid] || attribute.replace(/_/g, ' ');
+        baseLanguageChange.Label = fallbackLabel.trim();
+      }
 
       const requestBody = {
         '@odata.type': `Microsoft.Dynamics.CRM.${soapTypeName}`,

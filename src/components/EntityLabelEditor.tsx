@@ -88,7 +88,7 @@ export default function EntityLabelEditor({
     (async () => {
       try {
         setError(null);
-        setInfo("Loading labels…");
+        // Don't show info message - the loading spinner in TranslationsTable is enough
         setLoading(true);
 
         const labels = await getAttributeLabelTranslations(
@@ -117,7 +117,6 @@ export default function EntityLabelEditor({
         if (!cancelled) {
           setValues(valuesWithPendingChanges);
           setOriginalValues(map); // Store original D365 values for comparison (not the edited ones)
-          setInfo(null);
         }
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? String(e));
@@ -142,14 +141,35 @@ export default function EntityLabelEditor({
       setError(null);
       setInfo("Saving…");
 
-      const labels = lcids.map((lcid) => ({
-        LanguageCode: lcid,
-        Label: values[lcid] ?? "",
-      }));
+      // Only send changed languages for efficiency (consistent with bulk mode)
+      const labels: { LanguageCode: number; Label: string }[] = [];
+      lcids.forEach((lcid) => {
+        const oldValue = originalValues[lcid] ?? "";
+        const newValue = values[lcid] ?? "";
+
+        // Only include if value actually changed
+        if (oldValue !== newValue) {
+          labels.push({
+            LanguageCode: lcid,
+            Label: newValue,
+          });
+        }
+      });
+
+      // If no changes, don't make the API call
+      if (labels.length === 0) {
+        setInfo("No changes to save");
+        setSaving(false);
+        return;
+      }
+
       await updateAttributeLabelsViaWebApi(clientUrl, entity, attribute, labels);
 
       setInfo("Publishing…");
       await publishEntityViaWebApi(clientUrl, entity);
+
+      // Update originalValues to match the new saved state
+      setOriginalValues({ ...values });
 
       setInfo(
         "Saved & published. If you still see old text, hard refresh (Ctrl/Cmd+Shift+R)."
@@ -185,7 +205,7 @@ export default function EntityLabelEditor({
     });
 
     if (changes.length === 0) {
-      setInfo("No changes to add to cart");
+      setInfo("No changes detected");
       setTimeout(() => setInfo(null), 2000);
       return;
     }
@@ -200,12 +220,12 @@ export default function EntityLabelEditor({
     // 3. Still see the same diff from D365 (not from last "add to cart")
 
     // Show success feedback
-    setInfo(`Added ${changes.length} translation${changes.length > 1 ? 's' : ''} to cart`);
+    setInfo(`Added ${changes.length} translation${changes.length > 1 ? 's' : ''} to the changes`);
     setTimeout(() => setInfo(null), 2000);
   };
 
   const handleSave = bulkMode ? handleAddToCart : handleImmediateSave;
-  const buttonLabel = bulkMode ? "Add to Cart" : (saving ? "Saving…" : "Save & Publish");
+  const buttonLabel = bulkMode ? "Add to Changes" : (saving ? "Saving…" : "Save & Publish");
 
   return (
     <Card className={styles.root}>
