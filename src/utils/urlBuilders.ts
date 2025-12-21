@@ -1,4 +1,5 @@
-const DEFAULT_API_VERSION = 'v9.2';
+import { D365_API_VERSION } from '../config/constants';
+import { normalizeGuid } from './stringHelpers';
 
 /**
  * URL builders for D365 Web API endpoints
@@ -13,7 +14,7 @@ export interface UrlBuilderOptions {
 /**
  * Build base API URL
  */
-export function buildApiUrl(baseUrl: string, apiVersion: string = DEFAULT_API_VERSION): string {
+export function buildApiUrl(baseUrl: string, apiVersion: string = D365_API_VERSION): string {
   const trimmedBase = baseUrl.replace(/\/+$/, '');
   return `${trimmedBase}/api/data/${apiVersion}`;
 }
@@ -28,7 +29,7 @@ export function buildEntityDefinitionUrl(
     expand?: string;
   }
 ): string {
-  const { baseUrl, apiVersion = DEFAULT_API_VERSION, entityLogicalName, select, expand } = options;
+  const { baseUrl, apiVersion = D365_API_VERSION, entityLogicalName, select, expand } = options;
   const api = buildApiUrl(baseUrl, apiVersion);
   const encoded = encodeURIComponent(entityLogicalName);
   let url = `${api}/EntityDefinitions(LogicalName='${encoded}')`;
@@ -58,7 +59,7 @@ export function buildAttributeUrl(
 ): string {
   const {
     baseUrl,
-    apiVersion = DEFAULT_API_VERSION,
+    apiVersion = D365_API_VERSION,
     entityLogicalName,
     attributeLogicalName,
     select,
@@ -96,9 +97,9 @@ export function buildFormUrl(
     select?: string[];
   }
 ): string {
-  const { baseUrl, apiVersion = DEFAULT_API_VERSION, formId, select } = options;
+  const { baseUrl, apiVersion = D365_API_VERSION, formId, select } = options;
   const api = buildApiUrl(baseUrl, apiVersion);
-  const guid = formId.replace(/[{}]/g, '').toLowerCase();
+  const guid = normalizeGuid(formId);
   let url = `${api}/systemforms(${guid})`;
 
   if (select?.length) {
@@ -118,7 +119,7 @@ export function buildGlobalOptionSetUrl(
     castType?: string;
   }
 ): string {
-  const { baseUrl, apiVersion = DEFAULT_API_VERSION, optionSetName, select, castType } = options;
+  const { baseUrl, apiVersion = D365_API_VERSION, optionSetName, select, castType } = options;
   const api = buildApiUrl(baseUrl, apiVersion);
   const encoded = encodeURIComponent(optionSetName);
 
@@ -145,9 +146,9 @@ export function buildUserSettingsUrl(
     select?: string[];
   }
 ): string {
-  const { baseUrl, apiVersion = DEFAULT_API_VERSION, systemUserId, select } = options;
+  const { baseUrl, apiVersion = D365_API_VERSION, systemUserId, select } = options;
   const api = buildApiUrl(baseUrl, apiVersion);
-  const guid = systemUserId.replace(/[{}]/g, '').toLowerCase();
+  const guid = normalizeGuid(systemUserId);
   let url = `${api}/usersettingscollection(${guid})`;
 
   if (select?.length) {
@@ -160,7 +161,7 @@ export function buildUserSettingsUrl(
 /**
  * Build batch endpoint URL
  */
-export function buildBatchUrl(baseUrl: string, apiVersion: string = DEFAULT_API_VERSION): string {
+export function buildBatchUrl(baseUrl: string, apiVersion: string = D365_API_VERSION): string {
   const api = buildApiUrl(baseUrl, apiVersion);
   return `${api}/$batch`;
 }
@@ -174,7 +175,7 @@ export function buildActionUrl(
     parameters?: Record<string, unknown>;
   }
 ): string {
-  const { baseUrl, apiVersion = DEFAULT_API_VERSION, actionName, parameters } = options;
+  const { baseUrl, apiVersion = D365_API_VERSION, actionName, parameters } = options;
   const api = buildApiUrl(baseUrl, apiVersion);
   let url = `${api}/${actionName}`;
 

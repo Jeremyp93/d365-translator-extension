@@ -5,7 +5,7 @@ import {
   publishEntityViaWebApi,
 } from './d365Api';
 import type { OptionSetMetadata, OptionValue, OptionSetType, GlobalOptionSetSummary, Label } from '../types';
-import { mergeOptionSetLabels } from '../utils/labelMerger';
+import { mergeOptionSetLabels, type MergedLabel } from '../utils/labelMerger';
 import { buildBatchRequest, executeBatchRequest, BatchOperation } from '../utils/batchBuilder';
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -247,13 +247,23 @@ export async function getGlobalOptionSet(
  * Merge edited option labels with current labels
  * editedOptions: array of { value, labels: { languageCode, label }[] }
  * currentOptions: existing option values
+ * Returns labels in D365 API format (PascalCase) for sending to the API
  */
 function mergeOptionLabels(
   editedOptions: Array<{ value: number; labels: Label[] }>,
   currentOptions: OptionValue[],
   baseLcid: number
 ): Array<{ value: number; labels: { LanguageCode: number; Label: string }[] }> {
-  return mergeOptionSetLabels(editedOptions, currentOptions, baseLcid);
+  const merged = mergeOptionSetLabels(editedOptions, currentOptions, baseLcid);
+
+  // Map from internal camelCase to D365 PascalCase
+  return merged.map(option => ({
+    value: option.value,
+    labels: option.labels.map(l => ({
+      LanguageCode: l.languageCode,
+      Label: l.label,
+    })),
+  }));
 }
 
 export async function updateLocalOptionSetLabels(

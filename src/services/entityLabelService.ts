@@ -70,10 +70,16 @@ function buildMergedLabels(
   baseLcid: number,
   attributeLogicalName: string
 ): { list: { LanguageCode: number; Label: string }[]; baseLabel: string } {
-  const list = mergeLabels(edited, current, {
+  const merged = mergeLabels(edited, current, {
     baseLcid,
     fallbackLabel: attributeLogicalName.replace(/_/g, ' '),
   });
+
+  // Map from internal camelCase to D365 PascalCase
+  const list = merged.map(l => ({
+    LanguageCode: l.languageCode,
+    Label: l.label,
+  }));
 
   const baseLabel = list.find(x => x.LanguageCode === baseLcid)?.Label ?? '';
 

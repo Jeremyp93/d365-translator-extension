@@ -1,14 +1,14 @@
-export interface BatchOperation {
+export interface BatchOperation<TBody = Record<string, unknown>> {
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   url: string;
   headers?: Record<string, string>;
-  body?: unknown;
+  body?: TBody;
 }
 
-export interface BatchOptions {
+export interface BatchOptions<TBody = Record<string, unknown>> {
   baseUrl: string;
   apiVersion?: string;
-  operations: BatchOperation[];
+  operations: BatchOperation<TBody>[];
 }
 
 export interface BatchResponse {
@@ -21,12 +21,19 @@ export interface BatchResponse {
  * Build a D365 batch request body with a single atomic changeset
  * All operations succeed or fail together
  */
-export function buildBatchRequest(options: BatchOptions): {
+export function buildBatchRequest<TBody = Record<string, unknown>>(
+  options: BatchOptions<TBody>
+): {
   url: string;
   headers: Record<string, string>;
   body: string;
 } {
   const { baseUrl, apiVersion = 'v9.2', operations } = options;
+
+  // Validate that operations array is not empty
+  if (!operations || operations.length === 0) {
+    throw new Error('Batch request must contain at least one operation');
+  }
   const trimmedBaseUrl = baseUrl.replace(/\/+$/, '');
   const batchBoundary = `batch_${crypto.randomUUID()}`;
   const changesetBoundary = `changeset_${crypto.randomUUID()}`;

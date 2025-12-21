@@ -1,9 +1,17 @@
 import { whoAmI, getUserSettingsRow, setUserUiLanguage } from '../services/d365Api';
+import { languageNames } from './languageNames';
 
 export interface UserLanguageSettings {
   uilanguageid: number;
   helplanguageid: number;
   localeid: number;
+}
+
+/**
+ * Validate if an LCID is supported
+ */
+function isValidLcid(lcid: number): boolean {
+  return lcid in languageNames;
 }
 
 export interface LanguageSwitchContext {
@@ -23,6 +31,17 @@ export async function forEachLanguage<T>(
 ): Promise<T[]> {
   if (!lcids?.length) return [];
 
+  // Validate all LCIDs before starting
+  const invalidLcids = lcids.filter(lcid => !isValidLcid(lcid));
+  if (invalidLcids.length > 0) {
+    console.warn(`Warning: Invalid LCIDs will be skipped: ${invalidLcids.join(', ')}`);
+  }
+
+  const validLcids = lcids.filter(isValidLcid);
+  if (validLcids.length === 0) {
+    throw new Error('No valid language codes provided');
+  }
+
   // Get user and save original settings
   const userId = await whoAmI(baseUrl);
   const userSettings = await getUserSettingsRow(baseUrl, userId);
@@ -36,7 +55,7 @@ export async function forEachLanguage<T>(
   const results: T[] = [];
 
   try {
-    for (const lcid of lcids) {
+    for (const lcid of validLcids) {
       // Switch to target language
       await setUserUiLanguage(baseUrl, userId, lcid);
 
@@ -48,8 +67,8 @@ export async function forEachLanguage<T>(
     // Always restore original language
     try {
       await setUserUiLanguage(baseUrl, userId, originalSettings.uilanguageid);
-    } catch {
-      // Ignore restore errors
+    } catch (error) {
+      console.error('Failed to restore original language:', error);
     }
   }
 
@@ -69,6 +88,17 @@ export async function withAllLanguages<T>(
     throw new Error('No language codes provided');
   }
 
+  // Validate LCIDs
+  const invalidLcids = lcids.filter(lcid => !isValidLcid(lcid));
+  if (invalidLcids.length > 0) {
+    console.warn(`Warning: Invalid LCIDs found: ${invalidLcids.join(', ')}`);
+  }
+
+  const validLcids = lcids.filter(isValidLcid);
+  if (validLcids.length === 0) {
+    throw new Error('No valid language codes provided');
+  }
+
   const userId = await whoAmI(baseUrl);
   const userSettings = await getUserSettingsRow(baseUrl, userId);
   const originalSettings: UserLanguageSettings = {
@@ -80,12 +110,12 @@ export async function withAllLanguages<T>(
   const context: LanguageSwitchContext = { baseUrl, userId, originalSettings };
 
   try {
-    return await callback(lcids, context);
+    return await callback(validLcids, context);
   } finally {
     try {
       await setUserUiLanguage(baseUrl, userId, originalSettings.uilanguageid);
-    } catch {
-      // Ignore restore errors
+    } catch (error) {
+      console.error('Failed to restore original language:', error);
     }
   }
 }

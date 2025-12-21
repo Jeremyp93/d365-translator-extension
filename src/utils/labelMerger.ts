@@ -4,8 +4,8 @@ export interface LabelInput {
 }
 
 export interface MergedLabel {
-  LanguageCode: number;
-  Label: string;
+  languageCode: number;
+  label: string;
 }
 
 interface MergeLabelOptions {
@@ -49,8 +49,8 @@ export function mergeLabels(
     // If edited is empty but current had value → CLEAR IT (explicit deletion)
     if (editedLabel !== undefined && editedEmpty && !currentEmpty) {
       merged.push({
-        LanguageCode: lcid,
-        Label: '',
+        languageCode: lcid,
+        label: '',
       });
       continue;
     }
@@ -59,8 +59,8 @@ export function mergeLabels(
     const finalLabel = editedLabel !== undefined ? editedText : currentLabel;
 
     merged.push({
-      LanguageCode: lcid,
-      Label: finalLabel,
+      languageCode: lcid,
+      label: finalLabel,
     });
   }
 
@@ -69,7 +69,7 @@ export function mergeLabels(
 
   // Sort: base language first
   merged.sort((a, b) =>
-    a.LanguageCode === baseLcid ? -1 : b.LanguageCode === baseLcid ? 1 : 0
+    a.languageCode === baseLcid ? -1 : b.languageCode === baseLcid ? 1 : 0
   );
 
   return merged;
@@ -80,16 +80,16 @@ function ensureBaseLabelNonEmpty(
   baseLcid: number,
   fallback: string
 ): void {
-  const baseLabel = labels.find(l => l.LanguageCode === baseLcid);
+  const baseLabel = labels.find(l => l.languageCode === baseLcid);
 
-  if (!baseLabel || !baseLabel.Label.trim()) {
-    const anyNonEmpty = labels.find(l => l.Label.trim())?.Label;
+  if (!baseLabel || !baseLabel.label.trim()) {
+    const anyNonEmpty = labels.find(l => l.label.trim())?.label;
     const finalLabel = anyNonEmpty || fallback.trim() || 'Untitled';
 
     if (baseLabel) {
-      baseLabel.Label = finalLabel;
+      baseLabel.label = finalLabel;
     } else {
-      labels.push({ LanguageCode: baseLcid, Label: finalLabel });
+      labels.push({ languageCode: baseLcid, label: finalLabel });
     }
   }
 }
