@@ -60,3 +60,28 @@ export function getLanguageDisplayName(lcid: number): string {
   const name = languageNames[lcid];
   return name ? `${name} (${lcid})` : `(${lcid})`;
 }
+
+/**
+ * Get just the language name without LCID
+ * @param lcid - The language code identifier
+ * @returns Language name like "French (France)" or "Unknown" if not found
+ */
+export function getLanguageName(lcid: number): string {
+  return languageNames[lcid] || 'Unknown';
+}
+
+/**
+ * Common language codes used in D365
+ */
+export const CommonLanguageCodes = {
+  ENGLISH_US: 1033,
+  SPANISH_SPAIN: 3082,
+  FRENCH_FRANCE: 1036,
+  GERMAN_GERMANY: 1031,
+  JAPANESE: 1041,
+  CHINESE_SIMPLIFIED: 2052,
+  CHINESE_TRADITIONAL: 1028,
+  PORTUGUESE_BRAZIL: 1046,
+  ITALIAN: 1040,
+  DUTCH: 1043,
+} as const;

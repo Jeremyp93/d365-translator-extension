@@ -1,9 +1,10 @@
 // services/languageService.ts
 import { getProvisionedLanguages as getProvisionedLanguagesLive, getOrgBaseLanguageCode } from './d365Api';
 import { storageGet, storageRemove, storageSet } from './storageCache';
+import { CACHE_TTL } from '../config/constants';
 
 type LangCache = { when: number; langs: number[] };
-const TTL_MS_DEFAULT = 6 * 60 * 60 * 1000; // 6h
+const TTL_MS_DEFAULT = CACHE_TTL.PROVISIONED_LANGUAGES;
 
 /** Cached provisioned languages. Falls back to live if cache missing/stale. */
 export async function getProvisionedLanguagesCached(

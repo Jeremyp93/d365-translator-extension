@@ -1,8 +1,5 @@
 import type { FormStructure, FormTab, FormColumn, FormSection, FormControl, FormHeaderFooter, Label } from '../types';
 import {
-  whoAmI,
-  getUserSettingsRow,
-  setUserUiLanguage,
   getFormXml,
   getFormXmlWithEtag,
   patchFormXmlStrict,
@@ -11,6 +8,7 @@ import {
 } from './d365Api';
 import { getProvisionedLanguagesCached } from './languageService';
 import { isEditableControlType } from '../utils/controlClassIds';
+import { forEachLanguage } from '../utils/languageSwitcher';
 
 /**
  * Retrieve formXml for all provisioned languages and merge labels
@@ -27,35 +25,19 @@ export async function getFormXmlAllLanguages(
     return parseFormXml(xml);
   }
 
-  const userId = await whoAmI(baseUrl);
-  const us = await getUserSettingsRow(baseUrl, userId);
-  const original = { uilanguageid: us.uilanguageid, helplanguageid: us.helplanguageid, localeid: us.localeid };
-
-  const structuresByLcid: Array<{ lcid: number; structure: FormStructure }> = [];
-  const rawXmlByLcid: Record<number, string> = {};
-
   // Always include base English (1033) to capture the form's base language labels
   // Many forms have 1033 as the base language even if it's not provisioned
-  const allLcidsToRetrieve = new Set([1033, ...lcids]);
+  const allLcidsToRetrieve = Array.from(new Set([1033, ...lcids]));
+  const rawXmlByLcid: Record<number, string> = {};
 
-  try {
-    for (const lcid of Array.from(allLcidsToRetrieve)) {
-      await setUserUiLanguage(baseUrl, userId, lcid);
-      //await waitForLanguageToApply(baseUrl, formId);
-      await sleep(300); // optional small delay
-      const xml = await getFormXml(baseUrl, formId);
-      rawXmlByLcid[lcid] = xml; // Store raw XML for this language
-      // Pass the current LCID so parseFormXml knows what language context the descriptions are in
-      const structure = parseFormXml(xml, lcid);
-      structuresByLcid.push({ lcid, structure });
-    }
-  } finally {
-    try {
-      await setUserUiLanguage(baseUrl, userId, original.uilanguageid);
-    } catch {
-      /* noop */
-    }
-  }
+  const structuresByLcid = await forEachLanguage(baseUrl, allLcidsToRetrieve, async (lcid) => {
+    await sleep(300); // optional small delay
+    const xml = await getFormXml(baseUrl, formId);
+    rawXmlByLcid[lcid] = xml; // Store raw XML for this language
+    // Pass the current LCID so parseFormXml knows what language context the descriptions are in
+    const structure = parseFormXml(xml, lcid);
+    return { lcid, structure };
+  });
 
   // Merge all labels from different language versions
   return mergeFormStructures(structuresByLcid, rawXmlByLcid);
@@ -569,32 +551,19 @@ export async function saveFormStructure(
     throw new Error('No provisioned languages found');
   }
 
-  const userId = await whoAmI(baseUrl);
-  const us = await getUserSettingsRow(baseUrl, userId);
-  const original = { uilanguageid: us.uilanguageid, helplanguageid: us.helplanguageid, localeid: us.localeid };
+  await forEachLanguage(baseUrl, lcids, async (lcid) => {
+    onProgress?.(`Saving language ${lcid}...`);
 
-  try {
-    for (const lcid of lcids) {
-      onProgress?.(`Saving language ${lcid}...`);
-      
-      // Switch to target language
-      await setUserUiLanguage(baseUrl, userId, lcid);
-      await waitForLanguageToApply(baseUrl, formId);
+    // Wait for language to apply
+    await waitForLanguageToApply(baseUrl, formId);
 
-      // Get current XML with etag for this language
-      const { xml, etag } = await getFormXmlWithEtag(baseUrl, formId);
+    // Get current XML with etag for this language
+    const { xml, etag } = await getFormXmlWithEtag(baseUrl, formId);
 
-      // Update labels for this specific LCID
-      const updatedXml = updateLabelsInXml(xml, structure, lcid);
+    // Update labels for this specific LCID
+    const updatedXml = updateLabelsInXml(xml, structure, lcid);
 
-      // Patch back to Dataverse
-      await patchFormXmlStrict(baseUrl, formId, updatedXml, etag || undefined);
-    }
-  } finally {
-    try {
-      await setUserUiLanguage(baseUrl, userId, original.uilanguageid);
-    } catch {
-      /* noop */
-    }
-  }
+    // Patch back to Dataverse
+    await patchFormXmlStrict(baseUrl, formId, updatedXml, etag || undefined);
+  });
 }

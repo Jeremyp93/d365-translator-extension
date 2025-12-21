@@ -1,12 +1,10 @@
 import {
-  whoAmI,
-  getUserSettingsRow,
-  setUserUiLanguage,
   getFormXml,
   getFormXmlWithEtag,
   patchFormXmlStrict,
   waitForLanguageToApply,
 } from './d365Api';
+import { forEachLanguage } from '../utils/languageSwitcher';
 
 export interface FormLabelByLcid {
   lcid: number;
@@ -96,8 +94,8 @@ function setCurrentLcidFormLabel(
    ────────────────────────────────────────────── */
 
 /**
- * Read a field’s label for ALL requested LCIDs by temporarily switching the current user’s UI language.
- * Uses formxml snapshot for the active LCID and extracts the target cell’s <labels>/<label>.
+ * Read a field's label for ALL requested LCIDs by temporarily switching the current user's UI language.
+ * Uses formxml snapshot for the active LCID and extracts the target cell's <labels>/<label>.
  */
 export async function readFormFieldLabelsAllLcids(
   baseUrl: string,
@@ -106,32 +104,16 @@ export async function readFormFieldLabelsAllLcids(
   labelId: string,                // <cell id="..."> that hosts the control
   lcids: number[]
 ): Promise<FormLabelByLcid[]> {
-  if (!lcids?.length) return [];
-  const userId = await whoAmI(baseUrl);
-  const us = await getUserSettingsRow(baseUrl, userId);
-  const original = { uilanguageid: us.uilanguageid, helplanguageid: us.helplanguageid, localeid: us.localeid };
-
-  const out: FormLabelByLcid[] = [];
-  try {
-    for (const lcid of lcids) {
-      await setUserUiLanguage(baseUrl, userId, lcid);
-      await waitForLanguageToApply(baseUrl, formId);
-      const xml = await getFormXml(baseUrl, formId);
-      const text = readCurrentLcidFormLabel(xml, attributeLogicalName, labelId);
-      out.push({ lcid, label: text });
-    }
-  } finally {
-    try {
-      await setUserUiLanguage(baseUrl, userId, original.uilanguageid);
-    } catch {
-      /* noop */
-    }
-  }
-  return out;
+  return forEachLanguage(baseUrl, lcids, async (lcid) => {
+    await waitForLanguageToApply(baseUrl, formId);
+    const xml = await getFormXml(baseUrl, formId);
+    const label = readCurrentLcidFormLabel(xml, attributeLogicalName, labelId);
+    return { lcid, label };
+  });
 }
 
 /**
- * Save labels for a set of LCIDs by switching the current user’s UI language per LCID,
+ * Save labels for a set of LCIDs by switching the current user's UI language per LCID,
  * updating the label text in formxml, and PATCHing systemform back with If-Match ETag.
  * Only LCIDs included in valuesByLcid are modified.
  */
@@ -142,26 +124,13 @@ export async function saveFormFieldLabelsAllLcids(
   labelId: string,
   valuesByLcid: Record<number, string>
 ): Promise<void> {
-  const userId = await whoAmI(baseUrl);
-  const us = await getUserSettingsRow(baseUrl, userId);
-  const original = { uilanguageid: us.uilanguageid };
-
   const lcids = Object.keys(valuesByLcid).map(Number).filter(Number.isFinite).sort((a,b)=>a-b);
 
-  try {
-    for (const lcid of lcids) {
-      await setUserUiLanguage(baseUrl, userId, lcid);
-      await waitForLanguageToApply(baseUrl, formId);
+  await forEachLanguage(baseUrl, lcids, async (lcid) => {
+    await waitForLanguageToApply(baseUrl, formId);
 
-      const { xml, etag } = await getFormXmlWithEtag(baseUrl, formId);
-      const updatedXml = setCurrentLcidFormLabel(xml, attributeLogicalName, labelId, valuesByLcid[lcid] ?? '');
-      await patchFormXmlStrict(baseUrl, formId, updatedXml, etag ?? undefined);
-    }
-  } finally {
-    try {
-      await setUserUiLanguage(baseUrl, userId, original.uilanguageid);
-    } catch {
-      /* noop */
-    }
-  }
+    const { xml, etag } = await getFormXmlWithEtag(baseUrl, formId);
+    const updatedXml = setCurrentLcidFormLabel(xml, attributeLogicalName, labelId, valuesByLcid[lcid] ?? '');
+    await patchFormXmlStrict(baseUrl, formId, updatedXml, etag ?? undefined);
+  });
 }
