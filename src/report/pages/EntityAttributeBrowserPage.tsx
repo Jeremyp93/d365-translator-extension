@@ -10,6 +10,7 @@ import {
   tokens,
   Button,
   CounterBadge,
+  Text,
 } from "@fluentui/react-components";
 import {
   TableEdit24Regular,
@@ -23,9 +24,10 @@ import PageHeader from "../../components/ui/PageHeader";
 import Section from "../../components/ui/Section";
 import EntityLabelEditor from "../../components/EntityLabelEditor";
 import PendingChangesCartModal from "../../components/PendingChangesCartModal";
-import EntitySelector from "../../components/entity-browser/EntitySelector";
+import FlexBadge from "../../components/ui/FlexBadge";
+import ListSelector from "../../components/ListSelector";
 import AttributeDataGrid from "../../components/entity-browser/AttributeDataGrid";
-import AttributeDependenciesPanel from "../../components/entity-browser/AttributeDependenciesPanel";
+import DependencyPanel from "../../components/DependencyPanel";
 import type { AttributeItem } from "../../components/entity-browser/AttributeDataGrid";
 import { PendingChangesProvider, usePendingChanges } from "../../hooks/usePendingChanges";
 import type { PendingChange } from "../../types";
@@ -270,11 +272,16 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
         <div className={styles.splitLayout}>
           {/* Left Sidebar - Entity List */}
           <aside className={styles.sidebar}>
-            <EntitySelector
-              entities={entities}
-              selectedEntity={selectedEntity}
-              onSelectEntity={handleEntitySelect}
+            <ListSelector
+              items={entities}
+              title="Entities"
+              searchPlaceholder="Search entities..."
+              selectedItem={selectedEntity}
+              onSelectItem={handleEntitySelect}
               loading={entitiesLoading}
+              getItemKey={(entity) => entity.LogicalName}
+              getDisplayName={(entity) => entity.DisplayName?.UserLocalizedLabel?.Label || entity.LogicalName}
+              getMetaText={(entity) => entity.LogicalName}
             />
           </aside>
 
@@ -322,13 +329,59 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
           {/* Right Panel - Dependencies */}
           {selectedAttribute && selectedEntity && (
             <section className={styles.dependenciesPanel} aria-label="Dependencies Panel">
-              <AttributeDependenciesPanel
+              <DependencyPanel
                 dependencies={dependencies}
                 loading={depsLoading}
                 error={depsError}
-                selectedEntity={selectedEntity}
-                clientUrl={clientUrl}
-                apiVersion={apiVersion}
+                title="Used by Forms & Views"
+                searchPlaceholder="Search forms/views..."
+                emptyMessage="No forms or views found using this attribute."
+                getItemKey={(d) => `${d.componentObjectId}-${d.componentType}`}
+                filterItem={(d, term) =>
+                  d.componentDisplayName.toLowerCase().includes(term) ||
+                  d.componentName.toLowerCase().includes(term) ||
+                  d.componentTypeName.toLowerCase().includes(term) ||
+                  d.solutionUniqueName.toLowerCase().includes(term)
+                }
+                onItemClick={(d) => {
+                  const isForm = d.componentType === 24 || d.componentType === 60;
+                  if (!isForm || !clientUrl || !selectedEntity) return;
+
+                  const params = new URLSearchParams({
+                    clientUrl,
+                    entity: selectedEntity,
+                    formId: d.componentObjectId,
+                    ...(apiVersion ? { apiVersion } : {}),
+                  });
+
+                  const url = `${window.location.origin}${window.location.pathname}#/report/form?${params.toString()}`;
+                  window.open(url, "_blank");
+                }}
+                renderItem={(d) => {
+                  const isForm = d.componentType === 24 || d.componentType === 60;
+                  return (
+                    <div title={isForm ? "Click to open form in new tab" : undefined}>
+                      <FlexBadge
+                        label={d.componentDisplayName}
+                        badge={d.componentTypeName}
+                        badgeColor="informative"
+                        badgeAppearance="filled"
+                      />
+                      <div style={{ fontSize: "12px", color: "var(--colorNeutralForeground3)", marginTop: "4px" }}>
+                        <Text size={200}>
+                          {d.componentParentName || d.componentName || d.componentObjectId}
+                        </Text>
+                      </div>
+                      {d.solutionUniqueName && (
+                        <div style={{ marginTop: "4px" }}>
+                          <Text size={100} style={{ color: "var(--colorNeutralForeground3)" }}>
+                            Solution: {d.solutionUniqueName}
+                          </Text>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }}
               />
             </section>
           )}
