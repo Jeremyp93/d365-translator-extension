@@ -133,10 +133,12 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
   const { entities, loading: entitiesLoading, error: entitiesError } = useEntityBrowser(clientUrl, apiVersion);
 
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
+  const [attributesReloadTrigger, setAttributesReloadTrigger] = useState(0);
   const { attributes, loading: attributesLoading, error: attributesError } = useEntityAttributes(
     clientUrl,
     selectedEntity,
-    apiVersion
+    apiVersion,
+    attributesReloadTrigger
   );
 
   const [selectedAttribute, setSelectedAttribute] = useState<string | null>(null);
@@ -193,14 +195,24 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
     if (!clientUrl || !selectedEntity) return;
 
     try {
-      // Trigger EntityLabelEditor reload ONLY if the currently selected attribute was successfully saved
-      if (selectedAttribute) {
-        const wasCurrentAttributeSaved = successfulChanges.some(
-          (change) => change.entity === selectedEntity && change.attribute === selectedAttribute
-        );
+      // Check if any saved changes affect the current entity
+      const hasChangesForCurrentEntity = successfulChanges.some(
+        (change) => change.entity === selectedEntity
+      );
 
-        if (wasCurrentAttributeSaved) {
-          setEditorReloadTrigger(prev => prev + 1);
+      if (hasChangesForCurrentEntity) {
+        // Reload the attributes list to reflect updated display names
+        setAttributesReloadTrigger(prev => prev + 1);
+
+        // Trigger EntityLabelEditor reload ONLY if the currently selected attribute was successfully saved
+        if (selectedAttribute) {
+          const wasCurrentAttributeSaved = successfulChanges.some(
+            (change) => change.entity === selectedEntity && change.attribute === selectedAttribute
+          );
+
+          if (wasCurrentAttributeSaved) {
+            setEditorReloadTrigger(prev => prev + 1);
+          }
         }
       }
     } catch (error: unknown) {

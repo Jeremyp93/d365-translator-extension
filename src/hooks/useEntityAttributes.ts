@@ -24,6 +24,7 @@ interface UseEntityAttributesResult {
  * @param clientUrl - D365 organization URL
  * @param entityName - Entity logical name (e.g., "account", "contact")
  * @param apiVersion - Web API version (e.g., "v9.2")
+ * @param reloadTrigger - Optional trigger to force reload (increment to refetch)
  * @returns Attribute list, loading state, and error
  *
  * @example
@@ -32,7 +33,8 @@ interface UseEntityAttributesResult {
 export function useEntityAttributes(
   clientUrl: string,
   entityName: string | null,
-  apiVersion?: string
+  apiVersion?: string,
+  reloadTrigger?: number
 ): UseEntityAttributesResult {
   const [attributes, setAttributes] = useState<AttributeSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,7 +76,7 @@ export function useEntityAttributes(
     return () => {
       cancelled = true;
     };
-  }, [clientUrl, entityName, apiVersion]);
+  }, [clientUrl, entityName, apiVersion, reloadTrigger]);
 
   return { attributes, loading, error };
 }

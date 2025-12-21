@@ -9,6 +9,7 @@ import {
 import { getProvisionedLanguagesCached } from './languageService';
 import { isEditableControlType } from '../utils/controlClassIds';
 import { forEachLanguage } from '../utils/languageSwitcher';
+import { DEFAULT_BASE_LANGUAGE } from '../config/constants';
 
 /**
  * Retrieve formXml for all provisioned languages and merge labels
@@ -25,9 +26,9 @@ export async function getFormXmlAllLanguages(
     return parseFormXml(xml);
   }
 
-  // Always include base English (1033) to capture the form's base language labels
-  // Many forms have 1033 as the base language even if it's not provisioned
-  const allLcidsToRetrieve = Array.from(new Set([1033, ...lcids]));
+  // Always include base English (DEFAULT_BASE_LANGUAGE) to capture the form's base language labels
+  // Many forms have DEFAULT_BASE_LANGUAGE as the base language even if it's not provisioned
+  const allLcidsToRetrieve = Array.from(new Set([DEFAULT_BASE_LANGUAGE, ...lcids]));
   const rawXmlByLcid: Record<number, string> = {};
 
   const structuresByLcid = await forEachLanguage(baseUrl, allLcidsToRetrieve, async (lcid) => {
@@ -340,8 +341,8 @@ function parseLabels(element: Element, currentLcid?: number): Label[] {
       if (xmlLanguageCode === currentLcid) {
         labels.push({ languageCode: xmlLanguageCode, label });
       }
-      // Also include base language (1033 English) as fallback if no current LCID label exists yet
-      else if (xmlLanguageCode === 1033 && !labels.some(l => l.languageCode === currentLcid)) {
+      // Also include base language (DEFAULT_BASE_LANGUAGE English) as fallback if no current LCID label exists yet
+      else if (xmlLanguageCode === DEFAULT_BASE_LANGUAGE && !labels.some(l => l.languageCode === currentLcid)) {
         labels.push({ languageCode: currentLcid, label });
       }
       // Skip all other languages

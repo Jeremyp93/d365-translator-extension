@@ -2,6 +2,8 @@
    Generic Web API helpers
    ──────────────────────────────────────────────────────────────────────────── */
 
+import { DEFAULT_BASE_LANGUAGE } from '../config/constants';
+
 export async function fetchJson(url: string, init?: RequestInit) {
   const r = await fetch(url, {
     credentials: 'include',
@@ -85,11 +87,11 @@ export async function getOrgBaseLanguageCode(baseUrl: string, apiVersion: string
   try {
     const langs = await getProvisionedLanguages(base, apiVersion);
     if (Array.isArray(langs) && langs.length) {
-      return langs.includes(1033) ? 1033 : langs[0];
+      return langs.includes(DEFAULT_BASE_LANGUAGE) ? DEFAULT_BASE_LANGUAGE : langs[0];
     }
   } catch { /* ignore */ }
 
-  return 1033;
+  return DEFAULT_BASE_LANGUAGE;
 }
 
 export async function publishEntityViaWebApi(baseUrl: string, entityLogicalName: string, apiVersion: string = 'v9.2'): Promise<void> {
