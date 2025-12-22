@@ -7,6 +7,7 @@ import {
 import type { OptionSetMetadata, OptionValue, OptionSetType, GlobalOptionSetSummary, Label } from '../types';
 import { mergeOptionSetLabels, type MergedLabel } from '../utils/labelMerger';
 import { buildBatchRequest, executeBatchRequest, BatchOperation } from '../utils/batchBuilder';
+import { buildAttributeUrl, buildApiUrl, buildGlobalOptionSetUrl } from '../utils/urlBuilders';
 
 /* ────────────────────────────────────────────────────────────────────────────
    Reads - Attribute Type & OptionSet Metadata
@@ -22,9 +23,13 @@ export async function getAttributeType(
   attributeLogicalName: string,
   apiVersion: string = 'v9.2'
 ): Promise<string> {
-  const url =
-    `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-    `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')?$select=AttributeType`;
+  const url = buildAttributeUrl({
+    baseUrl,
+    apiVersion,
+    entityLogicalName,
+    attributeLogicalName,
+    select: ['AttributeType']
+  });
   const j = await fetchJson(url);
   return String(j?.AttributeType ?? '');
 }
@@ -47,20 +52,29 @@ export async function getOptionSetMetadata(
   apiVersion: string = 'v9.2'
 ): Promise<OptionSetMetadata> {
   // First, check the attribute type to determine which property to expand
-  const typeUrl =
-    `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-    `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')?$select=AttributeType`;
-  
+  const typeUrl = buildAttributeUrl({
+    baseUrl,
+    apiVersion,
+    entityLogicalName,
+    attributeLogicalName,
+    select: ['AttributeType']
+  });
+
   const typeCheck = await fetchJson(typeUrl);
   const attrType = String(typeCheck?.AttributeType ?? '');
   
   // For Boolean (Two Options), we need a different approach
   if (attrType === 'Boolean') {
-    const boolUrl =
-      `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-      `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')/Microsoft.Dynamics.CRM.BooleanAttributeMetadata` +
-      `?$select=AttributeType&$expand=OptionSet($select=TrueOption,FalseOption)`;
-    
+    const boolUrl = buildAttributeUrl({
+      baseUrl,
+      apiVersion,
+      entityLogicalName,
+      attributeLogicalName,
+      castType: 'Microsoft.Dynamics.CRM.BooleanAttributeMetadata',
+      select: ['AttributeType'],
+      expand: 'OptionSet($select=TrueOption,FalseOption)'
+    });
+
     const j = await fetchJson(boolUrl);
     const optionSet = j?.OptionSet;
     
@@ -104,20 +118,35 @@ export async function getOptionSetMetadata(
   // For Picklist, State, Status, MultiSelectPicklist
   let url: string;
   if (attrType === 'Picklist' || attrType === 'MultiSelectPicklist') {
-    url =
-      `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-      `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')/Microsoft.Dynamics.CRM.PicklistAttributeMetadata` +
-      `?$select=AttributeType&$expand=OptionSet($select=IsGlobal,Name,DisplayName,Options),GlobalOptionSet($select=Name,DisplayName,Options)`;
+    url = buildAttributeUrl({
+      baseUrl,
+      apiVersion,
+      entityLogicalName,
+      attributeLogicalName,
+      castType: 'Microsoft.Dynamics.CRM.PicklistAttributeMetadata',
+      select: ['AttributeType'],
+      expand: 'OptionSet($select=IsGlobal,Name,DisplayName,Options),GlobalOptionSet($select=Name,DisplayName,Options)'
+    });
   } else if (attrType === 'State') {
-    url =
-      `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-      `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')/Microsoft.Dynamics.CRM.StateAttributeMetadata` +
-      `?$select=AttributeType&$expand=OptionSet($select=Options)`;
+    url = buildAttributeUrl({
+      baseUrl,
+      apiVersion,
+      entityLogicalName,
+      attributeLogicalName,
+      castType: 'Microsoft.Dynamics.CRM.StateAttributeMetadata',
+      select: ['AttributeType'],
+      expand: 'OptionSet($select=Options)'
+    });
   } else if (attrType === 'Status') {
-    url =
-      `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-      `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')/Microsoft.Dynamics.CRM.StatusAttributeMetadata` +
-      `?$select=AttributeType&$expand=OptionSet($select=Options)`;
+    url = buildAttributeUrl({
+      baseUrl,
+      apiVersion,
+      entityLogicalName,
+      attributeLogicalName,
+      castType: 'Microsoft.Dynamics.CRM.StatusAttributeMetadata',
+      select: ['AttributeType'],
+      expand: 'OptionSet($select=Options)'
+    });
   } else {
     throw new Error(`Attribute type ${attrType} is not an OptionSet type`);
   }
@@ -172,9 +201,8 @@ export async function listGlobalOptionSets(
   baseUrl: string,
   apiVersion: string = 'v9.2'
 ): Promise<GlobalOptionSetSummary[]> {
-  const url =
-    `${baseUrl}/api/data/${apiVersion}/GlobalOptionSetDefinitions` +
-    `?$select=Name,DisplayName,Description,MetadataId,IsGlobal`;
+  const api = buildApiUrl(baseUrl, apiVersion);
+  const url = `${api}/GlobalOptionSetDefinitions?$select=Name,DisplayName,Description,MetadataId,IsGlobal`;
 
   const j = await fetchJson(url);
   const items = toArray(j?.value);
@@ -195,11 +223,13 @@ export async function getGlobalOptionSet(
   optionSetName: string,
   apiVersion: string = 'v9.2'
 ): Promise<OptionSetMetadata> {
-  const url =
-    `${baseUrl}/api/data/${apiVersion}/GlobalOptionSetDefinitions(Name='${encodeURIComponent(
-      optionSetName
-    )}')/Microsoft.Dynamics.CRM.OptionSetMetadata` +
-    `?$select=MetadataId,Name,DisplayName,IsGlobal,Options`;
+  const url = buildGlobalOptionSetUrl({
+    baseUrl,
+    apiVersion,
+    optionSetName,
+    castType: 'Microsoft.Dynamics.CRM.OptionSetMetadata',
+    select: ['MetadataId', 'Name', 'DisplayName', 'IsGlobal', 'Options']
+  });
 
   const j = await fetchJson(url);
 
