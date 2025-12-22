@@ -43,7 +43,13 @@ The primary goal is to streamline common D365 administrative and development wor
 
 ### Architecture Patterns
 - **Service Layer Pattern**: Business logic isolated in `/services` directory (d365Api.ts, formLabelService.ts, entityLabelService.ts, etc.)
+  - Services are framework-agnostic and handle business logic, API calls, and caching
+  - Can be called from both React and non-React contexts
 - **Custom Hooks Pattern**: React state management abstracted into hooks in `/hooks` directory (useLanguages.ts, etc.)
+  - **When to use hooks**: React components that need state management (loading/error states, automatic re-renders)
+  - **When to use services directly**: Non-React contexts (content scripts, background workers, service-to-service calls)
+  - Hooks wrap service calls with React-specific features (useEffect, useState, cleanup)
+  - Avoid creating hooks that simply wrap service calls without adding React state management value
 - **Component Composition**: UI components in `/components` with reusable primitives in `/components/ui`
 - **Content Script Architecture**: Uses relay pattern for Chrome extension message passing between popup, content scripts, and background worker
 - **Context API**: Theme management via React Context (ThemeContext.tsx)
