@@ -192,6 +192,42 @@ export function buildActionUrl(
 }
 
 /**
+ * Build relative attribute definition URL (for batch operations)
+ * Returns a relative URL starting with /api/data/...
+ */
+export function buildRelativeAttributeUrl(
+  options: {
+    apiVersion?: string;
+    entityLogicalName: string;
+    attributeLogicalName: string;
+    select?: string[];
+    expand?: string;
+    castType?: string;
+  }
+): string {
+  const { apiVersion = D365_API_VERSION, entityLogicalName, attributeLogicalName, select, expand, castType } = options;
+
+  const encodedEntity = encodeURIComponent(entityLogicalName);
+  const encodedAttr = encodeURIComponent(attributeLogicalName);
+
+  let url = `/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodedEntity}')/Attributes(LogicalName='${encodedAttr}')`;
+
+  if (castType) {
+    url += `/${castType}`;
+  }
+
+  const queryParts: string[] = [];
+  if (select?.length) {
+    queryParts.push(`$select=${select.join(',')}`);
+  }
+  if (expand) {
+    queryParts.push(`$expand=${expand}`);
+  }
+
+  return queryParts.length > 0 ? `${url}?${queryParts.join('&')}` : url;
+}
+
+/**
  * Build OData query string from filters, select, orderby, etc.
  */
 export interface ODataQueryOptions {
