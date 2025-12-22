@@ -19,7 +19,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import FilterSection from '../../components/plugin-trace/FilterSection';
 import ResultsTable, { ResultsTableHandle } from '../../components/plugin-trace/ResultsTable';
 
-const FlowSidePanel = lazy(() => import('../components/CorrelationFlowPanel'));
+const FlowSidePanel = lazy(() => import('../../components/plugin-trace/CorrelationFlowPanel'));
 
 const useStyles = makeStyles({
   page: {
