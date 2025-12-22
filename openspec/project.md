@@ -88,6 +88,8 @@ The primary goal is to streamline common D365 administrative and development wor
 
 ### Architecture Patterns
 - **Service Layer Pattern**: Business logic isolated in `/services` directory (d365Api.ts, formLabelService.ts, entityLabelService.ts, etc.)
+  - Services are framework-agnostic and handle business logic, API calls, and caching
+  - Can be called from both React and non-React contexts
 - **Custom Hooks Pattern**: React state management abstracted into hooks in `/hooks` directory (useFormLabels.ts, useLanguages.ts, etc.)
   - Move all fetching logic and information processing to hooks
   - Components should only display the view and catch events

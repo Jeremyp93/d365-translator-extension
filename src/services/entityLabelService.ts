@@ -7,6 +7,8 @@ import {
   escXml,
 } from './d365Api';
 import type { PendingChange, BatchUpdateResult } from '../types';
+import { mergeLabels } from '../utils/labelMerger';
+import { buildAttributeUrl, buildBatchUrl, buildRelativeAttributeUrl } from '../utils/urlBuilders';
 
 export interface Label {
   languageCode: number;
@@ -23,9 +25,13 @@ export async function getAttributeLabelTranslations(
   entityLogicalName: string,
   attributeLogicalName: string
 ): Promise<Label[]> {
-  const url =
-    `${baseUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-    `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')?$select=DisplayName`;
+  const url = buildAttributeUrl({
+    baseUrl,
+    apiVersion: 'v9.2',
+    entityLogicalName,
+    attributeLogicalName,
+    select: ['DisplayName']
+  });
   const j = await fetchJson(url);
   const arr = toArray(j?.DisplayName?.LocalizedLabels);
   return arr.map((l: any) => ({
@@ -69,22 +75,19 @@ function buildMergedLabels(
   baseLcid: number,
   attributeLogicalName: string
 ): { list: { LanguageCode: number; Label: string }[]; baseLabel: string } {
-  const keys = new Set<number>([
-    ...Object.keys(current).map(Number),
-    ...edited.map((e) => e.languageCode),
-  ]);
-  const list = Array.from(keys).map((k) => ({
-    LanguageCode: k,
-    Label: (edited.find((e) => e.languageCode === k)?.label ?? current[k] ?? ''),
+  const merged = mergeLabels(edited, current, {
+    baseLcid,
+    fallbackLabel: attributeLogicalName.replace(/_/g, ' '),
+  });
+
+  // Map from internal camelCase to D365 PascalCase
+  const list = merged.map(l => ({
+    LanguageCode: l.languageCode,
+    Label: l.label,
   }));
-  let baseLabel = list.find((x) => x.LanguageCode === baseLcid)?.Label ?? '';
-  if (!baseLabel || !baseLabel.trim()) {
-    const any = list.map((x) => x.Label).find((v) => v && v.trim());
-    baseLabel = (any || attributeLogicalName.replace(/_/g, ' ')).trim();
-    const i = list.findIndex((x) => x.LanguageCode === baseLcid);
-    if (i >= 0) list[i].Label = baseLabel;
-    else list.push({ LanguageCode: baseLcid, Label: baseLabel });
-  }
+
+  const baseLabel = list.find(x => x.LanguageCode === baseLcid)?.Label ?? '';
+
   return { list, baseLabel };
 }
 
@@ -261,9 +264,12 @@ export async function updateAttributeLabelsViaWebApi(
   };
 
   // Execute Web API PUT request
-  const url =
-    `${baseUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-    `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')`;
+  const url = buildAttributeUrl({
+    baseUrl,
+    apiVersion: 'v9.2',
+    entityLogicalName,
+    attributeLogicalName
+  });
 
   await fetchJson(url, {
     method: 'PUT',
@@ -374,7 +380,11 @@ export async function batchUpdateAttributeLabels(
         },
       };
 
-      const url = `/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entity)}')/Attributes(LogicalName='${encodeURIComponent(attribute)}')`;
+      const url = buildRelativeAttributeUrl({
+        apiVersion: 'v9.2',
+        entityLogicalName: entity,
+        attributeLogicalName: attribute
+      });
 
       // Add request to changeset with Content-ID header
       requests.push(
@@ -406,7 +416,8 @@ export async function batchUpdateAttributeLabels(
     ].join('\r\n');
 
     // Execute batch request
-    const response = await fetch(`${baseUrl}/api/data/v9.2/$batch`, {
+    const batchUrl = buildBatchUrl(baseUrl, 'v9.2');
+    const response = await fetch(batchUrl, {
       method: 'POST',
       headers: {
         'Content-Type': `multipart/mixed; boundary=${batchId}`,
@@ -448,9 +459,10 @@ export async function batchUpdateAttributeLabels(
         })),
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If batch fails, fall back to sequential individual updates
-    console.warn('$batch endpoint failed, falling back to sequential updates:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('$batch endpoint failed, falling back to sequential updates:', errorMessage);
 
     let successCount = 0;
     const failures: Array<{ change: PendingChange; error: string }> = [];
@@ -465,8 +477,8 @@ export async function batchUpdateAttributeLabels(
       try {
         await updateAttributeLabelsViaWebApi(baseUrl, entity, attribute, labels);
         successCount += changeGroup.length;
-      } catch (err: any) {
-        const errorMessage = err?.message ?? String(err);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
         changeGroup.forEach((change) => {
           failures.push({ change, error: errorMessage });
         });

@@ -18,6 +18,7 @@ import { ErrorBox, Info } from './ui/Notice';
 import type { PendingChange, BatchUpdateResult } from '../types';
 import { batchUpdateAttributeLabels } from '../services/entityLabelService';
 import { publishMultipleEntities } from '../services/d365Api';
+import { getLanguageDisplayName } from '../utils/languageNames';
 
 const useStyles = makeStyles({
   dialogSurface: {
@@ -248,23 +249,6 @@ export default function PendingChangesCartModal({
     onRemoveChange(entity, attribute, languageCode);
   };
 
-  // Helper to get language name from LCID (basic mapping)
-  const getLanguageName = (lcid: number): string => {
-    const mapping: Record<number, string> = {
-      1033: 'English',
-      1036: 'French',
-      1034: 'Spanish',
-      1031: 'German',
-      1040: 'Italian',
-      1043: 'Dutch',
-      1046: 'Portuguese (BR)',
-      1049: 'Russian',
-      1041: 'Japanese',
-      2052: 'Chinese (Simplified)',
-    };
-    return mapping[lcid] || `Language ${lcid}`;
-  };
-
   return (
     <Dialog open={open} onOpenChange={(_, data) => !data.open && onClose()}>
       <DialogSurface className={styles.dialogSurface}>
@@ -294,7 +278,7 @@ export default function PendingChangesCartModal({
                 {saveResult.failures.map((failure, idx) => (
                   <div key={idx} className={styles.errorItem}>
                     <Text size={200}>
-                      {failure.change.entity}/{failure.change.attribute} ({getLanguageName(failure.change.languageCode)}): {failure.error}
+                      {failure.change.entity}/{failure.change.attribute} ({getLanguageDisplayName(failure.change.languageCode)}): {failure.error}
                     </Text>
                   </div>
                 ))}
@@ -328,7 +312,7 @@ export default function PendingChangesCartModal({
                           >
                             <div className={styles.changeText}>
                               <Text size={200}>
-                                {getLanguageName(change.languageCode)} ({change.languageCode}):{' '}
+                                {getLanguageDisplayName(change.languageCode)}:{' '}
                                 <span className={styles.oldValue}>
                                   {change.oldValue || '(empty)'}
                                 </span>

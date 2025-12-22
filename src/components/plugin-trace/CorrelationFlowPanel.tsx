@@ -21,7 +21,7 @@ import 'reactflow/dist/style.css';
 
 import { getLogsForCorrelation, PluginTraceLog } from '../../services/pluginTraceLogService';
 import { useOrgContext } from '../../hooks/useOrgContext';
-import { buildFlowGraph, FlowNode, FlowEdge, FlowGraph, FlowNodeData } from '../utils/flowGraphBuilder';
+import { buildFlowGraph, FlowNode, FlowEdge, FlowGraph, FlowNodeData } from '../../utils/flowGraphBuilder';
 
 import '../../styles/flow.css';
 

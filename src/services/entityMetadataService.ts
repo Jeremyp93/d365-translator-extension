@@ -1,4 +1,5 @@
 import { fetchJson } from './d365Api';
+import { buildApiUrl, buildEntityDefinitionUrl } from '../utils/urlBuilders';
 
 export interface EntitySummary {
   LogicalName: string;
@@ -40,8 +41,9 @@ export async function listAllEntities(
 ): Promise<EntitySummary[]> {
   const selectQuery = '$select=LogicalName,DisplayName,SchemaName,MetadataId,ObjectTypeCode';
   //const orderQuery = '$orderby=LogicalName';
-  
-  const url = `${baseUrl}/api/data/${apiVersion}/EntityDefinitions?${selectQuery}`;
+
+  const api = buildApiUrl(baseUrl, apiVersion);
+  const url = `${api}/EntityDefinitions?${selectQuery}`;
   const response = await fetchJson(url) as { value: EntitySummary[] };
   
   return response.value.sort((a, b) =>
@@ -59,11 +61,14 @@ export async function listEntityAttributes(
 ): Promise<AttributeSummary[]> {
   const selectQuery = '$select=LogicalName,DisplayName,AttributeType,MetadataId,SchemaName,IsCustomizable';
   const orderQuery = '$orderby=LogicalName';
-  
-  const url = 
-    `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-    `/Attributes?${selectQuery}&${orderQuery}`;
-  
+
+  const entityUrl = buildEntityDefinitionUrl({
+    baseUrl,
+    apiVersion,
+    entityLogicalName
+  });
+  const url = `${entityUrl}/Attributes?${selectQuery}&${orderQuery}`;
+
   const response = await fetchJson(url) as { value: AttributeSummary[] };
   
   return response.value || [];

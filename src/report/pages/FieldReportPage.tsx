@@ -1,5 +1,9 @@
-// src/pages/FieldReportPage.tsx
-import { useEffect, useState } from "react";
+/**
+ * FieldReportPage - Manage translations for entity fields and form controls
+ * Refactored to follow React best practices
+ */
+
+import { useEffect } from "react";
 import {
   makeStyles,
   shorthands,
@@ -21,11 +25,12 @@ import OptionSetEditor from "../../components/OptionSetEditor";
 import PageHeader from "../../components/ui/PageHeader";
 import Section from "../../components/ui/Section";
 
-// Hook that provides context from the URL (clientUrl, entity, attribute, formId, labelId, etc.)
 import { useOrgContext } from "../../hooks/useOrgContext";
-import { useSharedStyles, spacing } from "../../styles/theme";
+import { useAttributeType } from "../../hooks/useAttributeType";
+import { spacing } from "../../styles/theme";
 import { useTheme } from "../../context/ThemeContext";
-import { getAttributeType, isOptionSetType } from "../../services/optionSetService";
+import { isOptionSetType } from "../../services/optionSetService";
+import { normalizeGuid } from "../../utils/stringHelpers";
 
 const useStyles = makeStyles({
   page: {
@@ -66,57 +71,78 @@ const useStyles = makeStyles({
   },
 });
 
+interface FieldReportValidation {
+  problems: string[];
+  canEdit: boolean;
+}
+
+/**
+ * Validates required parameters for field report functionality
+ */
+function validateFieldReportParams(
+  clientUrl: string | undefined,
+  entity: string | undefined,
+  attribute: string | undefined
+): FieldReportValidation {
+  const problems: string[] = [];
+
+  if (!clientUrl) problems.push("Missing clientUrl in query.");
+  if (!entity) problems.push("Missing entity in query.");
+  if (!attribute) problems.push("Missing attribute in query.");
+
+  return {
+    problems,
+    canEdit: problems.length === 0,
+  };
+}
+
 export default function FieldReportPage(): JSX.Element {
   const styles = useStyles();
-  const sharedStyles = useSharedStyles();
-  const { theme, mode, toggleTheme } = useTheme();
-
+  const { mode, toggleTheme } = useTheme();
   const { clientUrl, entity, attribute, formId, labelId, apiVersion } = useOrgContext();
-  
-  const [attributeType, setAttributeType] = useState<string>("");
-  const [isLoadingType, setIsLoadingType] = useState(false);
+
+  // Validate required parameters
+  const validation = validateFieldReportParams(clientUrl, entity, attribute);
+
+  // Detect attribute type for conditional OptionSet editor
+  const { attributeType } = useAttributeType(clientUrl, entity, attribute, apiVersion);
 
   // Set document title
   useEffect(() => {
     document.title = 'Field Labels - D365 Translator';
   }, []);
 
-  // Detect if field is an OptionSet
-  useEffect(() => {
-    if (!clientUrl || !entity || !attribute) return;
-    
-    let cancelled = false;
-    (async () => {
-      try {
-        setIsLoadingType(true);
-        const type = await getAttributeType(clientUrl, entity, attribute, apiVersion || 'v9.2');
-        if (!cancelled) {
-          setAttributeType(type);
-        }
-      } catch (e) {
-        // Silently fail - not critical
-        console.warn('Failed to detect attribute type:', e);
-      } finally {
-        if (!cancelled) setIsLoadingType(false);
-      }
-    })();
-    
-    return () => {
-      cancelled = true;
-    };
-  }, [clientUrl, entity, attribute]);
+  // Early return if validation fails
+  if (!validation.canEdit || !clientUrl || !entity || !attribute) {
+    return (
+      <main className={styles.page}>
+        <PageHeader
+          title="Field Translations"
+          subtitle="Manage multi-language labels for entity fields and form controls"
+          icon={<ColumnEdit24Regular />}
+          connectionInfo={{ clientUrl, apiVersion }}
+          actions={
+            <Button
+              appearance="subtle"
+              icon={mode === "dark" ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />}
+              onClick={toggleTheme}
+              title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            />
+          }
+        />
+        <div className={styles.content}>
+          <Section title="Context" icon={<Code24Regular />}>
+            <ErrorBox>{validation.problems.join(" ")}</ErrorBox>
+          </Section>
+        </div>
+      </main>
+    );
+  }
 
-  // Simple inline validation
-  const problems: string[] = [];
-  if (!clientUrl) problems.push("Missing clientUrl in query.");
-  if (!entity) problems.push("Missing entity in query.");
-  if (!attribute) problems.push("Missing attribute in query.");
-
-  const canEditEntityLabels = !!clientUrl && !!entity && !!attribute;
-  const canEditFormLabels = canEditEntityLabels;
-
+  // At this point, TypeScript knows clientUrl, entity, and attribute are defined (non-undefined)
+  // TypeScript flow analysis confirms these are strings after the guard above
   return (
-    <div className={styles.page}>
+    <main className={styles.page}>
       <PageHeader
         title="Field Translations"
         subtitle="Manage multi-language labels for entity fields and form controls"
@@ -135,72 +161,64 @@ export default function FieldReportPage(): JSX.Element {
       <div className={styles.content}>
         {/* Context Information */}
         <Section title="Context" icon={<Code24Regular />}>
-          {problems.length > 0 ? (
-            <ErrorBox>{problems.join(" ")}</ErrorBox>
-          ) : (
-            <div className={styles.metaGrid}>
-              <span className={styles.metaLabel}>Client URL:</span>
-              <code className={styles.metaValue}>{clientUrl || "(none)"}</code>
+          <div className={styles.metaGrid}>
+            <span className={styles.metaLabel}>Client URL:</span>
+            <code className={styles.metaValue}>{clientUrl}</code>
 
-              <span className={styles.metaLabel}>Entity:</span>
-              <code className={styles.metaValue}>{entity || "(none)"}</code>
+            <span className={styles.metaLabel}>Entity:</span>
+            <code className={styles.metaValue}>{entity}</code>
 
-              <span className={styles.metaLabel}>Attribute:</span>
-              <code className={styles.metaValue}>{attribute || "(none)"}</code>
+            <span className={styles.metaLabel}>Attribute:</span>
+            <code className={styles.metaValue}>{attribute}</code>
 
-              {formId && (
-                <>
-                  <span className={styles.metaLabel}>Form ID:</span>
-                  <code className={styles.metaValue}>{formId}</code>
-                </>
-              )}
+            {formId && (
+              <>
+                <span className={styles.metaLabel}>Form ID:</span>
+                <code className={styles.metaValue}>{formId}</code>
+              </>
+            )}
 
-              {labelId && (
-                <>
-                  <span className={styles.metaLabel}>Label ID:</span>
-                  <code className={styles.metaValue}>{labelId}</code>
-                </>
-              )}
-            </div>
-          )}
+            {labelId && (
+              <>
+                <span className={styles.metaLabel}>Label ID:</span>
+                <code className={styles.metaValue}>{labelId}</code>
+              </>
+            )}
+          </div>
         </Section>
 
         {/* Entity DisplayName editor */}
-        {canEditEntityLabels && (
-          <Section title="Entity Field Labels" icon={<Table24Regular />}>
-            <EntityLabelEditor
-              clientUrl={clientUrl!}
-              entity={entity!}
-              attribute={attribute!}
-            />
-          </Section>
-        )}
+        <Section title="Entity Field Labels" icon={<Table24Regular />}>
+          <EntityLabelEditor
+            clientUrl={clientUrl}
+            entity={entity}
+            attribute={attribute}
+          />
+        </Section>
 
         {/* Form control label editor */}
-        {canEditFormLabels && (
-          <Section title="Form Control Labels" icon={<Table24Regular />}>
-            <FormLabelEditor
-              clientUrl={clientUrl!}
-              entity={entity!}
-              attribute={attribute!}
-              formId={(formId || "").replace(/[{}]/g, "").toLowerCase()}
-              labelId={(labelId || "").replace(/[{}]/g, "").toLowerCase()}
-            />
-          </Section>
-        )}
+        <Section title="Form Control Labels" icon={<Table24Regular />}>
+          <FormLabelEditor
+            clientUrl={clientUrl}
+            entity={entity}
+            attribute={attribute}
+            formId={normalizeGuid(formId)}
+            labelId={normalizeGuid(labelId)}
+          />
+        </Section>
 
         {/* OptionSet editor - only show if field is an OptionSet */}
-        {canEditEntityLabels && attributeType && isOptionSetType(attributeType) && (
+        {attributeType && isOptionSetType(attributeType) && (
           <Section title="OptionSet Translations" icon={<Table24Regular />}>
             <OptionSetEditor
-              clientUrl={clientUrl!}
-              entity={entity!}
-              attribute={attribute!}
+              clientUrl={clientUrl}
+              entity={entity}
+              attribute={attribute}
               apiVersion={apiVersion}
             />
           </Section>
         )}
       </div>
-    </div>
+    </main>
   );
 }

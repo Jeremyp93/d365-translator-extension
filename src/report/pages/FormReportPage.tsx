@@ -45,10 +45,11 @@ import {
 
 import PageHeader from '../../components/ui/PageHeader';
 import { ErrorBox } from '../../components/ui/Notice';
-import TranslationsTable from '../../components/TranslationsTable';
 import { useOrgContext } from '../../hooks/useOrgContext';
 import { useFormStructure } from '../../hooks/useFormStructure';
 import { useTheme } from '../../context/ThemeContext';
+import { useTreeExpansion } from '../../hooks/useTreeExpansion';
+import { useFormStructureSearch } from '../../hooks/useFormStructureSearch';
 import { spacing } from '../../styles/theme';
 
 import type { FormControl, FormSection, FormTab, Label } from '../../types';
@@ -58,6 +59,13 @@ import type { SystemForm } from '../../services/d365Api';
 import { getFormsForEntity, isFormCustomizable, publishEntityViaWebApi } from '../../services/d365Api';
 import { buildPath, getDisplayLabel, saveFormStructure } from '../../services/formStructureService';
 import { getControlTypeName, isEditableControlType } from '../../utils/controlClassIds';
+import { replaceHashQuery } from '../../utils/hashQueryUtils';
+import { getFormTypeLabel } from '../../utils/formTypeUtils';
+import { deepClone } from '../../utils/objectUtils';
+import SaveStatusBar from '../../components/form-structure/SaveStatusBar';
+import TabDetails from '../../components/form-structure/detail-sections/TabDetails';
+import SectionDetails from '../../components/form-structure/detail-sections/SectionDetails';
+import ControlDetails from '../../components/form-structure/detail-sections/ControlDetails';
 
 const useStyles = makeStyles({
   page: {
@@ -268,26 +276,6 @@ type SelectedItem =
   | { type: 'footer-control'; control: FormControl; path: string[] }
   | null;
 
-/**
- * Updates hash query params without triggering hash navigation/remounts.
- * Keeps the current hash path (e.g. "#/report/form") intact.
- */
-function replaceHashQuery(next: { entity?: string | null; formId?: string | null }) {
-  const rawHash = window.location.hash || '';
-  const withoutHash = rawHash.startsWith('#') ? rawHash.slice(1) : rawHash;
-  const [hashPath, hashQuery] = withoutHash.split('?');
-  const params = new URLSearchParams(hashQuery || '');
-
-  if (next.entity) params.set('entity', next.entity);
-  else params.delete('entity');
-
-  if (next.formId) params.set('formId', next.formId);
-  else params.delete('formId');
-
-  const nextHash = params.toString() ? `#${hashPath}?${params.toString()}` : `#${hashPath}`;
-  window.history.replaceState(null, '', nextHash);
-}
-
 export default function FormReportPage(): JSX.Element {
   const styles = useStyles();
   const { mode, toggleTheme } = useTheme();
@@ -347,7 +335,7 @@ export default function FormReportPage(): JSX.Element {
   // Sync editedStructure when (new) structure arrives
   useEffect(() => {
     if (structureIsForSelectedForm && structure) {
-      setEditedStructure(JSON.parse(JSON.stringify(structure)));
+      setEditedStructure(deepClone(structure));
     }
   }, [structure, structureIsForSelectedForm]);
 
@@ -503,18 +491,6 @@ export default function FormReportPage(): JSX.Element {
       return displayName.includes(query) || logicalName.includes(query);
     });
   }, [availableEntities, entityDropdownValue]);
-
-  // Helper function to get form type label
-  const getFormTypeLabel = (type: number): string => {
-    switch (type) {
-      case 2: return 'Main Forms';
-      case 6: return 'Quick Create Forms';
-      case 7: return 'Quick View Forms';
-      case 11: return 'Card Forms';
-      case 12: return 'Main Interactive Forms';
-      default: return `Form Type ${type}`;
-    }
-  };
 
   // Group forms by type
   const groupedForms = useMemo(() => {
@@ -694,7 +670,7 @@ export default function FormReportPage(): JSX.Element {
     ) => {
       if (!editedStructure) return;
 
-      const cloned = JSON.parse(JSON.stringify(editedStructure));
+      const cloned = deepClone(editedStructure);
       const { tabIdx, colIdx, secIdx, ctrlIdx } = path;
 
       let labels: Label[] | undefined;
@@ -767,7 +743,7 @@ export default function FormReportPage(): JSX.Element {
   if (!clientUrl) problems.push('Missing clientUrl parameter.');
 
   return (
-    <div className={styles.page}>
+    <main className={styles.page}>
       <PageHeader
         title='Form Structure Viewer'
         subtitle='Manage form translations across all languages'
@@ -875,7 +851,7 @@ export default function FormReportPage(): JSX.Element {
       {!problems.length && !error && (
         <div className={styles.content}>
           {/* Sidebar */}
-          <div className={styles.sidebar}>
+          <aside className={styles.sidebar}>
             <div className={styles.sidebarHeader}>
               <div className={styles.sidebarTitle}>
                 <DocumentTable24Regular />
@@ -1257,10 +1233,10 @@ export default function FormReportPage(): JSX.Element {
                   </div>
                 )}
             </div>
-          </div>
+          </aside>
 
           {/* Details */}
-          <div className={styles.detailsPane}>
+          <section className={styles.detailsPane}>
             {!selectedEntity && !loading && (
               <div className={styles.emptyState}>
                 <DocumentTable24Regular style={{ fontSize: '48px', marginBottom: spacing.md }} />
@@ -1319,7 +1295,6 @@ export default function FormReportPage(): JSX.Element {
                     {currentItem.type === 'header-control' && (
                       <ControlDetails
                         control={currentItem.control}
-                        styles={styles}
                         isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
                         clientUrl={clientUrl}
                         entity={selectedEntity || undefined}
@@ -1329,12 +1304,13 @@ export default function FormReportPage(): JSX.Element {
                           const ctrlIdx = editedStructure.header.controls.findIndex(c => c.id === currentItem.control.id);
                           if (ctrlIdx < 0) return;
 
-                          const cloned = JSON.parse(JSON.stringify(editedStructure));
-                          const labels = cloned.header.controls[ctrlIdx].labels;
-                          const existing = labels.find((l: Label) => l.languageCode === lcid);
-                          if (existing) existing.label = value;
-
-                          setEditedStructure(cloned);
+                          const cloned = deepClone(editedStructure);
+                          if (cloned.header) {
+                            const labels = cloned.header.controls[ctrlIdx].labels;
+                            const existing = labels.find((l: Label) => l.languageCode === lcid);
+                            if (existing) existing.label = value;
+                            setEditedStructure(cloned);
+                          }
                         }}
                       />
                     )}
@@ -1342,7 +1318,6 @@ export default function FormReportPage(): JSX.Element {
                     {currentItem.type === 'tab' && (
                       <TabDetails
                         tab={currentItem.tab}
-                        styles={styles}
                         isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
                         onUpdateLabel={(lcid, value) => {
                           const tabIdx = editedStructure?.tabs.findIndex(t => t.id === currentItem.tab.id) ?? -1;
@@ -1354,7 +1329,6 @@ export default function FormReportPage(): JSX.Element {
                     {currentItem.type === 'section' && (
                       <SectionDetails
                         section={currentItem.section}
-                        styles={styles}
                         isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
                         onUpdateLabel={(lcid, value) => {
                           const tabIdx = editedStructure?.tabs.findIndex(t => t.id === currentItem.tab.id) ?? -1;
@@ -1381,7 +1355,6 @@ export default function FormReportPage(): JSX.Element {
                     {currentItem.type === 'control' && (
                       <ControlDetails
                         control={currentItem.control}
-                        styles={styles}
                         isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
                         clientUrl={clientUrl}
                         entity={selectedEntity || undefined}
@@ -1415,7 +1388,6 @@ export default function FormReportPage(): JSX.Element {
                     {currentItem.type === 'footer-control' && (
                       <ControlDetails
                         control={currentItem.control}
-                        styles={styles}
                         isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
                         clientUrl={clientUrl}
                         entity={selectedEntity || undefined}
@@ -1425,12 +1397,13 @@ export default function FormReportPage(): JSX.Element {
                           const ctrlIdx = editedStructure.footer.controls.findIndex(c => c.id === currentItem.control.id);
                           if (ctrlIdx < 0) return;
 
-                          const cloned = JSON.parse(JSON.stringify(editedStructure));
-                          const labels = cloned.footer.controls[ctrlIdx].labels;
-                          const existing = labels.find((l: Label) => l.languageCode === lcid);
-                          if (existing) existing.label = value;
-
-                          setEditedStructure(cloned);
+                          const cloned = deepClone(editedStructure);
+                          if (cloned.footer) {
+                            const labels = cloned.footer.controls[ctrlIdx].labels;
+                            const existing = labels.find((l: Label) => l.languageCode === lcid);
+                            if (existing) existing.label = value;
+                            setEditedStructure(cloned);
+                          }
                         }}
                       />
                     )}
@@ -1473,306 +1446,9 @@ export default function FormReportPage(): JSX.Element {
                   </>
                 );
               })()}
-          </div>
+          </section>
         </div>
       )}
-    </div>
-  );
-}
-
-function TabDetails({
-  tab,
-  styles,
-  isSaving,
-  onUpdateLabel,
-}: {
-  tab: FormTab;
-  styles: ReturnType<typeof useStyles>;
-  isSaving: boolean;
-  onUpdateLabel: (lcid: number, value: string) => void;
-}) {
-  return (
-    <>
-      <Card className={styles.detailsCard}>
-        <CardHeader header={<Text weight='semibold'>Tab Properties</Text>} />
-        <Divider />
-        <table className={styles.propertiesTable}>
-          <tbody>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>ID</td>
-              <td className={styles.propertyValue}>
-                <code>{tab.id}</code>
-              </td>
-            </tr>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>Name</td>
-              <td className={styles.propertyValue}>
-                <code>{tab.name || '(none)'}</code>
-              </td>
-            </tr>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>Visible</td>
-              <td className={styles.propertyValue}>
-                <Badge appearance='tint' color={tab.visible ?? true ? 'success' : 'danger'}>
-                  {String(tab.visible ?? true)}
-                </Badge>
-              </td>
-            </tr>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>Show Label</td>
-              <td className={styles.propertyValue}>
-                <Badge appearance='tint' color={tab.showlabel ?? true ? 'success' : 'danger'}>
-                  {String(tab.showlabel ?? true)}
-                </Badge>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </Card>
-
-      <LabelsList labels={tab.labels} isSaving={isSaving} onUpdateLabel={onUpdateLabel} />
-    </>
-  );
-}
-
-function SectionDetails({
-  section,
-  styles,
-  isSaving,
-  onUpdateLabel,
-}: {
-  section: FormSection;
-  styles: ReturnType<typeof useStyles>;
-  isSaving: boolean;
-  onUpdateLabel: (lcid: number, value: string) => void;
-}) {
-  return (
-    <>
-      <Card className={styles.detailsCard}>
-        <CardHeader header={<Text weight='semibold'>Section Properties</Text>} />
-        <Divider />
-        <table className={styles.propertiesTable}>
-          <tbody>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>ID</td>
-              <td className={styles.propertyValue}>
-                <code>{section.id}</code>
-              </td>
-            </tr>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>Name</td>
-              <td className={styles.propertyValue}>
-                <code>{section.name || '(none)'}</code>
-              </td>
-            </tr>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>Visible</td>
-              <td className={styles.propertyValue}>
-                <Badge appearance='tint' color={section.visible ?? true ? 'success' : 'danger'}>
-                  {String(section.visible ?? true)}
-                </Badge>
-              </td>
-            </tr>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>Show Label</td>
-              <td className={styles.propertyValue}>
-                <Badge appearance='tint' color={section.showlabel ?? true ? 'success' : 'danger'}>
-                  {String(section.showlabel ?? true)}
-                </Badge>
-              </td>
-            </tr>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>Controls</td>
-              <td className={styles.propertyValue}>
-                <Badge appearance='filled' color='brand'>
-                  {section.controls.length}
-                </Badge>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </Card>
-
-      <LabelsList labels={section.labels} isSaving={isSaving} onUpdateLabel={onUpdateLabel} />
-    </>
-  );
-}
-
-function ControlDetails({
-  control,
-  styles,
-  isSaving,
-  clientUrl,
-  entity,
-  formId,
-  onUpdateLabel,
-}: {
-  control: FormControl;
-  styles: ReturnType<typeof useStyles>;
-  isSaving: boolean;
-  clientUrl?: string;
-  entity?: string;
-  formId?: string;
-  onUpdateLabel: (lcid: number, value: string) => void;
-}) {
-  return (
-    <>
-      <Card className={styles.detailsCard}>
-        <CardHeader header={<Text weight='semibold'>Control Properties</Text>} />
-        <Divider />
-        <table className={styles.propertiesTable}>
-          <tbody>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>ID</td>
-              <td className={styles.propertyValue}>
-                <code>{control.id}</code>
-              </td>
-            </tr>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>Name</td>
-              <td className={styles.propertyValue}>
-                <code>{control.name || '(none)'}</code>
-              </td>
-            </tr>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>Data Field</td>
-              <td className={styles.propertyValue}>
-                <code>{control.datafieldname || '(none)'}</code>
-              </td>
-            </tr>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>Label ID (Cell ID)</td>
-              <td className={styles.propertyValue}>
-                <code>{control.cellId || '(none)'}</code>
-              </td>
-            </tr>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>Class ID</td>
-              <td className={styles.propertyValue}>
-                <code style={{ fontSize: tokens.fontSizeBase200 }}>{getControlTypeName(control.classId)}</code>
-              </td>
-            </tr>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>Visible</td>
-              <td className={styles.propertyValue}>
-                <Badge appearance='tint' color={control.visible ?? true ? 'success' : 'danger'}>
-                  {String(control.visible ?? true)}
-                </Badge>
-              </td>
-            </tr>
-            <tr className={styles.propertyRow}>
-              <td className={styles.propertyLabel}>Disabled</td>
-              <td className={styles.propertyValue}>
-                <Badge appearance='tint' color={control.disabled ?? false ? 'danger' : 'success'}>
-                  {String(control.disabled ?? false)}
-                </Badge>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </Card>
-
-      {isEditableControlType(control.classId) && (
-        <LabelsList
-          labels={control.labels}
-          isSaving={isSaving}
-          onUpdateLabel={onUpdateLabel}
-          clientUrl={clientUrl}
-          entity={entity}
-          formId={formId}
-          attribute={control.datafieldname}
-          cellId={control.cellId}
-        />
-      )}
-    </>
-  );
-}
-
-function LabelsList({
-  labels,
-  isSaving,
-  onUpdateLabel,
-  defaultLcid = 1033,
-  clientUrl,
-  entity,
-  formId,
-  attribute,
-  cellId,
-}: {
-  labels: Label[];
-  isSaving?: boolean;
-  onUpdateLabel?: (lcid: number, value: string) => void;
-  defaultLcid?: number;
-  clientUrl?: string;
-  entity?: string;
-  formId?: string;
-  attribute?: string;
-  cellId?: string;
-}) {
-  const openFieldReport = () => {
-    if (!clientUrl || !entity || !attribute || !formId) return;
-
-    const params = new URLSearchParams({
-      clientUrl,
-      entity,
-      attribute,
-      formId,
-      ...(cellId ? { labelId: cellId } : {}),
-    });
-
-    const url = `${window.location.origin}${window.location.pathname}#/report/field?${params.toString()}`;
-    window.open(url, '_blank');
-  };
-
-  if (labels.length === 0) {
-    return (
-      <Card>
-        <CardHeader header={<Text weight='semibold'>Labels (0)</Text>} description='No language translations defined in the form XML' />
-        <Divider />
-        <div style={{ padding: spacing.lg, textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
-          <Caption1>No labels defined</Caption1>
-        </div>
-      </Card>
-    );
-  }
-
-  const lcids = labels.map(l => l.languageCode);
-  const values = labels.reduce((acc, l) => {
-    acc[l.languageCode] = l.label;
-    return acc;
-  }, {} as Record<number, string>);
-
-  return (
-    <Card>
-      <CardHeader
-        header={
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
-              <Text weight='semibold'>Labels</Text>
-              <Badge appearance='filled' color='brand'>
-                {labels.length}
-              </Badge>
-            </div>
-            {clientUrl && entity && attribute && formId && (
-              <Button appearance='subtle' size='small' icon={<ArrowExport20Regular />} onClick={openFieldReport}>
-                Open in Field Editor
-              </Button>
-            )}
-          </div>
-        }
-        description='Multi-language translations defined in the form XML'
-      />
-      <Divider />
-      <div style={{ padding: spacing.lg }}>
-        <TranslationsTable
-          lcids={lcids}
-          values={values}
-          onChange={(lcid, value) => onUpdateLabel?.(lcid, value)}
-          defaultLcid={defaultLcid}
-          readOnly={isSaving}
-          disabled={isSaving}
-        />
-      </div>
-    </Card>
+    </main>
   );
 }

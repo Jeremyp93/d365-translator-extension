@@ -5,17 +5,9 @@ import {
   shorthands,
   tokens,
   Button,
-  Input,
-  Spinner,
-  Badge,
-  Card,
-  CardHeader,
-  Divider,
 } from "@fluentui/react-components";
 import {
   Database24Regular,
-  Code24Regular,
-  Search20Regular,
   WeatherMoon20Regular,
   WeatherSunny20Regular,
   Globe24Regular,
@@ -23,20 +15,20 @@ import {
 
 import { ErrorBox, Info } from "../../components/ui/Notice";
 import PageHeader from "../../components/ui/PageHeader";
-import Section from "../../components/ui/Section";
-import TranslationsTable from "../../components/TranslationsTable";
-import CustomButton from "../../components/ui/Button";
+import ListSelector from "../../components/ListSelector";
+import DependencyPanel from "../../components/DependencyPanel";
+import OptionSetDetail from "../../components/global-optionset/OptionSetDetail";
 
 import { useOrgContext } from "../../hooks/useOrgContext";
 import { useLanguages } from "../../hooks/useLanguages";
-import { useSharedStyles, spacing } from "../../styles/theme";
+import { spacing } from "../../styles/theme";
 import { useTheme } from "../../context/ThemeContext";
 import {
   listGlobalOptionSets,
   getGlobalOptionSet,
   updateGlobalOptionSetLabels,
 } from "../../services/optionSetService";
-import type { GlobalOptionSetSummary, OptionSetMetadata, Label } from "../../types";
+import type { GlobalOptionSetSummary, OptionSetMetadata } from "../../types";
 import { getGlobalOptionSetUsage, OptionSetUsageRow } from "../../services/dependencyService";
 
 const useStyles = makeStyles({
@@ -188,28 +180,74 @@ const useStyles = makeStyles({
     ...shorthands.padding(spacing.xl),
     color: tokens.colorNeutralForeground3,
   },
+  spinnerContainer: {
+    textAlign: "center",
+    ...shorthands.padding(spacing.lg),
+  },
+  spinnerContainerLarge: {
+    textAlign: "center",
+    ...shorthands.padding(spacing.xl),
+  },
+  cardPadding: {
+    ...shorthands.padding(spacing.md),
+  },
+  dividerMargin: {
+    ...shorthands.margin(spacing.md, 0),
+  },
+  scrollableContent: {
+    maxHeight: "60vh",
+    overflowY: "auto",
+  },
+  flexGapSmall: {
+    display: "flex",
+    alignItems: "center",
+    ...shorthands.gap(spacing.sm),
+  },
+  usageHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  flexGrow: {
+    flex: 1,
+    minWidth: 0,
+  },
+  badgeSpacing: {
+    marginLeft: spacing.md,
+  },
+  dependencyName: {
+    fontWeight: tokens.fontWeightSemibold,
+    fontSize: tokens.fontSizeBase300,
+    color: tokens.colorNeutralForeground1,
+  },
+  entityMeta: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    whiteSpace: "nowrap",
+    ...shorthands.overflow("hidden"),
+    textOverflow: "ellipsis",
+  },
 });
 
 type EditableOptions = Record<number, Record<number, string>>; // optionValue -> lcid -> label
 
 export default function GlobalOptionSetPage(): JSX.Element {
   const styles = useStyles();
-  const sharedStyles = useSharedStyles();
-  const { theme, mode, toggleTheme } = useTheme();
+  const { mode, toggleTheme } = useTheme();
   const { clientUrl: clientUrlFromParam, apiVersion: apiVersionFromParam } = useOrgContext();
-  
+
   // Read URL parameters
   const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
   const optionSetNameFromUrl = urlParams.get('name');
-  
-  const { langs, error: langsError } = useLanguages(clientUrlFromParam || "", apiVersionFromParam);
+
+  const { langs } = useLanguages(clientUrlFromParam || "", apiVersionFromParam);
 
   const [optionSets, setOptionSets] = useState<GlobalOptionSetSummary[]>([]);
   const [selectedOptionSet, setSelectedOptionSet] = useState<string | null>(optionSetNameFromUrl);
   const [selectedMetadata, setSelectedMetadata] = useState<OptionSetMetadata | null>(null);
   const [values, setValues] = useState<EditableOptions>({});
-  const [searchTerm, setSearchTerm] = useState("");
-  
+
   const [loading, setLoading] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -219,7 +257,6 @@ export default function GlobalOptionSetPage(): JSX.Element {
   const [usage, setUsage] = useState<OptionSetUsageRow[]>([]);
   const [usageLoading, setUsageLoading] = useState(false);
   const [usageError, setUsageError] = useState<string | null>(null);
-  const [usageSearch, setUsageSearch] = useState('');
 
   const lcids = useMemo(
     () => (langs ?? []).slice().sort((a, b) => a - b),
@@ -284,18 +321,6 @@ export default function GlobalOptionSetPage(): JSX.Element {
     cancelled = true;
   };
 }, [clientUrlFromParam, apiVersionFromParam, selectedMetadata?.metadataId]);
-
-const filteredUsage = useMemo(() => {
-  const term = usageSearch.trim().toLowerCase();
-  if (!term) return usage;
-
-  return usage.filter((r) =>
-    r.entityDisplayName.toLowerCase().includes(term) ||
-    r.fieldDisplayName.toLowerCase().includes(term) ||
-    r.fieldLogicalName.toLowerCase().includes(term) ||
-    r.solutionUniqueName.toLowerCase().includes(term)
-  );
-}, [usage, usageSearch]);
 
   // Load selected option set details
   useEffect(() => {
@@ -381,20 +406,9 @@ const filteredUsage = useMemo(() => {
     }
   };
 
-  // Filter option sets by search term
-  const filteredOptionSets = useMemo(() => {
-    if (!searchTerm) return optionSets;
-    const term = searchTerm.toLowerCase();
-    return optionSets.filter(
-      (os) =>
-        os.name.toLowerCase().includes(term) ||
-        os.displayName.toLowerCase().includes(term)
-    );
-  }, [optionSets, searchTerm]);
-
   if (!clientUrlFromParam) {
     return (
-      <div className={styles.page}>
+      <main className={styles.page}>
         <PageHeader
           title="Global OptionSet Translation Manager"
           subtitle="Manage translations for global option sets"
@@ -403,12 +417,12 @@ const filteredUsage = useMemo(() => {
         <div className={styles.content}>
           <ErrorBox>Missing clientUrl in query parameters.</ErrorBox>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className={styles.page}>
+    <main className={styles.page}>
       <PageHeader
         title="Global OptionSet Translation Manager"
         subtitle="Manage translations for global option sets shared across entities"
@@ -430,168 +444,61 @@ const filteredUsage = useMemo(() => {
 
         <div className={styles.splitLayout}>
           {/* Sidebar: OptionSet List */}
-          <div className={styles.sidebar}>
-            <Input
-              className={styles.searchBox}
-              placeholder="Search option sets..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              contentBefore={<Search20Regular />}
+          <aside className={styles.sidebar}>
+            <ListSelector
+              items={optionSets}
+              title="Global OptionSets"
+              searchPlaceholder="Search option sets..."
+              selectedItem={selectedOptionSet}
+              onSelectItem={setSelectedOptionSet}
+              loading={loading}
+              getItemKey={(os) => os.name}
+              getDisplayName={(os) => os.displayName}
+              getMetaText={(os) => os.name}
             />
-
-            <Section title="Global OptionSets" icon={<Database24Regular />}>
-              {loading ? (
-                <div style={{ textAlign: "center", padding: spacing.lg }}>
-                  <Spinner size="medium" label="Loading option sets..." />
-                </div>
-              ) : filteredOptionSets.length === 0 ? (
-                <div className={styles.emptyState}>
-                  <Text>No global option sets found.</Text>
-                </div>
-              ) : (
-                <div className={styles.optionSetList}>
-                  {filteredOptionSets.map((os) => (
-                    <div
-                      key={os.name}
-                      className={`${styles.optionSetItem} ${
-                        selectedOptionSet === os.name ? "selected" : ""
-                      }`}
-                      onClick={() => setSelectedOptionSet(os.name)}
-                    >
-                      <div className={styles.optionSetName}>{os.displayName}</div>
-                      <div className={styles.optionSetMeta}>
-                        <Text size={200}>{os.name}</Text>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Section>
-          </div>
+          </aside>
 
           {/* Main Panel: OptionSet Detail */}
-          <div className={styles.detailPanel}>
-            {!selectedOptionSet ? (
-              <Section title="Select an OptionSet" icon={<Code24Regular />}>
-                <div className={styles.emptyState}>
-                  <Text>Select a global option set from the list to view and edit its translations.</Text>
-                </div>
-              </Section>
-            ) : loadingDetail ? (
-              <Section title="Loading..." icon={<Code24Regular />}>
-                <div style={{ textAlign: "center", padding: spacing.xl }}>
-                  <Spinner size="large" label="Loading option set details..." />
-                </div>
-              </Section>
-            ) : selectedMetadata ? (
-              <Section 
-                title={`Translating: ${selectedMetadata.displayName}`}
-                icon={<Database24Regular />}
-              >
-                <Card style={{ padding: spacing.md }}>
-                  <CardHeader
-                    header={
-                      <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>
-                        <Text weight="semibold">{selectedMetadata.displayName}</Text>
-                        <Badge color="informative" appearance="filled">
-                          Global OptionSet
-                        </Badge>
-                        <Badge appearance="outline">
-                          {selectedMetadata.options.length} {selectedMetadata.options.length === 1 ? "option" : "options"}
-                        </Badge>
-                      </div>
-                    }
-                    description={
-                      <Text size={200}>
-                        Logical Name: <code>{selectedMetadata.name}</code>
-                      </Text>
-                    }
-                  />
-
-                  <Divider style={{ margin: `${spacing.md} 0` }} />
-
-                  {selectedMetadata.options.length === 0 ? (
-                    <Text>No options defined for this option set.</Text>
-                  ) : (
-                    <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
-                      {selectedMetadata.options.map((option) => (
-                        <div key={option.value} className={styles.optionRow}>
-                          <div className={styles.optionHeader}>
-                            <Text className={styles.optionValueNumber}>{option.value}</Text>
-                            <Text className={styles.optionValue}>
-                              {option.labels.find((l) => l.languageCode === langs?.[0])?.label || 
-                                option.labels[0]?.label || "N/A"}
-                            </Text>
-                          </div>
-
-                          <TranslationsTable
-                            lcids={lcids}
-                            values={values[option.value] || {}}
-                            loading={false}
-                            disabled={!langs || !langs.length}
-                            placeholder="(empty)"
-                            onChange={(lcid, v) => onChange(option.value, lcid, v)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className={styles.actions}>
-                    <CustomButton
-                      onClick={onSave}
-                      disabled={saving || !langs?.length}
-                      variant="primary"
-                    >
-                      {saving ? "Saving…" : "Save Changes"}
-                    </CustomButton>
-                  </div>
-                </Card>
-              </Section>
-            ) : null}
-          </div>
+          <section className={styles.detailPanel}>
+            <OptionSetDetail
+              selectedOptionSet={selectedOptionSet}
+              loadingDetail={loadingDetail}
+              selectedMetadata={selectedMetadata}
+              lcids={lcids}
+              langs={langs}
+              values={values}
+              onChange={onChange}
+              onSave={onSave}
+              saving={saving}
+            />
+          </section>
           {/* Usage Panel: OptionSet Usage */}
-          <div className={styles.usagePanel}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
-                <Input
-                  placeholder="Search fields/entities..."
-                  value={usageSearch}
-                  onChange={(e) => setUsageSearch(e.target.value)}
-                  contentBefore={<Search20Regular />}
-                  style={{ flex: 1, minWidth: 0 }}
-                />
-                <Badge appearance="outline" style={{ marginLeft: spacing.md }}>{usage.length} total</Badge>
-              </div>
-
-            <Section title="Used by Fields" icon={<Database24Regular />}>
-            {usageError && <ErrorBox>{usageError}</ErrorBox>}
-              {usageLoading ? (
-                <div style={{ textAlign: "center", padding: spacing.lg }}>
-                  <Spinner size="medium" label="Loading dependencies..." />
-                </div>
-              ) : filteredUsage.length === 0 ? (
-                <div className={styles.emptyState}>
-                  <Text>No fields found using this global option set.</Text>
-                </div>
-              ) : (
-                <div className={styles.optionSetList}>
-                  {filteredUsage.map((r) => (
-                    <div
-                      key={r.fieldLogicalName}
-                      className={`${styles.usageItem}`}
-                    >
-                      <div className={styles.optionSetName}>{r.fieldLogicalName}</div>
-                      <div className={styles.optionSetMeta}>
-                        <Text size={200}>{r.entityDisplayName}</Text>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          <aside className={styles.usagePanel}>
+            <DependencyPanel
+              dependencies={usage}
+              loading={usageLoading}
+              error={usageError}
+              title="Used by Fields"
+              searchPlaceholder="Search fields/entities..."
+              emptyMessage="No fields found using this global option set."
+              getItemKey={(item) => item.fieldLogicalName}
+              filterItem={(item, term) =>
+                item.entityDisplayName.toLowerCase().includes(term) ||
+                item.fieldDisplayName.toLowerCase().includes(term) ||
+                item.fieldLogicalName.toLowerCase().includes(term)
+              }
+              renderItem={(item) => (
+                <>
+                  <div className={styles.dependencyName}>{item.fieldLogicalName}</div>
+                  <div className={styles.entityMeta}>
+                    <Text size={200}>{item.entityDisplayName}</Text>
+                  </div>
+                </>
               )}
-            </Section>
-          </div>
+            />
+          </aside>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

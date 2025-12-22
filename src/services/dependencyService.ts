@@ -1,4 +1,5 @@
 import { fetchJson } from "./d365Api";
+import { buildActionUrl } from "../utils/urlBuilders";
 
 export type OptionSetUsageRow = {
   entityMetadataId: string;
@@ -50,9 +51,12 @@ export async function getGlobalOptionSetUsage(
   optionSetId: string,
   apiVersion = 'v9.2',
 ): Promise<OptionSetUsageRow[]> {
-  const url =
-    `${clientUrl}/api/data/${apiVersion}` +
-    `/RetrieveDependenciesForDeleteWithMetadata(ObjectId=${optionSetId},ComponentType=9)`;
+  const url = buildActionUrl({
+    baseUrl: clientUrl,
+    apiVersion,
+    actionName: 'RetrieveDependenciesForDeleteWithMetadata',
+    parameters: { ObjectId: optionSetId, ComponentType: 9 }
+  });
 
   const res = await fetchJson(url) as RetrieveDependenciesWithMetadataResponse;
 
@@ -79,9 +83,12 @@ export async function getAttributeDependencies(
   attributeMetadataId: string,
   apiVersion = 'v9.2',
 ): Promise<AttributeDependencyRow[]> {
-  const url =
-    `${clientUrl}/api/data/${apiVersion}` +
-    `/RetrieveDependenciesForDeleteWithMetadata(ObjectId=${attributeMetadataId},ComponentType=2)`;
+  const url = buildActionUrl({
+    baseUrl: clientUrl,
+    apiVersion,
+    actionName: 'RetrieveDependenciesForDeleteWithMetadata',
+    parameters: { ObjectId: attributeMetadataId, ComponentType: 2 }
+  });
 
   const res = await fetchJson(url) as RetrieveDependenciesWithMetadataResponse;
 

@@ -2,6 +2,9 @@
    Generic Web API helpers
    ──────────────────────────────────────────────────────────────────────────── */
 
+import { DEFAULT_BASE_LANGUAGE } from '../config/constants';
+import { buildApiUrl, buildActionUrl, buildFormUrl, buildUserSettingsUrl, buildAttributeUrl } from '../utils/urlBuilders';
+
 export async function fetchJson(url: string, init?: RequestInit) {
   const r = await fetch(url, {
     credentials: 'include',
@@ -63,7 +66,11 @@ export const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
    ──────────────────────────────────────────────────────────────────────────── */
 
 export async function getProvisionedLanguages(baseUrl: string, apiVersion: string = 'v9.2'): Promise<number[]> {
-  const url = `${baseUrl}/api/data/${apiVersion}/RetrieveProvisionedLanguages()`;
+  const url = buildActionUrl({
+    baseUrl,
+    apiVersion,
+    actionName: 'RetrieveProvisionedLanguages'
+  });
   const j = await fetchJson(url);
   const raw = Array.isArray((j as any)?.RetrieveProvisionedLanguages)
     ? (j as any).RetrieveProvisionedLanguages
@@ -76,7 +83,8 @@ export async function getProvisionedLanguages(baseUrl: string, apiVersion: strin
 export async function getOrgBaseLanguageCode(baseUrl: string, apiVersion: string = 'v9.2'): Promise<number> {
   const base = baseUrl.replace(/\/+$/, '');
   try {
-    const j = await fetchJson(`${base}/api/data/${apiVersion}/organizations?$select=languagecode&$top=1`);
+    const api = buildApiUrl(base, apiVersion);
+    const j = await fetchJson(`${api}/organizations?$select=languagecode&$top=1`);
     const row = j?.value?.[0];
     const n = Number(row?.languagecode);
     if (Number.isFinite(n) && n > 0) return n;
@@ -85,15 +93,19 @@ export async function getOrgBaseLanguageCode(baseUrl: string, apiVersion: string
   try {
     const langs = await getProvisionedLanguages(base, apiVersion);
     if (Array.isArray(langs) && langs.length) {
-      return langs.includes(1033) ? 1033 : langs[0];
+      return langs.includes(DEFAULT_BASE_LANGUAGE) ? DEFAULT_BASE_LANGUAGE : langs[0];
     }
   } catch { /* ignore */ }
 
-  return 1033;
+  return DEFAULT_BASE_LANGUAGE;
 }
 
 export async function publishEntityViaWebApi(baseUrl: string, entityLogicalName: string, apiVersion: string = 'v9.2'): Promise<void> {
-  const url = `${baseUrl}/api/data/${apiVersion}/PublishXml`;
+  const url = buildActionUrl({
+    baseUrl,
+    apiVersion,
+    actionName: 'PublishXml'
+  });
   const parameterXml = `<importexportxml><entities><entity>${entityLogicalName}</entity></entities></importexportxml>`;
   await fetchJson(url, {
     method: 'POST',
@@ -121,7 +133,11 @@ export async function publishMultipleEntities(
   const entities = entityNames.map((e) => `<entity>${escXml(e)}</entity>`).join('');
   const parameterXml = `<importexportxml><entities>${entities}</entities></importexportxml>`;
 
-  const url = `${baseUrl}/api/data/${apiVersion}/PublishXml`;
+  const url = buildActionUrl({
+    baseUrl,
+    apiVersion,
+    actionName: 'PublishXml'
+  });
   await fetchJson(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json; charset=utf-8' },
@@ -134,7 +150,12 @@ export async function publishMultipleEntities(
    ──────────────────────────────────────────────────────────────────────────── */
 
 export async function whoAmI(baseUrl: string, apiVersion: string = 'v9.2'): Promise<string> {
-  const j = await fetchJson(`${baseUrl}/api/data/${apiVersion}/WhoAmI()`);
+  const url = buildActionUrl({
+    baseUrl,
+    apiVersion,
+    actionName: 'WhoAmI'
+  });
+  const j = await fetchJson(url);
   const id = j?.UserId;
   if (!id) throw new Error('WhoAmI failed to return UserId');
   return formatGuid(String(id));
@@ -146,9 +167,12 @@ export async function getUserSettingsRow(baseUrl: string, systemUserId: string, 
   helplanguageid: number;
   localeid: number;
 }> {
-  const url =
-    `${baseUrl}/api/data/${apiVersion}/usersettingscollection(${formatGuid(systemUserId)})` +
-    `?$select=uilanguageid,helplanguageid,localeid,systemuserid`;
+  const url = buildUserSettingsUrl({
+    baseUrl,
+    apiVersion,
+    systemUserId,
+    select: ['uilanguageid', 'helplanguageid', 'localeid', 'systemuserid']
+  });
   const j = await fetchJson(url);
   if (!j?.systemuserid) throw new Error('Could not resolve usersettings row for current user.');
   return {
@@ -160,7 +184,11 @@ export async function getUserSettingsRow(baseUrl: string, systemUserId: string, 
 }
 
 export async function setUserUiLanguage(baseUrl: string, systemUserId: string, lcid: number, apiVersion: string = 'v9.2'): Promise<void> {
-  const url = `${baseUrl}/api/data/${apiVersion}/usersettingscollection(${formatGuid(systemUserId)})`;
+  const url = buildUserSettingsUrl({
+    baseUrl,
+    apiVersion,
+    systemUserId
+  });
   await fetchJson(url, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json; charset=utf-8' },
@@ -192,7 +220,12 @@ export type SystemForm = {
 };
 
 export async function getFormXml(baseUrl: string, formId: string): Promise<string> {
-  const url = `${baseUrl}/api/data/v9.2/systemforms(${formatGuid(formId)})?$select=formxml`;
+  const url = buildFormUrl({
+    baseUrl,
+    apiVersion: 'v9.2',
+    formId,
+    select: ['formxml']
+  });
   const j = await fetchJsonNoCache(url);
   const xml = j?.formxml || j?.FormXml || '';
   if (!xml) throw new Error('systemform.formxml not found');
@@ -239,7 +272,12 @@ export async function getFormXmlWithEtag(
   baseUrl: string,
   formId: string
 ): Promise<{ xml: string; etag: string | null }> {
-  const url = `${baseUrl}/api/data/v9.2/systemforms(${formatGuid(formId)})?$select=formxml`;
+  const url = buildFormUrl({
+    baseUrl,
+    apiVersion: 'v9.2',
+    formId,
+    select: ['formxml']
+  });
   const r = await fetch(url, {
     credentials: 'include',
     cache: 'no-store',
@@ -266,7 +304,11 @@ export async function patchFormXmlStrict(
   formxml: string,
   etag?: string
 ): Promise<void> {
-  const url = `${baseUrl}/api/data/v9.2/systemforms(${formatGuid(formId)})`;
+  const url = buildFormUrl({
+    baseUrl,
+    apiVersion: 'v9.2',
+    formId
+  });
   await fetchJson(url, {
     method: 'PATCH',
     headers: {
@@ -338,9 +380,13 @@ export async function getAttributeSoapBasics(
   entityLogicalName: string,
   attributeLogicalName: string
 ): Promise<{ metadataId: string; soapTypeName: string }> {
-  const url =
-    `${baseUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-    `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')?$select=MetadataId`;
+  const url = buildAttributeUrl({
+    baseUrl,
+    apiVersion: 'v9.2',
+    entityLogicalName,
+    attributeLogicalName,
+    select: ['MetadataId']
+  });
   const j = await fetchJson(url);
   const metadataId = (j as any)?.MetadataId as string | undefined;
   const odataType = (j as any)?.['@odata.type'] as string | undefined;

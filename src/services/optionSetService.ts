@@ -5,6 +5,9 @@ import {
   publishEntityViaWebApi,
 } from './d365Api';
 import type { OptionSetMetadata, OptionValue, OptionSetType, GlobalOptionSetSummary, Label } from '../types';
+import { mergeOptionSetLabels, type MergedLabel } from '../utils/labelMerger';
+import { buildBatchRequest, executeBatchRequest, BatchOperation } from '../utils/batchBuilder';
+import { buildAttributeUrl, buildApiUrl, buildGlobalOptionSetUrl } from '../utils/urlBuilders';
 
 /* ────────────────────────────────────────────────────────────────────────────
    Reads - Attribute Type & OptionSet Metadata
@@ -20,9 +23,13 @@ export async function getAttributeType(
   attributeLogicalName: string,
   apiVersion: string = 'v9.2'
 ): Promise<string> {
-  const url =
-    `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-    `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')?$select=AttributeType`;
+  const url = buildAttributeUrl({
+    baseUrl,
+    apiVersion,
+    entityLogicalName,
+    attributeLogicalName,
+    select: ['AttributeType']
+  });
   const j = await fetchJson(url);
   return String(j?.AttributeType ?? '');
 }
@@ -45,20 +52,29 @@ export async function getOptionSetMetadata(
   apiVersion: string = 'v9.2'
 ): Promise<OptionSetMetadata> {
   // First, check the attribute type to determine which property to expand
-  const typeUrl =
-    `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-    `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')?$select=AttributeType`;
-  
+  const typeUrl = buildAttributeUrl({
+    baseUrl,
+    apiVersion,
+    entityLogicalName,
+    attributeLogicalName,
+    select: ['AttributeType']
+  });
+
   const typeCheck = await fetchJson(typeUrl);
   const attrType = String(typeCheck?.AttributeType ?? '');
   
   // For Boolean (Two Options), we need a different approach
   if (attrType === 'Boolean') {
-    const boolUrl =
-      `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-      `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')/Microsoft.Dynamics.CRM.BooleanAttributeMetadata` +
-      `?$select=AttributeType&$expand=OptionSet($select=TrueOption,FalseOption)`;
-    
+    const boolUrl = buildAttributeUrl({
+      baseUrl,
+      apiVersion,
+      entityLogicalName,
+      attributeLogicalName,
+      castType: 'Microsoft.Dynamics.CRM.BooleanAttributeMetadata',
+      select: ['AttributeType'],
+      expand: 'OptionSet($select=TrueOption,FalseOption)'
+    });
+
     const j = await fetchJson(boolUrl);
     const optionSet = j?.OptionSet;
     
@@ -102,20 +118,35 @@ export async function getOptionSetMetadata(
   // For Picklist, State, Status, MultiSelectPicklist
   let url: string;
   if (attrType === 'Picklist' || attrType === 'MultiSelectPicklist') {
-    url =
-      `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-      `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')/Microsoft.Dynamics.CRM.PicklistAttributeMetadata` +
-      `?$select=AttributeType&$expand=OptionSet($select=IsGlobal,Name,DisplayName,Options),GlobalOptionSet($select=Name,DisplayName,Options)`;
+    url = buildAttributeUrl({
+      baseUrl,
+      apiVersion,
+      entityLogicalName,
+      attributeLogicalName,
+      castType: 'Microsoft.Dynamics.CRM.PicklistAttributeMetadata',
+      select: ['AttributeType'],
+      expand: 'OptionSet($select=IsGlobal,Name,DisplayName,Options),GlobalOptionSet($select=Name,DisplayName,Options)'
+    });
   } else if (attrType === 'State') {
-    url =
-      `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-      `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')/Microsoft.Dynamics.CRM.StateAttributeMetadata` +
-      `?$select=AttributeType&$expand=OptionSet($select=Options)`;
+    url = buildAttributeUrl({
+      baseUrl,
+      apiVersion,
+      entityLogicalName,
+      attributeLogicalName,
+      castType: 'Microsoft.Dynamics.CRM.StateAttributeMetadata',
+      select: ['AttributeType'],
+      expand: 'OptionSet($select=Options)'
+    });
   } else if (attrType === 'Status') {
-    url =
-      `${baseUrl}/api/data/${apiVersion}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-      `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')/Microsoft.Dynamics.CRM.StatusAttributeMetadata` +
-      `?$select=AttributeType&$expand=OptionSet($select=Options)`;
+    url = buildAttributeUrl({
+      baseUrl,
+      apiVersion,
+      entityLogicalName,
+      attributeLogicalName,
+      castType: 'Microsoft.Dynamics.CRM.StatusAttributeMetadata',
+      select: ['AttributeType'],
+      expand: 'OptionSet($select=Options)'
+    });
   } else {
     throw new Error(`Attribute type ${attrType} is not an OptionSet type`);
   }
@@ -159,18 +190,6 @@ export async function getOptionSetMetadata(
   };
 }
 
-/**
- * Get option values for an attribute (convenience wrapper)
- */
-export async function getOptionSetOptions(
-  baseUrl: string,
-  entityLogicalName: string,
-  attributeLogicalName: string
-): Promise<OptionValue[]> {
-  const metadata = await getOptionSetMetadata(baseUrl, entityLogicalName, attributeLogicalName);
-  return metadata.options;
-}
-
 /* ────────────────────────────────────────────────────────────────────────────
    Reads - Global OptionSets
    ──────────────────────────────────────────────────────────────────────────── */
@@ -182,9 +201,8 @@ export async function listGlobalOptionSets(
   baseUrl: string,
   apiVersion: string = 'v9.2'
 ): Promise<GlobalOptionSetSummary[]> {
-  const url =
-    `${baseUrl}/api/data/${apiVersion}/GlobalOptionSetDefinitions` +
-    `?$select=Name,DisplayName,Description,MetadataId,IsGlobal`;
+  const api = buildApiUrl(baseUrl, apiVersion);
+  const url = `${api}/GlobalOptionSetDefinitions?$select=Name,DisplayName,Description,MetadataId,IsGlobal`;
 
   const j = await fetchJson(url);
   const items = toArray(j?.value);
@@ -205,11 +223,13 @@ export async function getGlobalOptionSet(
   optionSetName: string,
   apiVersion: string = 'v9.2'
 ): Promise<OptionSetMetadata> {
-  const url =
-    `${baseUrl}/api/data/${apiVersion}/GlobalOptionSetDefinitions(Name='${encodeURIComponent(
-      optionSetName
-    )}')/Microsoft.Dynamics.CRM.OptionSetMetadata` +
-    `?$select=MetadataId,Name,DisplayName,IsGlobal,Options`;
+  const url = buildGlobalOptionSetUrl({
+    baseUrl,
+    apiVersion,
+    optionSetName,
+    castType: 'Microsoft.Dynamics.CRM.OptionSetMetadata',
+    select: ['MetadataId', 'Name', 'DisplayName', 'IsGlobal', 'Options']
+  });
 
   const j = await fetchJson(url);
 
@@ -245,168 +265,31 @@ export async function getGlobalOptionSet(
  * Merge edited option labels with current labels
  * editedOptions: array of { value, labels: { languageCode, label }[] }
  * currentOptions: existing option values
+ * Returns labels in D365 API format (PascalCase) for sending to the API
  */
 function mergeOptionLabels(
   editedOptions: Array<{ value: number; labels: Label[] }>,
   currentOptions: OptionValue[],
   baseLcid: number
 ): Array<{ value: number; labels: { LanguageCode: number; Label: string }[] }> {
-  const result: Array<{ value: number; labels: { LanguageCode: number; Label: string }[] }> = [];
+  const merged = mergeOptionSetLabels(editedOptions, currentOptions, baseLcid);
 
-  // For each option value in current or edited
-  const allValues = new Set([
-    ...currentOptions.map(o => o.value),
-    ...editedOptions.map(o => o.value),
-  ]);
-
-  for (const value of allValues) {
-    const edited = editedOptions.find(o => o.value === value);
-    const current = currentOptions.find(o => o.value === value);
-
-    // Collect all language codes
-    const allLcids = new Set<number>();
-    if (current) current.labels.forEach(l => allLcids.add(l.languageCode));
-    if (edited) edited.labels.forEach(l => allLcids.add(l.languageCode));
-
-    const labels: { LanguageCode: number; Label: string }[] = [];
-
-    for (const lcid of allLcids) {
-  const editedLabel = edited?.labels.find(l => l.languageCode === lcid);
-  const currentLabel = current?.labels.find(l => l.languageCode === lcid);
-
-  const editedText = editedLabel?.label ?? "";
-  const currentText = currentLabel?.label ?? "";
-
-  const editedEmpty = editedText.trim() === "";
-  const currentEmpty = currentText.trim() === "";
-
-  // 1️⃣ If both previous and actual are empty → skip entirely
-  if (editedEmpty && currentEmpty) {
-    continue;
-  }
-
-  // 2️⃣ If edited is empty but current had value → CLEAR IT
-  if (editedEmpty && !currentEmpty) {
-    labels.push({
-      LanguageCode: lcid,
-      Label: ""   // explicitly send empty string
-    });
-    continue;
-  }
-
-  // 3️⃣ Normal case → edited wins
-  labels.push({
-    LanguageCode: lcid,
-    Label: editedText
-  });
+  // Map from internal camelCase to D365 PascalCase
+  return merged.map(option => ({
+    value: option.value,
+    labels: option.labels.map(l => ({
+      LanguageCode: l.languageCode,
+      Label: l.label,
+    })),
+  }));
 }
 
-    // Ensure base language has a non-empty value
-    const baseLabel = labels.find(l => l.LanguageCode === baseLcid);
-    if (!baseLabel || !baseLabel.Label.trim()) {
-      const anyLabel = labels.find(l => l.Label && l.Label.trim())?.Label;
-      if (anyLabel) {
-        const baseIdx = labels.findIndex(l => l.LanguageCode === baseLcid);
-        if (baseIdx >= 0) {
-          labels[baseIdx].Label = anyLabel;
-        } else {
-          labels.push({ LanguageCode: baseLcid, Label: anyLabel });
-        }
-      }
-    }
-
-    // Sort: base language first
-    labels.sort((a, b) =>
-      a.LanguageCode === baseLcid ? -1 : b.LanguageCode === baseLcid ? 1 : 0
-    );
-
-    result.push({ value, labels });
-  }
-
-  return result;
-}
-
-
-// export async function updateLocalOptionSetLabels(
-//   baseUrl: string,
-//   entityLogicalName: string,
-//   attributeLogicalName: string,
-//   editedOptions: Array<{ value: number; labels: Label[] }>,
-//   apiVersion: string = 'v9.2'
-// ): Promise<void> {
-//   // 1. Get current metadata and base language
-//   const [currentMetadata, baseLcid] = await Promise.all([
-//     getOptionSetMetadata(baseUrl, entityLogicalName, attributeLogicalName, apiVersion),
-//     getOrgBaseLanguageCode(baseUrl, apiVersion),
-//   ]);
-
-//   // 2. Merge edited labels with current labels
-//   const mergedOptions = mergeOptionLabels(
-//     editedOptions,
-//     currentMetadata.options,
-//     baseLcid
-//   );
-
-//   if (!mergedOptions.length) {
-//     return;
-//   }
-
-//   const url = `${baseUrl.replace(/\/+$/, "")}/api/data/${apiVersion}/UpdateOptionValue`;
-
-//   // 3. Call UpdateOptionValue once per option (no batch for now)
-//   await Promise.all(
-//     mergedOptions.map(async (opt) => {
-//       const labelsArray = toArray(opt.labels);
-
-//       // If nothing to send for this option, skip
-//       if (!labelsArray.length) {
-//         return;
-//       }
-
-//       const body = {
-//         EntityLogicalName: entityLogicalName,
-//         AttributeLogicalName: attributeLogicalName,
-//         Value: opt.value,
-//         Label: {
-//           LocalizedLabels: labelsArray.map((l) => ({
-//             Label: l.Label,          // may be "" if user cleared it
-//             LanguageCode: l.LanguageCode,
-//           })),
-//         },
-//         // Keep existing labels for languages not included
-//         MergeLabels: true,
-//       };
-
-//       const res = await fetch(url, {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json; charset=utf-8",
-//           "OData-Version": "4.0",
-//           "OData-MaxVersion": "4.0",
-//           Accept: "application/json",
-//         },
-//         body: JSON.stringify(body),
-//       });
-
-//       if (!res.ok) {
-//         const text = await res.text().catch(() => "");
-//         throw new Error(
-//           `UpdateOptionValue (local) failed for ${entityLogicalName}.${attributeLogicalName} / value ${opt.value}: ` +
-//             `${res.status} ${res.statusText} ${text}`
-//         );
-//       }
-//     })
-//   );
-
-//   // 4. Publish entity changes (still needed for local option sets)
-//   await publishEntityViaWebApi(baseUrl, entityLogicalName);
-// }
 export async function updateLocalOptionSetLabels(
   baseUrl: string,
   entityLogicalName: string,
   attributeLogicalName: string,
   editedOptions: Array<{ value: number; labels: Label[] }>,
-  apiVersion: string = "v9.2"
+  apiVersion: string = 'v9.2'
 ): Promise<void> {
   // 1. Get current metadata and base language
   const [currentMetadata, baseLcid] = await Promise.all([
@@ -415,176 +298,56 @@ export async function updateLocalOptionSetLabels(
   ]);
 
   // 2. Merge edited labels with current labels
-  const mergedOptions = mergeOptionLabels(
-    editedOptions,
-    currentMetadata.options,
-    baseLcid
-  );
+  const mergedOptions = mergeOptionLabels(editedOptions, currentMetadata.options, baseLcid);
 
   if (!mergedOptions.length) {
     return;
   }
 
-  const trimmedBaseUrl = baseUrl.replace(/\/+$/, "");
-  const batchBoundary = `batch_${crypto.randomUUID()}`;
-  const changesetBoundary = `changeset_${crypto.randomUUID()}`;
-  const batchUrl = `${trimmedBaseUrl}/api/data/${apiVersion}/$batch`;
-
-  const lines: string[] = [];
-
-  // Outer batch → one transactional changeset
-  lines.push(`--${batchBoundary}`);
-  lines.push(`Content-Type: multipart/mixed;boundary=${changesetBoundary}`);
-  lines.push("");
-
-  let contentId = 1;
-  let hasAnyOperation = false;
-
-  for (const opt of mergedOptions) {
-    const labelsArray = toArray(opt.labels);
-
-    // If nothing to send for this option, skip
-    if (!labelsArray.length) {
-      continue;
-    }
-
-    hasAnyOperation = true;
-
-    const body = {
-      EntityLogicalName: entityLogicalName,
-      AttributeLogicalName: attributeLogicalName,
-      Value: opt.value,
-      Label: {
-        LocalizedLabels: labelsArray.map((l) => ({
-          Label: l.Label,          // may be "" if user cleared it
-          LanguageCode: l.LanguageCode,
-        })),
+  // 3. Build batch operations
+  const operations: BatchOperation[] = mergedOptions
+    .filter(opt => toArray(opt.labels).length > 0)
+    .map(opt => ({
+      method: 'POST' as const,
+      url: `/api/data/${apiVersion}/UpdateOptionValue`,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Accept': 'application/json',
       },
-      MergeLabels: true, // keep existing labels for languages not included
-    };
+      body: {
+        EntityLogicalName: entityLogicalName,
+        AttributeLogicalName: attributeLogicalName,
+        Value: opt.value,
+        Label: {
+          LocalizedLabels: toArray(opt.labels).map(l => ({
+            Label: l.Label,
+            LanguageCode: l.LanguageCode,
+          })),
+        },
+        MergeLabels: true,
+      },
+    }));
 
-    lines.push(`--${changesetBoundary}`);
-    lines.push("Content-Type: application/http");
-    lines.push("Content-Transfer-Encoding: binary");
-    lines.push(`Content-ID: ${contentId++}`);
-    lines.push("");
-    lines.push(`POST /api/data/${apiVersion}/UpdateOptionValue HTTP/1.1`);
-    lines.push("Content-Type: application/json; charset=utf-8");
-    lines.push("Accept: application/json");
-    lines.push("");
-    lines.push(JSON.stringify(body));
-    lines.push("");
-  }
-
-  // Nothing to update? bail out before calling API / publish
-  if (!hasAnyOperation) {
+  if (operations.length === 0) {
     return;
   }
 
-  // Close changeset and batch
-  lines.push(`--${changesetBoundary}--`);
-  lines.push(`--${batchBoundary}--`);
+  // 4. Execute batch request
+  const batchRequest = buildBatchRequest({ baseUrl, apiVersion, operations });
+  const result = await executeBatchRequest(batchRequest);
 
-  const batchBody = lines.join("\r\n");
-
-  const res = await fetch(batchUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": `multipart/mixed;boundary=${batchBoundary}`,
-      "OData-Version": "4.0",
-      "OData-MaxVersion": "4.0",
-      Accept: "application/json",
-    },
-    body: batchBody,
-  });
-
-  const responseText = await res.text().catch(() => "");
-
-  if (!res.ok) {
+  if (!result.success) {
     throw new Error(
-      `Batch UpdateOptionValue (local) failed (HTTP ${res.status} ${res.statusText}): ${responseText}`
+      `Batch UpdateOptionValue (local) failed${
+        result.innerErrorStatus ? ` (inner status ${result.innerErrorStatus})` : ''
+      }: ${result.responseText}`
     );
   }
 
-  // Dataverse can still return 200/202 even if a sub-request fails,
-  // so scan inner responses for 4xx/5xx.
-  const innerErrorMatch = /HTTP\/1\.1\s(4\d\d|5\d\d)\s/.exec(responseText);
-  if (innerErrorMatch) {
-    throw new Error(
-      `Batch UpdateOptionValue (local) failed inside changeset (inner status ${innerErrorMatch[1]}): ${responseText}`
-    );
-  }
-
-  // 4. Publish entity changes (still needed for local option sets)
+  // 5. Publish entity changes (still needed for local option sets)
   await publishEntityViaWebApi(baseUrl, entityLogicalName);
 }
 
-// export async function updateGlobalOptionSetLabels(
-//   baseUrl: string,
-//   optionSetName: string,
-//   editedOptions: Array<{ value: number; labels: Label[] }>
-// ): Promise<void> {
-//   // 1. Get current metadata and base language (same as before)
-//   const [currentMetadata, baseLcid] = await Promise.all([
-//     getGlobalOptionSet(baseUrl, optionSetName),
-//     getOrgBaseLanguageCode(baseUrl),
-//   ]);
-
-//   // 2. Merge edited labels with current labels (your existing logic)
-//   const mergedOptions = mergeOptionLabels(
-//     editedOptions,
-//     currentMetadata.options,
-//     baseLcid
-//   );
-
-//   const url = `${baseUrl.replace(/\/+$/, "")}/api/data/v9.2/UpdateOptionValue`;
-
-//   // 3. Call UpdateOptionValue once per option
-//   await Promise.all(
-//     mergedOptions.map(async (opt) => {
-//       const labelsArray = toArray(opt.labels);
-
-//       if (!labelsArray.length) {
-//         return;
-//       }
-
-//       const body = {
-//         OptionSetName: optionSetName,
-//         Value: opt.value,
-//         Label: {
-//           // Label complex type; UserLocalizedLabel is optional, so we can omit it
-//           LocalizedLabels: labelsArray.map((l) => ({
-//             Label: l.Label,
-//             LanguageCode: l.LanguageCode,
-//           })),
-//         },
-//         // Keep labels for languages you don't send here
-//         MergeLabels: true,
-//       };
-
-//       const res = await fetch(url, {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json; charset=utf-8",
-//           "OData-Version": "4.0",
-//           "OData-MaxVersion": "4.0",
-//           Accept: "application/json",
-//         },
-//         body: JSON.stringify(body),
-//       });
-
-//       if (!res.ok) {
-//         const text = await res.text().catch(() => "");
-//         throw new Error(
-//           `UpdateOptionValue failed for ${optionSetName} / value ${opt.value}: ` +
-//             `${res.status} ${res.statusText} ${text}`
-//         );
-//       }
-//     })
-//   );
-
-//   // Global option sets are automatically published; nothing else to do
-// }
 export async function updateGlobalOptionSetLabels(
   baseUrl: string,
   optionSetName: string,
@@ -597,109 +360,51 @@ export async function updateGlobalOptionSetLabels(
     getOrgBaseLanguageCode(baseUrl, apiVersion),
   ]);
 
-  // 2. Merge edited labels with current labels (your logic, including clear/empty rules)
-  const mergedOptions = mergeOptionLabels(
-    editedOptions,
-    currentMetadata.options,
-    baseLcid
-  );
+  // 2. Merge edited labels with current labels
+  const mergedOptions = mergeOptionLabels(editedOptions, currentMetadata.options, baseLcid);
 
   if (!mergedOptions.length) {
     return;
   }
 
-  const trimmedBaseUrl = baseUrl.replace(/\/+$/, "");
-  const batchBoundary = `batch_${crypto.randomUUID()}`;
-  const changesetBoundary = `changeset_${crypto.randomUUID()}`;
-
-  const lines: string[] = [];
-
-  // Outer batch header
-  lines.push(`--${batchBoundary}`);
-  lines.push(`Content-Type: multipart/mixed;boundary=${changesetBoundary}`);
-  lines.push("");
-
-let contentId = 1;
-let hasAnyOperation = false;
-
-  // 3. One operation per option in a single atomic changeset
-  for (const opt of mergedOptions) {
-    const labelsArray = toArray(opt.labels);
-
-    // If you truly want to skip options with no labels at all:
-    if (!labelsArray.length) {
-      continue;
-    }
-
-    hasAnyOperation = true;
-
-    const body = {
-      OptionSetName: optionSetName,
-      Value: opt.value,
-      Label: {
-        LocalizedLabels: labelsArray.map((l) => ({
-          Label: l.Label,          // may be "" if you cleared it
-          LanguageCode: l.LanguageCode,
-        })),
+  // 3. Build batch operations (only difference is the body structure)
+  const operations: BatchOperation[] = mergedOptions
+    .filter(opt => toArray(opt.labels).length > 0)
+    .map(opt => ({
+      method: 'POST' as const,
+      url: `/api/data/${apiVersion}/UpdateOptionValue`,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Accept': 'application/json',
       },
-      MergeLabels: true,
-    };
+      body: {
+        OptionSetName: optionSetName, // ← Only difference from local option sets
+        Value: opt.value,
+        Label: {
+          LocalizedLabels: toArray(opt.labels).map(l => ({
+            Label: l.Label,
+            LanguageCode: l.LanguageCode,
+          })),
+        },
+        MergeLabels: true,
+      },
+    }));
 
-    lines.push(`--${changesetBoundary}`);
-    lines.push("Content-Type: application/http");
-    lines.push("Content-Transfer-Encoding: binary");
-    lines.push(`Content-ID: ${contentId++}`);
-    lines.push("");
-    lines.push(`POST /api/data/${apiVersion}/UpdateOptionValue HTTP/1.1`);
-    lines.push("Content-Type: application/json; charset=utf-8");
-    lines.push("Accept: application/json");
-    lines.push("");
-    lines.push(JSON.stringify(body));
-    lines.push("");
-  }
-
-   // If everything ended up being skipped, don't send an empty changeset
-  if (!hasAnyOperation) {
+  if (operations.length === 0) {
     return;
   }
 
-  // Close changeset and batch
-  lines.push(`--${changesetBoundary}--`);
-  lines.push(`--${batchBoundary}--`);
+  // 4. Execute batch request
+  const batchRequest = buildBatchRequest({ baseUrl, apiVersion, operations });
+  const result = await executeBatchRequest(batchRequest);
 
-  const batchBody = lines.join("\r\n");
-
-  const res = await fetch(`${trimmedBaseUrl}/api/data/${apiVersion}/$batch`, {
-    method: "POST",
-    headers: {
-      "Content-Type": `multipart/mixed;boundary=${batchBoundary}`,
-      "OData-Version": "4.0",
-      "OData-MaxVersion": "4.0",
-      Accept: "application/json",
-    },
-    body: batchBody,
-  });
-
-  const responseText = await res.text().catch(() => "");
-
-  if (!res.ok) {
+  if (!result.success) {
     throw new Error(
-      `Batch UpdateOptionValue failed (HTTP ${res.status} ${res.statusText}): ${responseText}`
+      `Batch UpdateOptionValue (global) failed${
+        result.innerErrorStatus ? ` (inner status ${result.innerErrorStatus})` : ''
+      }: ${result.responseText}`
     );
   }
-
-  // Dataverse returns 200/202 even if a sub-request fails,
-  // so we inspect the body for 4xx/5xx in the inner responses.
-  const innerErrorMatch = /HTTP\/1\.1\s(4\d\d|5\d\d)/.exec(responseText);
-  if (innerErrorMatch) {
-    throw new Error(
-      `Batch UpdateOptionValue failed inside changeset (inner status ${innerErrorMatch[1]}): ${responseText}`
-    );
-  }
-
-  // If we get here:
-  // - all UpdateOptionValue calls in the changeset succeeded
-  // - Dataverse has applied them atomically (rollback on any failure)
 }
 
 /* ────────────────────────────────────────────────────────────────────────────

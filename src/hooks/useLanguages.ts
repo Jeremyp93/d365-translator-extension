@@ -2,12 +2,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   getProvisionedLanguages,
-  getOrgBaseLanguageCode,
   whoAmI,
   getUserSettingsRow,
   setUserUiLanguage,
 } from '../services/d365Api';
-import { getProvisionedLanguagesCached } from '../services/languageService';
+import { getLanguagesBundle } from '../services/languageService';
 
 export function useLanguages(clientUrl: string, apiVersion: string = 'v9.2') {
   const [langs, setLangs] = useState<number[] | null>(null);
@@ -18,10 +17,7 @@ export function useLanguages(clientUrl: string, apiVersion: string = 'v9.2') {
     (async () => {
       try {
         setError(null);
-        const [provisioned, base] = await Promise.all([
-          getProvisionedLanguagesCached(clientUrl, apiVersion),
-          getOrgBaseLanguageCode(clientUrl, apiVersion),
-        ]);
+        const { langs: provisioned, baseLcid: base } = await getLanguagesBundle(clientUrl, apiVersion);
         console.log('Provisioned languages:', provisioned, 'Base LCID:', base);
         setLangs(provisioned);
         setBaseLcid(base);

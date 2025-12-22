@@ -1,7 +1,7 @@
 /**
  * Map of common Dynamics 365 control class IDs to their descriptions
  */
-export const controlClassIds: Record<string, string> = {
+const controlClassIds: Record<string, string> = {
   '{270BD3DB-D9AF-4782-9025-509E298DEC0A}': 'Lookup',
   '{4273EDBD-AC1D-40D3-9FB2-095C621B552D}': 'Single Line of Text',
   '{5B773807-9FB2-42DB-97C3-7A91EFF8ADFF}': 'Date and Time',
