@@ -161,18 +161,6 @@ export async function getOptionSetMetadata(
   };
 }
 
-/**
- * Get option values for an attribute (convenience wrapper)
- */
-export async function getOptionSetOptions(
-  baseUrl: string,
-  entityLogicalName: string,
-  attributeLogicalName: string
-): Promise<OptionValue[]> {
-  const metadata = await getOptionSetMetadata(baseUrl, entityLogicalName, attributeLogicalName);
-  return metadata.options;
-}
-
 /* ────────────────────────────────────────────────────────────────────────────
    Reads - Global OptionSets
    ──────────────────────────────────────────────────────────────────────────── */

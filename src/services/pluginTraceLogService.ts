@@ -130,24 +130,6 @@ export async function getNextPageOfLogs(
 }
 
 /**
- * Fetch a single plugin trace log by ID
- */
-export async function getPluginTraceLogById(
-  baseUrl: string,
-  id: string,
-  apiVersion: string = 'v9.2'
-): Promise<PluginTraceLog | null> {
-  try {
-    const url = `${baseUrl}/api/data/${apiVersion}/plugintracelogs(${id})`;
-    const log = await fetchJson(url) as PluginTraceLog;
-    return log;
-  } catch (error) {
-    console.error('Failed to fetch plugin trace log:', error);
-    return null;
-  }
-}
-
-/**
  * Format duration for display (duration is in milliseconds)
  */
 export function formatDuration(durationMs?: number): string {

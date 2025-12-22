@@ -22,52 +22,15 @@ Components: 2 completely commented-out files
 Utils: 13 unused functions/constants
 Hooks: 1 completely unused hook (3 exports)
 SERVICES - Unused Functions (6 total)
-1. languageService.ts (3 unused)
-warmProvisionedLanguagesCache() (line 29)
-Purpose: Proactively warm the cache for provisioned languages
-Recommendation: Remove unless planning future preloading optimization
-clearProvisionedLanguagesCache() (line 34)
-Purpose: Clear cached provisioned languages
-Recommendation: Remove or integrate into cache management system
-getLanguagesBundle() (line 39)
-Purpose: Returns both languages and base LCID together
-Recommendation: Remove if bundling pattern isn't needed
-2. storageCache.ts (1 unused)
-storageClearAll() (line 56)
-Purpose: Clear all storage for a specific base URL
-Recommendation: Remove unless needed for debugging/testing
-3. optionSetService.ts (1 unused)
-getOptionSetOptions() (line 167)
-Purpose: Fetch option set options
-Note: Redundant - getOptionSetMetadata() provides the same data
-Recommendation: Safe to remove
-4. pluginTraceLogService.ts (1 unused)
-getPluginTraceLogById() (line 135)
-Purpose: Fetch a single plugin trace log by ID
-Recommendation: Remove if single log fetching isn't needed
-COMPONENTS - Unused Files (2 total)
 1. src/components/entity-browser/AttributeDependenciesPanel.tsx
 Status: Entire file commented out (lines 1-220)
 Recommendation: Delete file or uncomment if planning to use
-2. src/components/entity-browser/EntitySelector.tsx
+1. src/components/entity-browser/EntitySelector.tsx
 Status: Entire file commented out (lines 1-150)
 Recommendation: Delete file or uncomment if planning to use
 UTILS - Unused Exports (13 total)
-1. src/utils/controlClassIds.ts (1 unused)
-controlClassIds (constant Record)
-Purpose: Maps GUID to control type names
-Note: getControlTypeName() and isEditableControlType() from same file ARE used
-Recommendation: Keep if it's the data source for the used functions, otherwise remove
-2. src/utils/languageNames.ts (3 unused)
-getLanguageDisplayName()
-Purpose: Formats language code with LCID
-getLanguageName()
-Purpose: Gets language name without LCID
-CommonLanguageCodes (object)
-Purpose: Common LCID constants
-Note: languageNames constant from same file IS used
-Recommendation: Remove unused functions, keep languageNames constant
-3. src/utils/urlBuilders.ts (9 unused - ENTIRE MODULE)
+
+1. src/utils/urlBuilders.ts (9 unused - ENTIRE MODULE)
 buildApiUrl()
 buildEntityDefinitionUrl()
 buildAttributeUrl()
