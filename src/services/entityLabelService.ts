@@ -8,6 +8,7 @@ import {
 } from './d365Api';
 import type { PendingChange, BatchUpdateResult } from '../types';
 import { mergeLabels } from '../utils/labelMerger';
+import { buildAttributeUrl, buildBatchUrl, buildRelativeAttributeUrl } from '../utils/urlBuilders';
 
 export interface Label {
   languageCode: number;
@@ -24,9 +25,13 @@ export async function getAttributeLabelTranslations(
   entityLogicalName: string,
   attributeLogicalName: string
 ): Promise<Label[]> {
-  const url =
-    `${baseUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-    `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')?$select=DisplayName`;
+  const url = buildAttributeUrl({
+    baseUrl,
+    apiVersion: 'v9.2',
+    entityLogicalName,
+    attributeLogicalName,
+    select: ['DisplayName']
+  });
   const j = await fetchJson(url);
   const arr = toArray(j?.DisplayName?.LocalizedLabels);
   return arr.map((l: any) => ({
@@ -259,9 +264,12 @@ export async function updateAttributeLabelsViaWebApi(
   };
 
   // Execute Web API PUT request
-  const url =
-    `${baseUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-    `/Attributes(LogicalName='${encodeURIComponent(attributeLogicalName)}')`;
+  const url = buildAttributeUrl({
+    baseUrl,
+    apiVersion: 'v9.2',
+    entityLogicalName,
+    attributeLogicalName
+  });
 
   await fetchJson(url, {
     method: 'PUT',
@@ -372,7 +380,11 @@ export async function batchUpdateAttributeLabels(
         },
       };
 
-      const url = `/api/data/v9.2/EntityDefinitions(LogicalName='${encodeURIComponent(entity)}')/Attributes(LogicalName='${encodeURIComponent(attribute)}')`;
+      const url = buildRelativeAttributeUrl({
+        apiVersion: 'v9.2',
+        entityLogicalName: entity,
+        attributeLogicalName: attribute
+      });
 
       // Add request to changeset with Content-ID header
       requests.push(
@@ -404,7 +416,8 @@ export async function batchUpdateAttributeLabels(
     ].join('\r\n');
 
     // Execute batch request
-    const response = await fetch(`${baseUrl}/api/data/v9.2/$batch`, {
+    const batchUrl = buildBatchUrl(baseUrl, 'v9.2');
+    const response = await fetch(batchUrl, {
       method: 'POST',
       headers: {
         'Content-Type': `multipart/mixed; boundary=${batchId}`,
