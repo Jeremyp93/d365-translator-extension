@@ -11,6 +11,7 @@ import {
   Button,
   CounterBadge,
   Text,
+  Spinner,
 } from "@fluentui/react-components";
 import {
   TableEdit24Regular,
@@ -160,6 +161,7 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
   const [cartModalOpen, setCartModalOpen] = useState(false);
   const [editorReloadTrigger, setEditorReloadTrigger] = useState(0);
   const [info, setInfo] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Set document title
   useEffect(() => {
@@ -242,6 +244,10 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
     setTimeout(() => setInfo(null), 3000);
   };
 
+  const handleSavingChange = (saving: boolean) => {
+    setIsSaving(saving);
+  };
+
   return (
     <main className={styles.page}>
       <PageHeader
@@ -256,8 +262,10 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
               icon={<Cart24Regular />}
               onClick={handleOpenCart}
               title={`Review pending changes (${pendingCount})`}
+              //disabled={isSaving}
             >
-              {pendingCount > 0 && (
+              {isSaving && (<Spinner size="tiny" />)}
+              {pendingCount > 0 && !isSaving && (
                 <CounterBadge
                   count={pendingCount}
                   color="brand"
@@ -330,6 +338,7 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
                         pendingChanges={Array.from(changes.values()).filter(
                           (change) => change.entity === selectedEntity && change.attribute === selectedAttribute
                         )}
+                        isSaving={isSaving}
                       />
                     </Section>
                   </div>
@@ -408,6 +417,7 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
         onRemoveChange={removeChange}
         onClearAll={clearAll}
         onSaveSuccess={handleCartSaveSuccess}
+        onSavingChange={handleSavingChange}
         clientUrl={clientUrl}
         apiVersion={apiVersion}
       />

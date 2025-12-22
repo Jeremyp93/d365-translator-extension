@@ -151,6 +151,7 @@ interface Props {
   onRemoveChange: (entity: string, attribute: string, languageCode: number) => void;
   onClearAll: () => void;
   onSaveSuccess?: (successfulChanges: PendingChange[]) => void;
+  onSavingChange?: (isSaving: boolean) => void;
   clientUrl: string;
   apiVersion?: string;
 }
@@ -162,6 +163,7 @@ export default function PendingChangesCartModal({
   onRemoveChange,
   onClearAll,
   onSaveSuccess,
+  onSavingChange,
   clientUrl,
   apiVersion = 'v9.2',
 }: Props): JSX.Element {
@@ -191,6 +193,7 @@ export default function PendingChangesCartModal({
   const handleSaveAll = async () => {
     try {
       setSaving(true);
+      onSavingChange?.(true);
       setError(null);
       setSaveResult(null);
 
@@ -235,6 +238,7 @@ export default function PendingChangesCartModal({
       setError(err?.message ?? String(err));
     } finally {
       setSaving(false);
+      onSavingChange?.(false);
     }
   };
 
@@ -330,6 +334,7 @@ export default function PendingChangesCartModal({
                                 handleRemove(change.entity, change.attribute, change.languageCode)
                               }
                               title="Remove this change"
+                              disabled={saving}
                             />
                           </div>
                         ))}
