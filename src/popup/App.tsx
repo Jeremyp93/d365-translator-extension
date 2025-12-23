@@ -108,10 +108,11 @@ export default function App(): JSX.Element {
 
   // Get client URL from active tab
   React.useEffect(() => {
-    if (!isDynamicsEnv) return; // No need to get URL if not in Dynamics environment
+    
     const getUrl = async () => {
       try {
         const tab = await getActiveTab();
+        console.log("tab", { id: tab?.id, windowId: tab?.windowId, url: tab?.url });
         if (tab?.url) {
           // Extract base URL (e.g., https://org.crm.dynamics.com)
           const url = new URL(tab.url);
@@ -120,9 +121,15 @@ export default function App(): JSX.Element {
         }
       } catch (e) {
         console.error('Failed to get client URL:', e);
+        setClientUrl("");
       }
     };
-    getUrl();
+    if (contextChecking || !isDynamicsEnv) {
+      setClientUrl("");
+      return;
+    }
+
+  getUrl();
   }, [isDynamicsEnv]);
 
   // Check editing permission (hook must be called unconditionally)
