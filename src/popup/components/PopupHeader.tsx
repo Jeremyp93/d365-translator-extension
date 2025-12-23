@@ -60,7 +60,7 @@ export function PopupHeader({ active }: PopupHeaderProps) {
         <Sparkle24Regular />
       </div>
       <div className={styles.headerText}>
-        <div className={styles.title}>D365 Translator</div>
+        <div className={styles.title}>D365 Translation Manager</div>
         <div className={styles.subtitle}>Field & Form Translation Tools</div>
       </div>
       <Button
