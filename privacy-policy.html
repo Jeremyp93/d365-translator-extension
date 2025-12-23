@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - D365 Translation Manager</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #0078d4;
+            border-bottom: 2px solid #0078d4;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #0078d4;
+            margin-top: 30px;
+        }
+        .last-updated {
+            color: #666;
+            font-style: italic;
+        }
+        ul {
+            margin: 10px 0;
+        }
+        li {
+            margin: 5px 0;
+        }
+        .highlight {
+            background-color: #f0f7ff;
+            padding: 15px;
+            border-left: 4px solid #0078d4;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Privacy Policy - D365 Translation Manager</h1>
+    <p class="last-updated"><strong>Last Updated:</strong> December 23, 2024</p>
+
+    <div class="highlight">
+        <strong>Privacy Summary:</strong> D365 Translation Manager does not collect, store, or transmit any personal data or user information to external servers. All operations occur locally within your browser and communicate only with your Microsoft Dynamics 365 environment.
+    </div>
+
+    <h2>Data Collection</h2>
+    <p>D365 Translation Manager does <strong>not</strong> collect, store, or transmit any of the following:</p>
+    <ul>
+        <li>Personal information (name, email, phone number)</li>
+        <li>Authentication credentials or passwords</li>
+        <li>Browsing history or activity</li>
+        <li>Financial or payment information</li>
+        <li>Location data</li>
+        <li>Health information</li>
+        <li>Personal communications</li>
+    </ul>
+
+    <h2>Data Processing</h2>
+    <p>All data processing occurs <strong>locally within your browser</strong>. The extension communicates only with your Microsoft Dynamics 365 environment using the standard Web API to:</p>
+    <ul>
+        <li>Read entity and attribute metadata</li>
+        <li>Update entity and attribute labels</li>
+        <li>Read and parse form structures (XML)</li>
+        <li>Update form control labels</li>
+        <li>Read and update global option sets</li>
+        <li>Retrieve plugin trace logs</li>
+    </ul>
+    <p>No data is sent to third-party servers or external services.</p>
+
+    <h2>Required Permissions</h2>
+    <p>The extension requires the following permissions to function:</p>
+
+    <h3>scripting</h3>
+    <p>Used to inject content scripts that highlight translatable fields on Dynamics 365 forms, helping users identify which fields require translation.</p>
+
+    <h3>activeTab</h3>
+    <p>Used to detect when you're on a valid Dynamics 365 page and capture context information (current entity, attribute, form) to open the appropriate editor.</p>
+
+    <h3>tabs</h3>
+    <p>Used to open report pages (Entity Browser, Form Editor, OptionSet Manager, Plugin Trace Logs) in new tabs for full-screen editing experience.</p>
+
+    <h3>browsingData</h3>
+    <p>Used to clear browser cache and perform hard refresh when requested through the Developer Tools tab. This ensures metadata changes are properly reloaded.</p>
+
+    <h3>storage</h3>
+    <p>Used to store user preferences such as theme selection (light/dark mode), interface layout settings, and display configurations. No sensitive data is stored.</p>
+
+    <h3>host_permissions (https://*.dynamics.com/*)</h3>
+    <p>Required to communicate with the Dynamics 365 Web API across all user environments. All communication uses your existing Dynamics 365 authentication and occurs over HTTPS.</p>
+
+    <h2>Third-Party Services</h2>
+    <p>This extension does <strong>not</strong> use any third-party services including:</p>
+    <ul>
+        <li>Analytics or tracking services</li>
+        <li>Advertising networks</li>
+        <li>External APIs or servers</li>
+        <li>Social media integrations</li>
+    </ul>
+
+    <h2>Data Security</h2>
+    <p>Security measures include:</p>
+    <ul>
+        <li>All communication with Dynamics 365 uses your existing authentication</li>
+        <li>All API calls are made over HTTPS</li>
+        <li>No credentials are stored by the extension</li>
+        <li>Extension operates in isolated browser context</li>
+        <li>Chrome Manifest V3 compliance for enhanced security</li>
+    </ul>
+
+    <h2>Data Retention</h2>
+    <p>The extension stores only non-sensitive user preferences (theme, layout) in Chrome's local storage. This data:</p>
+    <ul>
+        <li>Remains on your device</li>
+        <li>Is never transmitted externally</li>
+        <li>Can be cleared by uninstalling the extension</li>
+        <li>Can be reset through browser settings</li>
+    </ul>
+
+    <h2>User Rights</h2>
+    <p>You have the right to:</p>
+    <ul>
+        <li>Review stored preferences in Chrome's extension storage</li>
+        <li>Clear all extension data by uninstalling</li>
+        <li>Request information about data processing</li>
+        <li>Submit questions or concerns about privacy</li>
+    </ul>
+
+    <h2>Children's Privacy</h2>
+    <p>This extension is designed for business use with Microsoft Dynamics 365 and is not directed at children under 13 years of age. We do not knowingly collect information from children.</p>
+
+    <h2>Changes to Privacy Policy</h2>
+    <p>We may update this privacy policy from time to time to reflect changes in:</p>
+    <ul>
+        <li>Extension functionality</li>
+        <li>Privacy regulations</li>
+        <li>Browser requirements</li>
+    </ul>
+    <p>Updates will be posted on this page with a new "Last Updated" date. Continued use of the extension after changes constitutes acceptance of the updated policy.</p>
+
+    <h2>Contact Information</h2>
+    <p>For questions, concerns, or requests regarding this privacy policy, please:</p>
+    <ul>
+        <li>Open an issue on our <a href="https://github.com/jeremyp93/d365-translator-extension/issues">GitHub repository</a></li>
+        <li>Email: <a href="mailto:jeremy.proot@gmail.com">jeremy.proot@gmail.com</a></li>
+    </ul>
+
+    <h2>Compliance</h2>
+    <p>This extension complies with:</p>
+    <ul>
+        <li>Chrome Web Store Developer Program Policies</li>
+        <li>Chrome Extension User Data Policy</li>
+        <li>General Data Protection Regulation (GDPR) principles</li>
+    </ul>
+
+    <h2>Open Source</h2>
+    <p>This extension is open source. You can review the complete source code at:</p>
+    <p><a href="https://github.com/jeremyp93/d365-translator-extension">https://github.com/jeremyp93/d365-translator-extension</a></p>
+
+    <hr style="margin-top: 40px; border: none; border-top: 1px solid #ddd;">
+    <p style="text-align: center; color: #666; font-size: 14px;">
+        D365 Translation Manager |
+        <a href="https://github.com/jeremyp93/d365-translator-extension">GitHub</a> |
+        Version 1.0.0
+    </p>
+</body>
+</html>
