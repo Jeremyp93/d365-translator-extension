@@ -50,8 +50,8 @@ interface Props {
   reloadTrigger?: number;
   /** Pending changes for this attribute (bulk mode only) - to restore edits when navigating back */
   pendingChanges?: PendingChange[];
-  /** External saving state (e.g., from cart modal) to disable inputs */
-  isSaving?: boolean;
+  /** Set to true to make all inputs read-only (e.g., editing blocked, external save in progress) */
+  readOnly?: boolean;
 }
 
 interface Label {
@@ -67,7 +67,7 @@ export default function EntityLabelEditor({
   onAddToCart,
   reloadTrigger,
   pendingChanges = [],
-  isSaving: externalSaving = false,
+  readOnly = false,
 }: Props): JSX.Element {
   const styles = useStyles();
   const { langs, error: langsError } = useLanguages(clientUrl);
@@ -255,7 +255,7 @@ export default function EntityLabelEditor({
         lcids={lcids}
         values={values}
         loading={langsLoading || loading}
-        disabled={!langs || !langs.length || saving || externalSaving}
+        disabled={!langs || !langs.length || saving || readOnly}
         placeholder="(empty)"
         onChange={(lcid, v) => onChange(lcid, v)}
       />
@@ -263,7 +263,7 @@ export default function EntityLabelEditor({
       <div className={styles.actions}>
         <Button
           onClick={handleSave}
-          disabled={saving || externalSaving || !langs?.length}
+          disabled={saving || !langs?.length || readOnly}
           variant="primary"
         >
           {buttonLabel}

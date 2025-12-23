@@ -43,7 +43,7 @@ const useStyles = makeStyles({
 
 export interface LabelsListProps {
   labels: Label[];
-  isSaving?: boolean;
+  readOnly?: boolean;
   onUpdateLabel?: (lcid: number, value: string) => void;
   defaultLcid?: number;
   clientUrl?: string;
@@ -55,7 +55,7 @@ export interface LabelsListProps {
 
 export default function LabelsList({
   labels,
-  isSaving,
+  readOnly,
   onUpdateLabel,
   defaultLcid = 1033,
   clientUrl,
@@ -129,8 +129,8 @@ export default function LabelsList({
           values={values}
           onChange={(lcid, value) => onUpdateLabel?.(lcid, value)}
           defaultLcid={defaultLcid}
-          readOnly={isSaving}
-          disabled={isSaving}
+          readOnly={readOnly}
+          disabled={readOnly}
         />
       </div>
     </Card>

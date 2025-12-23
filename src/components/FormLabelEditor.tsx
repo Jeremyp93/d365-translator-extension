@@ -41,6 +41,8 @@ export interface FormLabelEditorProps {
   attribute: string;
   formId: string; // lowercase/stripped {}
   labelId: string; // lowercase/stripped {}
+  /** Set to true to make all inputs read-only (e.g., editing blocked, save in progress) */
+  readOnly?: boolean;
 }
 
 export default function FormLabelEditor({
@@ -49,6 +51,7 @@ export default function FormLabelEditor({
   attribute,
   formId,
   labelId,
+  readOnly = false,
 }: FormLabelEditorProps): JSX.Element {
   const styles = useStyles();
 
@@ -159,27 +162,27 @@ export default function FormLabelEditor({
           lcids={langList}
           values={formValues}
           loading={busyLoad}
-          disabled={!formId || !labelId}
+          disabled={!formId || !labelId || readOnly}
           placeholder="(empty)"
           onChange={onFormChange}
         />
       ) : (
         <Info>
-          Click “Load Form Labels” to fetch translations for each language.
+          Click "Load Form Labels" to fetch translations for each language.
         </Info>
       )}
 
       <div className={styles.actions}>
         <Button
           onClick={onLoadFormLabels}
-          disabled={!formId || !labelId || busyLoad || busySave}
+          disabled={!formId || !labelId || busyLoad || busySave || readOnly}
           variant="ghost"
         >
           {busyLoad ? "Loading…" : "Load Form Labels"}
         </Button>
         <Button
           onClick={onSaveFormLabels}
-          disabled={!formId || !labelId || busyLoad || busySave}
+          disabled={!formId || !labelId || busyLoad || busySave || readOnly}
           variant="primary"
         >
           {busySave ? "Saving…" : "Save Form Labels"}

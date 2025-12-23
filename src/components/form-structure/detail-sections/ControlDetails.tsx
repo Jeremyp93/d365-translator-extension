@@ -53,7 +53,7 @@ const useStyles = makeStyles({
 
 export interface ControlDetailsProps {
   control: FormControl;
-  isSaving: boolean;
+  readOnly: boolean;
   clientUrl?: string;
   entity?: string;
   formId?: string;
@@ -62,7 +62,7 @@ export interface ControlDetailsProps {
 
 export default function ControlDetails({
   control,
-  isSaving,
+  readOnly,
   clientUrl,
   entity,
   formId,
@@ -130,7 +130,7 @@ export default function ControlDetails({
       {isEditableControlType(control.classId) && (
         <LabelsList
           labels={control.labels}
-          isSaving={isSaving}
+          readOnly={readOnly}
           onUpdateLabel={onUpdateLabel}
           clientUrl={clientUrl}
           entity={entity}

@@ -193,6 +193,71 @@ The extension requires the following permissions:
 - `storage` - Store extension settings
 - Host permissions: `https://*.dynamics.com/*` - Access D365 Web API
 
+## Editing Permission Control
+
+The extension supports environment-based editing control to prevent users from creating unmanaged layers in managed D365 environments.
+
+### How It Works
+
+The extension checks for a D365 environment variable with the suffix **`D365TranslationManagerEditingEnabled`**. When this variable is set to `"false"`, all editing functionality is disabled across the extension.
+
+### Setting Up in D365
+
+1. **Create an Environment Variable** in your D365 environment:
+   - Navigate to **[Makers Portal](https://make.powerapps.com/) > Solutions > xxx**
+   - Create a new **Environment Variable**
+   - Name it with any prefix, but ending with: `D365TranslationManagerEditingEnabled`
+   - Example: `contoso_D365TranslationManagerEditingEnabled`
+
+2. **Set the Value:**
+   - `"false"` or `"no"` → **Blocks all editing** (inputs disabled, save buttons disabled)
+   - `"true"` or any other value → **Allows editing** (normal operation)
+   - Variable not present → **Allows editing** (fail-open behavior)
+
+### What Gets Blocked
+
+When editing is blocked (`value = "false"`):
+- ✋ All translation input fields are disabled
+- ✋ Save/Publish buttons are disabled
+- ✋ Bulk edit operations are disabled
+- ✅ Viewing and browsing is still allowed
+- ⚠️ A warning banner is displayed on all pages
+
+### User Experience
+
+When editing is blocked, users will see:
+- A **yellow warning banner** at the top of all pages stating:
+  > *"Editing is currently disabled for this environment. Contact your system administrator to enable translation editing."*
+- All input fields and save buttons appear disabled (grayed out)
+
+### Caching & Performance
+
+- Permission status is cached per environment for **4 hours**
+- This minimizes API calls to D365
+- Cache is automatically refreshed after expiry
+- **Fail-open behavior**: If the API check fails, editing is allowed (security by availability)
+
+### Use Cases
+
+**Production Environments:**
+- Set to `"false"` to protect managed solutions from unmanaged customizations
+- Prevent accidental translation edits in production
+
+**Development/Test Environments:**
+- Set to `"true"` or leave unset to allow full translation management
+- Enable translation workflow testing
+
+**Mixed Scenarios:**
+- Use different values per environment to control access granularly
+- Example: Block in PROD, allow in DEV/UAT
+
+### Technical Details
+
+- **Cache Key**: `editingEnabled` (per environment)
+- **Cache TTL**: 4 hours (hard-coded)
+- **API Call**: `environmentvariabledefinitions` OData query with `endswith` filter
+- **Fallback**: On any error, editing is allowed (fail-open)
+
 ## Key Features in Detail
 
 ### Bulk Translation Management
