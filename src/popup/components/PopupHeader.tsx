@@ -57,7 +57,8 @@ export function PopupHeader({ active }: PopupHeaderProps) {
   return (
     <div className={styles.header}>
       <div className={styles.headerIcon}>
-        <Sparkle24Regular />
+        <img src="../../icons/icon48.png" alt="D365 Translation Manager Logo" />
+        {/* <Sparkle24Regular /> */}
       </div>
       <div className={styles.headerText}>
         <div className={styles.title}>D365 Translation Manager</div>
