@@ -106,7 +106,7 @@ git push origin feature/your-feature-name
 **Automated checks will run**:
 - ✅ **CI Build** - Verifies TypeScript compilation and build success
 - ✅ **CodeRabbit Review** - AI-powered code review with suggestions
-- ✅ **Claude Code Review** - Additional AI review focused on best practices
+- ✅ **Claude Code Auto Review** - Automatic review using CODE_REVIEW.md guidelines
 - ✅ **Artifact Generation** - Creates downloadable Chrome extension zip
 
 #### 5. Address Review Feedback
@@ -159,25 +159,41 @@ You can download the built extension artifact from the "Actions" tab → select 
 
 ### AI Code Reviews
 
-Two AI reviewers will automatically review your PRs:
+Three AI review mechanisms are configured for all PRs:
 
-#### CodeRabbit
+#### 1. CodeRabbit (Automatic)
 - Reviews code quality, best practices, potential bugs
 - Configured in [.github/coderabbit.yaml](.github/coderabbit.yaml)
 - Focus areas: TypeScript, React patterns, Chrome API usage, security
+- **Triggers automatically** when PR is opened/updated
 
-#### Claude Code
-- On-demand AI assistant for code reviews and questions
+#### 2. Claude Code Auto Review (Automatic)
+- Comprehensive review using [CODE_REVIEW.md](CODE_REVIEW.md) checklist
+- Configured in [.github/workflows/claude-auto-review.yml](.github/workflows/claude-auto-review.yml)
+- **Triggers automatically** when PR is opened/updated
+- Reviews all 18 checklist items including:
+  - Naming conventions, TypeScript best practices
+  - Custom hooks extraction, reusable components
+  - Accessibility, security, performance
+  - Service layer separation, file organization
+- Provides detailed feedback with ❌/✅ code examples
+
+#### 3. Claude Code On-Demand (Manual)
+- Interactive AI assistant for follow-up questions
 - Configured in [.github/workflows/claude-code-review.yml](.github/workflows/claude-code-review.yml)
-- **Trigger**: Mention `@claude` in any PR comment or review comment
-- Can answer questions, review code, suggest improvements, and reference project documentation
+- **Trigger**: Mention `@claude` in any PR comment
+- **Use cases**:
+  - Ask specific questions: `@claude how can I improve the performance of this function?`
+  - Request alternative approaches: `@claude suggest a better pattern for this implementation`
+  - Clarify review feedback: `@claude can you explain why custom hooks are better here?`
+  - Get help: `@claude how should I structure this service?`
 
-**How to use**:
-- Comment on a PR with `@claude review this PR` for a full review
-- Ask specific questions: `@claude how can I improve the performance of this function?`
-- Request help: `@claude suggest a better approach for this implementation`
-
-CodeRabbit will automatically review PRs, while Claude Code responds to your `@claude` mentions.
+**Review Workflow:**
+1. Open PR → CodeRabbit and Claude Auto Review post feedback automatically
+2. Review the feedback from both AI reviewers
+3. Make changes based on suggestions
+4. Ask follow-up questions by mentioning `@claude` in comments
+5. Push updates → reviews run again automatically
 
 ## Submitting Changes
 

@@ -39,10 +39,11 @@
 - [ ] Reviewed code changes in [CODE_REVIEW.md](../CODE_REVIEW.md) checklist
 
 ## AI Review Acknowledgment
-<!-- CodeRabbit will automatically review this PR. You can also mention @claude in comments for on-demand assistance -->
+<!-- CodeRabbit and Claude Code will automatically review this PR using CODE_REVIEW.md guidelines -->
 
-- [ ] I have reviewed AI feedback and addressed concerns
-- [ ] I understand I can mention @claude in PR comments for questions and reviews
+- [ ] I have reviewed feedback from CodeRabbit and Claude Auto Review
+- [ ] I have addressed the ❌/✅ suggestions from Claude's CODE_REVIEW.md checklist
+- [ ] I understand I can mention @claude in PR comments for follow-up questions
 
 ## Screenshots (if applicable)
 <!-- Add screenshots for UI changes -->

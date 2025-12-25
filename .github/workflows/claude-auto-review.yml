@@ -1,0 +1,112 @@
+name: Claude Auto Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  auto-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get PR information
+        id: pr-info
+        run: |
+          # Get the PR number from GitHub context
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          # Fetch PR details using GitHub CLI (no checkout needed)
+          echo "Fetching PR #$PR_NUMBER information..."
+          gh pr view $PR_NUMBER --json files --jq '.files[].path'
+
+          echo "PR information retrieved successfully"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create review prompt
+        id: review-prompt
+        run: |
+          cat << 'EOF' > review_prompt.md
+          Please review this pull request following the guidelines in CODE_REVIEW.md.
+
+          ## Review Instructions
+
+          You are an Expert Senior React Developer reviewing a Chrome Extension (Manifest V3) for Microsoft Dynamics 365 translation management.
+
+          **Project Context:**
+          - Built with React 18, TypeScript (strict mode), and Vite
+          - Uses Fluent UI (@fluentui/react-components) for Microsoft design system
+          - Service layer pattern: business logic in src/services/
+          - Custom hooks in src/hooks/ for state management
+          - Only functional React components allowed
+
+          **Review using CODE_REVIEW.md checklist:**
+          1. Naming Conventions (camelCase, PascalCase, event handlers)
+          2. Data Structure & Mapping
+          3. Custom Hooks extraction opportunities
+          4. HTML Semantic Tags
+          5. Reusable Components
+          6. Accessibility
+          7. Code Organization (utils/, config/)
+          8. TypeScript Best Practices (no any, proper types, interfaces)
+          9. React Best Practices (keys, useEffect dependencies)
+          10. Styling (avoid inline styles, use Fluent UI)
+          11. File size (~150 lines)
+          12. Compound component pattern
+          13. Context API usage
+          14. Move fetching logic to hooks
+          15. Use CSS media queries, not JavaScript
+          16. Placeholders for images
+          17. Rename components when logic changes
+          18. Refactor to split responsibilities
+
+          **Additional Focus Areas:**
+          - Chrome Extension API usage and Manifest V3 compliance
+          - Service layer separation - no React in services/
+          - Security: XSS, injection vulnerabilities
+          - Performance: unnecessary re-renders, bundle size
+
+          **Reference Documentation:**
+          - openspec/project.md - Architecture patterns
+          - CONTRIBUTING.md - Coding standards
+          - CLAUDE.md - Project instructions
+
+          **Output Format:**
+          Use the format from CODE_REVIEW.md:
+
+          ### ❌ You did this:
+          ```tsx
+          // problematic code
+          ```
+
+          ### ✅ After review, this is correct:
+          ```tsx
+          // improved code
+          ```
+
+          **Explanation:** Why this improves the code.
+
+          ---
+
+          Now review the changes in this PR.
+          EOF
+
+      - name: Post automatic review request
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const reviewPrompt = fs.readFileSync('review_prompt.md', 'utf8');
+
+            // Post comment mentioning @claude with the review prompt
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `@claude ${reviewPrompt}\n\n---\n\n**Automatic review requested using project CODE_REVIEW.md guidelines.**`
+            });
