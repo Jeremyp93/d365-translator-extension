@@ -1,4 +1,4 @@
-import type { PluginTraceLog } from '../../services/pluginTraceLogService';
+import type { PluginTraceLog } from '../services/pluginTraceLogService';
 import type { Node, Edge } from 'reactflow';
 
 /**
