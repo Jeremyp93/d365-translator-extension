@@ -24,9 +24,11 @@ import FormLabelEditor from "../../components/FormLabelEditor";
 import OptionSetEditor from "../../components/OptionSetEditor";
 import PageHeader from "../../components/ui/PageHeader";
 import Section from "../../components/ui/Section";
+import { EditingBlockedBanner } from "../../components/ui/EditingBlockedBanner";
 
 import { useOrgContext } from "../../hooks/useOrgContext";
 import { useAttributeType } from "../../hooks/useAttributeType";
+import { useEditingPermission } from "../../hooks/useEditingPermission";
 import { spacing } from "../../styles/theme";
 import { useTheme } from "../../context/ThemeContext";
 import { isOptionSetType } from "../../services/optionSetService";
@@ -101,6 +103,9 @@ export default function FieldReportPage(): JSX.Element {
   const { mode, toggleTheme } = useTheme();
   const { clientUrl, entity, attribute, formId, labelId, apiVersion } = useOrgContext();
 
+  // Check editing permission based on environment variable
+  const { isEditingBlocked, loading: permissionLoading } = useEditingPermission(clientUrl, apiVersion);
+
   // Validate required parameters
   const validation = validateFieldReportParams(clientUrl, entity, attribute);
 
@@ -159,6 +164,9 @@ export default function FieldReportPage(): JSX.Element {
       />
 
       <div className={styles.content}>
+        {/* Editing blocked warning banner */}
+        <EditingBlockedBanner visible={isEditingBlocked} />
+
         {/* Context Information */}
         <Section title="Context" icon={<Code24Regular />}>
           <div className={styles.metaGrid}>
@@ -193,6 +201,7 @@ export default function FieldReportPage(): JSX.Element {
             clientUrl={clientUrl}
             entity={entity}
             attribute={attribute}
+            readOnly={isEditingBlocked || permissionLoading}
           />
         </Section>
 
@@ -204,6 +213,7 @@ export default function FieldReportPage(): JSX.Element {
             attribute={attribute}
             formId={normalizeGuid(formId)}
             labelId={normalizeGuid(labelId)}
+            readOnly={isEditingBlocked || permissionLoading}
           />
         </Section>
 
@@ -215,6 +225,7 @@ export default function FieldReportPage(): JSX.Element {
               entity={entity}
               attribute={attribute}
               apiVersion={apiVersion}
+              readOnly={isEditingBlocked || permissionLoading}
             />
           </Section>
         )}

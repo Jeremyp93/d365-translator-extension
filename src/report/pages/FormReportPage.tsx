@@ -45,8 +45,10 @@ import {
 
 import PageHeader from '../../components/ui/PageHeader';
 import { ErrorBox } from '../../components/ui/Notice';
+import { EditingBlockedBanner } from '../../components/ui/EditingBlockedBanner';
 import { useOrgContext } from '../../hooks/useOrgContext';
 import { useFormStructure } from '../../hooks/useFormStructure';
+import { useEditingPermission } from '../../hooks/useEditingPermission';
 import { useTheme } from '../../context/ThemeContext';
 import { useTreeExpansion } from '../../hooks/useTreeExpansion';
 import { useFormStructureSearch } from '../../hooks/useFormStructureSearch';
@@ -280,6 +282,9 @@ export default function FormReportPage(): JSX.Element {
   const styles = useStyles();
   const { mode, toggleTheme } = useTheme();
   const { clientUrl, entity: entityFromUrl, formId: formIdFromUrl, apiVersion } = useOrgContext();
+
+  // Check editing permission
+  const { isEditingBlocked } = useEditingPermission(clientUrl || "", apiVersion);
 
   // Hook state
   const { state, load, loadedFormId, reset } = useFormStructure();
@@ -776,7 +781,8 @@ export default function FormReportPage(): JSX.Element {
                 loadingForms ||
                 !structureIsForSelectedForm ||
                 !editedStructure ||
-                !formIsCustomizable
+                !formIsCustomizable ||
+                isEditingBlocked
               }
             >
               {isSaving ? 'Saving...' : 'Save All'}
@@ -784,6 +790,8 @@ export default function FormReportPage(): JSX.Element {
           </>
         }
       />
+
+      <EditingBlockedBanner visible={isEditingBlocked} />
 
       {(saveSuccess || saveError || saveStatus) && (
         <div className={styles.messageContainer}>
@@ -1295,7 +1303,7 @@ export default function FormReportPage(): JSX.Element {
                     {currentItem.type === 'header-control' && (
                       <ControlDetails
                         control={currentItem.control}
-                        isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
+                        readOnly={isSaving || !structureIsForSelectedForm || !formIsCustomizable || isEditingBlocked}
                         clientUrl={clientUrl}
                         entity={selectedEntity || undefined}
                         formId={selectedFormId || undefined}
@@ -1318,7 +1326,7 @@ export default function FormReportPage(): JSX.Element {
                     {currentItem.type === 'tab' && (
                       <TabDetails
                         tab={currentItem.tab}
-                        isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
+                        readOnly={isSaving || !structureIsForSelectedForm || !formIsCustomizable || isEditingBlocked}
                         onUpdateLabel={(lcid, value) => {
                           const tabIdx = editedStructure?.tabs.findIndex(t => t.id === currentItem.tab.id) ?? -1;
                           if (tabIdx >= 0) updateLabel({ tabIdx }, lcid, value);
@@ -1329,7 +1337,7 @@ export default function FormReportPage(): JSX.Element {
                     {currentItem.type === 'section' && (
                       <SectionDetails
                         section={currentItem.section}
-                        isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
+                        readOnly={isSaving || !structureIsForSelectedForm || !formIsCustomizable || isEditingBlocked}
                         onUpdateLabel={(lcid, value) => {
                           const tabIdx = editedStructure?.tabs.findIndex(t => t.id === currentItem.tab.id) ?? -1;
                           if (tabIdx < 0) return;
@@ -1355,7 +1363,7 @@ export default function FormReportPage(): JSX.Element {
                     {currentItem.type === 'control' && (
                       <ControlDetails
                         control={currentItem.control}
-                        isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
+                        readOnly={isSaving || !structureIsForSelectedForm || !formIsCustomizable || isEditingBlocked}
                         clientUrl={clientUrl}
                         entity={selectedEntity || undefined}
                         formId={selectedFormId || undefined}
@@ -1388,7 +1396,7 @@ export default function FormReportPage(): JSX.Element {
                     {currentItem.type === 'footer-control' && (
                       <ControlDetails
                         control={currentItem.control}
-                        isSaving={isSaving || !structureIsForSelectedForm || !formIsCustomizable}
+                        readOnly={isSaving || !structureIsForSelectedForm || !formIsCustomizable || isEditingBlocked}
                         clientUrl={clientUrl}
                         entity={selectedEntity || undefined}
                         formId={selectedFormId || undefined}

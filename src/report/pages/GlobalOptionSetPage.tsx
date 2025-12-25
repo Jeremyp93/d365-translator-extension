@@ -14,6 +14,7 @@ import {
 } from "@fluentui/react-icons";
 
 import { ErrorBox, Info } from "../../components/ui/Notice";
+import { EditingBlockedBanner } from "../../components/ui/EditingBlockedBanner";
 import PageHeader from "../../components/ui/PageHeader";
 import ListSelector from "../../components/ListSelector";
 import DependencyPanel from "../../components/DependencyPanel";
@@ -21,6 +22,7 @@ import OptionSetDetail from "../../components/global-optionset/OptionSetDetail";
 
 import { useOrgContext } from "../../hooks/useOrgContext";
 import { useLanguages } from "../../hooks/useLanguages";
+import { useEditingPermission } from "../../hooks/useEditingPermission";
 import { spacing } from "../../styles/theme";
 import { useTheme } from "../../context/ThemeContext";
 import {
@@ -237,6 +239,9 @@ export default function GlobalOptionSetPage(): JSX.Element {
   const { mode, toggleTheme } = useTheme();
   const { clientUrl: clientUrlFromParam, apiVersion: apiVersionFromParam } = useOrgContext();
 
+  // Check editing permission
+  const { isEditingBlocked } = useEditingPermission(clientUrlFromParam || "", apiVersionFromParam);
+
   // Read URL parameters
   const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
   const optionSetNameFromUrl = urlParams.get('name');
@@ -439,6 +444,8 @@ export default function GlobalOptionSetPage(): JSX.Element {
       />
 
       <div className={styles.content}>
+        <EditingBlockedBanner visible={isEditingBlocked} />
+
         {error && <ErrorBox>Error: {error}</ErrorBox>}
         {info && !error && <Info>{info}</Info>}
 
@@ -470,6 +477,7 @@ export default function GlobalOptionSetPage(): JSX.Element {
               onChange={onChange}
               onSave={onSave}
               saving={saving}
+              readOnly={isEditingBlocked}
             />
           </section>
           {/* Usage Panel: OptionSet Usage */}

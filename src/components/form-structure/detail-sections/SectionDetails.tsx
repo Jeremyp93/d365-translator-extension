@@ -49,11 +49,11 @@ const useStyles = makeStyles({
 
 export interface SectionDetailsProps {
   section: FormSection;
-  isSaving: boolean;
+  readOnly: boolean;
   onUpdateLabel: (lcid: number, value: string) => void;
 }
 
-export default function SectionDetails({ section, isSaving, onUpdateLabel }: SectionDetailsProps): JSX.Element {
+export default function SectionDetails({ section, readOnly, onUpdateLabel }: SectionDetailsProps): JSX.Element {
   const styles = useStyles();
 
   return (
@@ -103,7 +103,7 @@ export default function SectionDetails({ section, isSaving, onUpdateLabel }: Sec
         </table>
       </Card>
 
-      <LabelsList labels={section.labels} isSaving={isSaving} onUpdateLabel={onUpdateLabel} />
+      <LabelsList labels={section.labels} readOnly={readOnly} onUpdateLabel={onUpdateLabel} />
     </>
   );
 }

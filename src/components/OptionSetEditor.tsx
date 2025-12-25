@@ -71,6 +71,8 @@ interface Props {
   entity: string;
   attribute: string;
   apiVersion?: string;
+  /** Set to true to make all inputs read-only (e.g., editing blocked, save in progress) */
+  readOnly?: boolean;
 }
 
 export default function OptionSetEditor({
@@ -78,6 +80,7 @@ export default function OptionSetEditor({
   entity,
   attribute,
   apiVersion = 'v9.2',
+  readOnly = false,
 }: Props): JSX.Element {
   const styles = useStyles();
   const { langs, error: langsError } = useLanguages(clientUrl, apiVersion);
@@ -239,7 +242,7 @@ export default function OptionSetEditor({
                 lcids={lcids}
                 values={values[option.value] || {}}
                 loading={langsLoading || loading}
-                disabled={!langs || !langs.length}
+                disabled={!langs || !langs.length || readOnly}
                 placeholder="(empty)"
                 onChange={(lcid, v) => onChange(option.value, lcid, v)}
               />
@@ -255,7 +258,7 @@ export default function OptionSetEditor({
       <div className={styles.actions}>
         <Button
           onClick={onSave}
-          disabled={saving || !langs?.length || !metadata}
+          disabled={saving || !langs?.length || !metadata || readOnly}
           variant="primary"
         >
           {saving ? "Saving…" : "Save & Publish"}

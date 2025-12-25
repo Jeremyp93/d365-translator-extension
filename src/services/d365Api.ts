@@ -337,6 +337,25 @@ export async function waitForLanguageToApply(
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
+   Envirionment variable helpers
+   ──────────────────────────────────────────────────────────────────────────── */
+
+export async function getEnvironmentVariableValue(
+  baseUrl: string,
+  apiVersion: string = 'v9.2',
+  schemaName: string
+): Promise<string | null> {
+  // RetrieveEnvironmentVariableValue uses special @parameter notation
+  // URL format: /api/data/v9.2/RetrieveEnvironmentVariableValue(DefinitionSchemaName=@DefinitionSchemaName)?@DefinitionSchemaName='value'
+  const api = buildApiUrl(baseUrl, apiVersion);
+  const encodedValue = encodeURIComponent(`'${schemaName}'`);
+  const url = `${api}/RetrieveEnvironmentVariableValue(DefinitionSchemaName=@DefinitionSchemaName)?@DefinitionSchemaName=${encodedValue}`;
+
+  const j = await fetchJson(url);
+  return j?.Value ?? null;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
    SOAP plumbing (generic) + attribute metadata helper
    ──────────────────────────────────────────────────────────────────────────── */
 

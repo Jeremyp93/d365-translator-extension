@@ -24,6 +24,7 @@ import { ErrorBox, Info } from "../../components/ui/Notice";
 import PageHeader from "../../components/ui/PageHeader";
 import Section from "../../components/ui/Section";
 import EntityLabelEditor from "../../components/EntityLabelEditor";
+import { EditingBlockedBanner } from "../../components/ui/EditingBlockedBanner";
 import PendingChangesCartModal from "../../components/PendingChangesCartModal";
 import FlexBadge from "../../components/ui/FlexBadge";
 import ListSelector from "../../components/ListSelector";
@@ -34,6 +35,7 @@ import { PendingChangesProvider, usePendingChanges } from "../../hooks/usePendin
 import type { PendingChange } from "../../types";
 
 import { useOrgContext } from "../../hooks/useOrgContext";
+import { useEditingPermission } from "../../hooks/useEditingPermission";
 import { useTheme } from "../../context/ThemeContext";
 import { spacing } from "../../styles/theme";
 import { useEntityBrowser } from "../../hooks/useEntityBrowser";
@@ -128,6 +130,7 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
   const styles = useStyles();
   const { clientUrl, apiVersion } = useOrgContext();
   const { mode, toggleTheme } = useTheme();
+  const { isEditingBlocked } = useEditingPermission(clientUrl, apiVersion);
   const { changes, count: pendingCount, addChanges, removeChange, clearAll } = usePendingChanges();
 
   // Custom hooks handle all data fetching
@@ -284,6 +287,9 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
       />
 
       <div className={styles.content}>
+        {/* Editing blocked warning banner */}
+        <EditingBlockedBanner visible={isEditingBlocked} />
+
         {/* Error and Info Messages */}
         {entitiesError && <ErrorBox>{entitiesError}</ErrorBox>}
         {attributesError && <ErrorBox>{attributesError}</ErrorBox>}
@@ -338,7 +344,7 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
                         pendingChanges={Array.from(changes.values()).filter(
                           (change) => change.entity === selectedEntity && change.attribute === selectedAttribute
                         )}
-                        isSaving={isSaving}
+                        readOnly={isSaving || isEditingBlocked}
                       />
                     </Section>
                   </div>

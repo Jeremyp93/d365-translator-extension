@@ -49,11 +49,11 @@ const useStyles = makeStyles({
 
 export interface TabDetailsProps {
   tab: FormTab;
-  isSaving: boolean;
+  readOnly: boolean;
   onUpdateLabel: (lcid: number, value: string) => void;
 }
 
-export default function TabDetails({ tab, isSaving, onUpdateLabel }: TabDetailsProps): JSX.Element {
+export default function TabDetails({ tab, readOnly, onUpdateLabel }: TabDetailsProps): JSX.Element {
   const styles = useStyles();
 
   return (
@@ -95,7 +95,7 @@ export default function TabDetails({ tab, isSaving, onUpdateLabel }: TabDetailsP
         </table>
       </Card>
 
-      <LabelsList labels={tab.labels} isSaving={isSaving} onUpdateLabel={onUpdateLabel} />
+      <LabelsList labels={tab.labels} readOnly={readOnly} onUpdateLabel={onUpdateLabel} />
     </>
   );
 }
