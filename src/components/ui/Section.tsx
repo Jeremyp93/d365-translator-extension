@@ -1,4 +1,4 @@
-import { Text } from "@fluentui/react-components";
+import { makeStyles, Text, tokens } from "@fluentui/react-components";
 
 import { useSharedStyles } from "../../styles/theme";
 
@@ -9,6 +9,18 @@ interface SectionProps {
   headerActions?: React.ReactNode;
 }
 
+const useStyles = makeStyles({
+  headerContainer: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: tokens.spacingVerticalM,
+  },
+  iconSpacing: {
+    marginRight: tokens.spacingHorizontalS,
+  },
+});
+
 export default function Section({
   title,
   icon,
@@ -16,13 +28,14 @@ export default function Section({
   headerActions,
 }: SectionProps): JSX.Element {
   const sharedStyles = useSharedStyles();
+  const styles = useStyles();
 
   return (
     <div className={sharedStyles.section}>
       {title && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+        <div className={styles.headerContainer}>
           <Text className={sharedStyles.sectionHeader}>
-            {icon && <span style={{ marginRight: "8px" }}>{icon}</span>}
+            {icon && <span className={styles.iconSpacing}>{icon}</span>}
             {title}
           </Text>
           {headerActions}

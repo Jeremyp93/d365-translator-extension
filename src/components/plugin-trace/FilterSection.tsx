@@ -11,47 +11,51 @@ import {
   Dropdown,
   Option,
   Checkbox,
-} from '@fluentui/react-components';
-import { Settings20Regular, ArrowClockwiseRegular } from '@fluentui/react-icons';
+} from "@fluentui/react-components";
+import {
+  Settings20Regular,
+  ArrowClockwiseRegular,
+} from "@fluentui/react-icons";
 
-import { PluginTraceLogFilters } from '../../services/pluginTraceLogService';
+import { PluginTraceLogFilters } from "../../services/pluginTraceLogService";
+import { spacing } from "../../styles/theme";
 
 const useStyles = makeStyles({
   filterSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-    padding: '16px',
+    display: "flex",
+    flexDirection: "column",
+    gap: spacing.lg,
+    padding: spacing.lg,
     backgroundColor: tokens.colorNeutralBackground1,
     borderRadius: tokens.borderRadiusMedium,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
-    marginBottom: '24px',
+    marginBottom: spacing.xl,
   },
   filterTitle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
+    display: "flex",
+    alignItems: "center",
+    gap: spacing.sm,
     fontSize: tokens.fontSizeBase400,
     fontWeight: tokens.fontWeightSemibold,
   },
   filterGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    columnGap: '16px',
-    rowGap: '16px',
-    alignItems: 'end',
-    '@media (max-width: 1200px)': {
-      gridTemplateColumns: 'repeat(2, 1fr)',
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    columnGap: spacing.lg,
+    rowGap: spacing.lg,
+    alignItems: "end",
+    "@media (max-width: 1200px)": {
+      gridTemplateColumns: "repeat(2, 1fr)",
     },
-    '@media (max-width: 768px)': {
-      gridTemplateColumns: '1fr',
+    "@media (max-width: 768px)": {
+      gridTemplateColumns: "1fr",
     },
   },
   filterActions: {
-    display: 'flex',
-    gap: '8px',
-    justifyContent: 'flex-end',
-    marginTop: '8px',
+    display: "flex",
+    gap: spacing.sm,
+    justifyContent: "flex-end",
+    marginTop: spacing.sm,
   },
   helpText: {
     fontSize: tokens.fontSizeBase200,
@@ -80,7 +84,10 @@ export default function FilterSection({
 }: FilterSectionProps): JSX.Element {
   const styles = useStyles();
 
-  const handleFilterChange = (field: keyof PluginTraceLogFilters, value: any) => {
+  const handleFilterChange = (
+    field: keyof PluginTraceLogFilters,
+    value: any
+  ) => {
     onFiltersChange({ ...filters, [field]: value });
   };
 
@@ -97,31 +104,31 @@ export default function FilterSection({
       <div className={styles.filterGrid}>
         <Input
           placeholder="Type Name (e.g., MyPlugin)"
-          value={filters.typename || ''}
-          onChange={(_, data) => handleFilterChange('typename', data.value)}
+          value={filters.typename || ""}
+          onChange={(_, data) => handleFilterChange("typename", data.value)}
         />
         <Input
           placeholder="Message Name (e.g., Create)"
-          value={filters.messagename || ''}
-          onChange={(_, data) => handleFilterChange('messagename', data.value)}
+          value={filters.messagename || ""}
+          onChange={(_, data) => handleFilterChange("messagename", data.value)}
         />
         <Dropdown
           placeholder="Execution Mode"
           value={
             filters.mode === 0
-              ? 'Synchronous'
+              ? "Synchronous"
               : filters.mode === 1
-              ? 'Asynchronous'
-              : 'All'
+              ? "Asynchronous"
+              : "All"
           }
           onOptionSelect={(_, data) => {
             const mode =
-              data.optionText === 'Synchronous'
+              data.optionText === "Synchronous"
                 ? 0
-                : data.optionText === 'Asynchronous'
+                : data.optionText === "Asynchronous"
                 ? 1
                 : -1;
-            handleFilterChange('mode', mode === -1 ? undefined : mode);
+            handleFilterChange("mode", mode === -1 ? undefined : mode);
           }}
         >
           <Option text="All">All</Option>
@@ -131,42 +138,50 @@ export default function FilterSection({
         <Input
           type="number"
           placeholder="Min Duration (ms)"
-          value={filters.minDuration?.toString() || ''}
+          value={filters.minDuration?.toString() || ""}
           onChange={(_, data) =>
-            handleFilterChange('minDuration', data.value ? parseFloat(data.value) : undefined)
+            handleFilterChange(
+              "minDuration",
+              data.value ? parseFloat(data.value) : undefined
+            )
           }
         />
         <Input
           type="number"
           placeholder="Max Duration (ms)"
-          value={filters.maxDuration?.toString() || ''}
+          value={filters.maxDuration?.toString() || ""}
           onChange={(_, data) =>
-            handleFilterChange('maxDuration', data.value ? parseFloat(data.value) : undefined)
+            handleFilterChange(
+              "maxDuration",
+              data.value ? parseFloat(data.value) : undefined
+            )
           }
         />
         <Input
           type="date"
           placeholder="Start Date"
-          value={filters.startDate || ''}
-          onChange={(_, data) => handleFilterChange('startDate', data.value)}
+          value={filters.startDate || ""}
+          onChange={(_, data) => handleFilterChange("startDate", data.value)}
         />
         <Input
           type="date"
           placeholder="End Date"
-          value={filters.endDate || ''}
-          onChange={(_, data) => handleFilterChange('endDate', data.value)}
+          value={filters.endDate || ""}
+          onChange={(_, data) => handleFilterChange("endDate", data.value)}
         />
         <Checkbox
           label="Show only exceptions"
           checked={filters.hasException || false}
-          onChange={(_, data) => handleFilterChange('hasException', data.checked)}
+          onChange={(_, data) =>
+            handleFilterChange("hasException", data.checked)
+          }
         />
         <Dropdown
           placeholder="Page Size"
           value={pageSize.toString()}
           selectedOptions={[pageSize.toString()]}
           onOptionSelect={(_, data) => {
-            const size = parseInt(data.optionValue || '100', 10);
+            const size = parseInt(data.optionValue || "100", 10);
             onPageSizeChange(size);
           }}
         >
@@ -182,8 +197,13 @@ export default function FilterSection({
         <Button appearance="secondary" onClick={onClear}>
           Clear Filters
         </Button>
-        <Button appearance="primary" icon={<ArrowClockwiseRegular />} onClick={onApply} disabled={loading}>
-          {loading ? 'Applying...' : 'Apply Filters'}
+        <Button
+          appearance="primary"
+          icon={<ArrowClockwiseRegular />}
+          onClick={onApply}
+          disabled={loading}
+        >
+          {loading ? "Applying..." : "Apply Filters"}
         </Button>
       </div>
     </div>

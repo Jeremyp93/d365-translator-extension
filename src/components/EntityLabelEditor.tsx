@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Text,
   Divider,
@@ -132,7 +132,14 @@ export default function EntityLabelEditor({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientUrl, entity, attribute, lcids.join(","), reloadTrigger, pendingChanges.length]); // re-run if langs change, reload triggered, or pending changes added/removed
+  }, [
+    clientUrl,
+    entity,
+    attribute,
+    lcids.join(","),
+    reloadTrigger,
+    pendingChanges.length,
+  ]); // re-run if langs change, reload triggered, or pending changes added/removed
 
   const onChange = (lcid: number, v: string) => {
     setValues((prev) => ({ ...prev, [lcid]: v }));
@@ -167,7 +174,12 @@ export default function EntityLabelEditor({
         return;
       }
 
-      await updateAttributeLabelsViaWebApi(clientUrl, entity, attribute, labels);
+      await updateAttributeLabelsViaWebApi(
+        clientUrl,
+        entity,
+        attribute,
+        labels
+      );
 
       setInfo("Publishing…");
       await publishEntityViaWebApi(clientUrl, entity);
@@ -224,12 +236,20 @@ export default function EntityLabelEditor({
     // 3. Still see the same diff from D365 (not from last "add to cart")
 
     // Show success feedback
-    setInfo(`Added ${changes.length} translation${changes.length > 1 ? 's' : ''} to the changes`);
+    setInfo(
+      `Added ${changes.length} translation${
+        changes.length > 1 ? "s" : ""
+      } to the changes`
+    );
     setTimeout(() => setInfo(null), 2000);
   };
 
   const handleSave = bulkMode ? handleAddToCart : handleImmediateSave;
-  const buttonLabel = bulkMode ? "Add to Changes" : (saving ? "Saving…" : "Save & Publish");
+  const buttonLabel = bulkMode
+    ? "Add to Changes"
+    : saving
+    ? "Saving…"
+    : "Save & Publish";
 
   return (
     <Card className={styles.root}>

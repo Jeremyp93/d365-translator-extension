@@ -130,7 +130,7 @@ export default function OptionSetEditor({
           setInfo(null);
         }
       } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? String(e));
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -173,7 +173,7 @@ export default function OptionSetEditor({
           : "Saved & published. If you still see old text, hard refresh (Ctrl/Cmd+Shift+R)."
       );
     } catch (e: any) {
-      setError(e?.message ?? String(e));
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
