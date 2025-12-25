@@ -50,32 +50,67 @@ async function fetchEditingPermissionFromApi(
       filter: `endswith(schemaname, '${ENV_VAR.EDITING_ENABLED_SUFFIX}')`,
       top: 1,
     });
-    const definitionsUrl = `${buildApiUrl(baseUrl, apiVersion)}/environmentvariabledefinitions?${odataQuery}`;
-    
+    const definitionsUrl = `${buildApiUrl(
+      baseUrl,
+      apiVersion
+    )}/environmentvariabledefinitions?${odataQuery}`;
+
     const definitionResponse = await fetchJson(definitionsUrl);
-    const definitions = definitionResponse?.value as EnvironmentVariableDefinition[] | undefined;
-    
-    if (!definitions || definitions.length === 0) {
+
+    // Validate response shape before type assertion
+    if (!definitionResponse || typeof definitionResponse !== "object") {
+      console.warn(
+        "[EditingPermission] Invalid API response format, allowing editing"
+      );
+      return true;
+    }
+
+    const definitions = definitionResponse?.value as
+      | EnvironmentVariableDefinition[]
+      | undefined;
+
+    if (
+      !definitions ||
+      !Array.isArray(definitions) ||
+      definitions.length === 0
+    ) {
       // Variable not found - allow editing (fail-open)
       return true;
     }
-    
+
+    // Validate first definition has required fields
+    const firstDef = definitions[0];
+    if (!firstDef?.schemaname || typeof firstDef.schemaname !== "string") {
+      console.warn(
+        "[EditingPermission] Invalid definition format, missing schemaname, allowing editing"
+      );
+      return true;
+    }
+
     // Step 2: Get the value using schemaname
     const schemaName = definitions[0].schemaname;
-    const value = await getEnvironmentVariableValue(baseUrl, apiVersion, schemaName);
+    const value = await getEnvironmentVariableValue(
+      baseUrl,
+      apiVersion,
+      schemaName
+    );
 
     // Block only if value is exactly "false", otherwise allow (fail-open)
     // Value can be: "false" (block), "true" (allow), null (allow), or any other value (allow)
     const normalizedValue = value?.toLowerCase();
     return normalizedValue !== "no" && normalizedValue !== "false";
-    
   } catch (error) {
     // Fail-open: on any error, allow editing
-    console.error('[EditingPermission] Failed to check environment variable, allowing editing:', error);
+    console.error(
+      "[EditingPermission] Failed to check environment variable, allowing editing:",
+      error
+    );
     return true;
   }
 }
 
-export async function clearEditingPermissionCache(baseUrl: string): Promise<void> {
-    await storageRemove(baseUrl, CACHE_KEY);
+export async function clearEditingPermissionCache(
+  baseUrl: string
+): Promise<void> {
+  await storageRemove(baseUrl, CACHE_KEY);
 }

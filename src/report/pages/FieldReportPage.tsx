@@ -104,7 +104,7 @@ export default function FieldReportPage(): JSX.Element {
   const { clientUrl, entity, attribute, formId, labelId, apiVersion } = useOrgContext();
 
   // Check editing permission based on environment variable
-  const { isEditingBlocked } = useEditingPermission(clientUrl, apiVersion);
+  const { isEditingBlocked, loading: permissionLoading } = useEditingPermission(clientUrl, apiVersion);
 
   // Validate required parameters
   const validation = validateFieldReportParams(clientUrl, entity, attribute);
@@ -201,7 +201,7 @@ export default function FieldReportPage(): JSX.Element {
             clientUrl={clientUrl}
             entity={entity}
             attribute={attribute}
-            readOnly={isEditingBlocked}
+            readOnly={isEditingBlocked || permissionLoading}
           />
         </Section>
 
@@ -213,7 +213,7 @@ export default function FieldReportPage(): JSX.Element {
             attribute={attribute}
             formId={normalizeGuid(formId)}
             labelId={normalizeGuid(labelId)}
-            readOnly={isEditingBlocked}
+            readOnly={isEditingBlocked || permissionLoading}
           />
         </Section>
 
@@ -225,7 +225,7 @@ export default function FieldReportPage(): JSX.Element {
               entity={entity}
               attribute={attribute}
               apiVersion={apiVersion}
-              readOnly={isEditingBlocked}
+              readOnly={isEditingBlocked || permissionLoading}
             />
           </Section>
         )}
