@@ -76,37 +76,10 @@ jobs:
           echo "Extracted version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create extension zip
-        run: |
-          if [ ! -d "dist" ]; then
-            echo "Error: dist/ directory not found"
-            exit 1
-          fi
-
-          cd dist
-
-          ZIP_NAME="d365-translator-extension-v${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip"
-          zip -r "../$ZIP_NAME" .
-
-          if [ $? -ne 0 ]; then
-            echo "Error: Failed to create zip file"
-            exit 1
-          fi
-
-          cd ..
-
-          if [ ! -f "$ZIP_NAME" ]; then
-            echo "Error: Zip file was not created"
-            exit 1
-          fi
-
-          ZIP_SIZE=$(stat -f%z "$ZIP_NAME" 2>/dev/null || stat -c%s "$ZIP_NAME" 2>/dev/null)
-          echo "Created $ZIP_NAME (size: $ZIP_SIZE bytes)"
-
       - name: Upload extension artifact
         uses: actions/upload-artifact@v4
         with:
-          name: d365-translator-extension-v${{ steps.get_version.outputs.version }}-${{ github.sha }}
-          path: d365-translator-extension-v${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip
+          name: d365-translator-extension-v${{ steps.get_version.outputs.version }}
+          path: dist/
           retention-days: 30
           if-no-files-found: error
