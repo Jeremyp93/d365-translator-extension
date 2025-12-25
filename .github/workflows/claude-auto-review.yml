@@ -29,11 +29,10 @@ jobs:
         id: prompt
         shell: bash
         run: |
-          {
-            echo "text<<'EOF'"
-            cat .github/ai/claude-auto-review.md
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          delimiter=EOF_PROMPT
+          echo "text<<$delimiter" >> "$GITHUB_OUTPUT"
+          cat .github/ai/claude-auto-review.md >> "$GITHUB_OUTPUT"
+          echo "$delimiter" >> "$GITHUB_OUTPUT"
 
       - name: Run Claude review
         uses: anthropics/claude-code-action@v1
