@@ -17,10 +17,13 @@ import { spacing } from '../styles/theme';
 import { useTheme } from '../context/ThemeContext';
 import { useD365Controller } from '../hooks/useD365Controller';
 import { useD365Context } from '../hooks/useD365Context';
+import { useEditingPermission } from '../hooks/useEditingPermission';
 import { usePopupTab } from '../hooks/usePopupTab';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
+import { getActiveTab } from '../services/chromeTabService';
 import { PopupHeader } from './components/PopupHeader';
 import { ContextWarning } from './components/ContextWarning';
+import { EditingBlockedBanner } from '../components/ui/EditingBlockedBanner';
 import { ErrorMessage, InfoMessage } from './components/MessageDisplay';
 import { TooltipArea } from './components/TooltipArea';
 import { GeneralTab } from './components/GeneralTab';
@@ -101,6 +104,35 @@ export default function App(): JSX.Element {
   } = useD365Controller();
 
   const [hoveredButton, setHoveredButton] = React.useState<TooltipKey | null>(null);
+  const [clientUrl, setClientUrl] = React.useState<string>("");
+
+  // Get client URL from active tab
+  React.useEffect(() => {
+    
+    const getUrl = async () => {
+      try {
+        const tab = await getActiveTab();
+        if (tab?.url) {
+          // Extract base URL (e.g., https://org.crm.dynamics.com)
+          const url = new URL(tab.url);
+          const baseUrl = `${url.protocol}//${url.host}`;
+          setClientUrl(baseUrl);
+        }
+      } catch (e) {
+        console.error('Failed to get client URL:', e);
+        setClientUrl("");
+      }
+    };
+    if (contextChecking || !isDynamicsEnv) {
+      setClientUrl("");
+      return;
+    }
+
+  getUrl();
+  }, [isDynamicsEnv, contextChecking]);
+
+  // Check editing permission (hook must be called unconditionally)
+  const { isEditingBlocked } = useEditingPermission(clientUrl);
 
   // Auto-dismiss info messages
   useAutoDismiss(info, () => setInfo(null), 3000);
@@ -124,6 +156,8 @@ export default function App(): JSX.Element {
               isDynamicsEnv={isDynamicsEnv}
               contextChecking={contextChecking}
             />
+
+            <EditingBlockedBanner visible={isEditingBlocked} />
 
             {error && <ErrorMessage>{error}</ErrorMessage>}
             {info && !error && <InfoMessage>{info}</InfoMessage>}

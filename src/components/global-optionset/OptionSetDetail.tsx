@@ -81,6 +81,8 @@ export interface OptionSetDetailProps {
   onChange: (optionValue: number, lcid: number, value: string) => void;
   onSave: () => void;
   saving: boolean;
+  /** Set to true to make all inputs read-only (e.g., editing blocked, save in progress) */
+  readOnly?: boolean;
 }
 
 export default function OptionSetDetail({
@@ -93,6 +95,7 @@ export default function OptionSetDetail({
   onChange,
   onSave,
   saving,
+  readOnly = false,
 }: OptionSetDetailProps): JSX.Element {
   const styles = useStyles();
 
@@ -171,7 +174,7 @@ export default function OptionSetDetail({
                   lcids={lcids}
                   values={values[option.value] || {}}
                   loading={false}
-                  disabled={!langs || !langs.length}
+                  disabled={!langs || !langs.length || readOnly}
                   placeholder="(empty)"
                   onChange={(lcid, v) => onChange(option.value, lcid, v)}
                 />
@@ -183,7 +186,7 @@ export default function OptionSetDetail({
         <div className={styles.actions}>
           <CustomButton
             onClick={onSave}
-            disabled={saving || !langs?.length}
+            disabled={saving || !langs?.length || readOnly}
             variant="primary"
           >
             {saving ? "Saving…" : "Save Changes"}

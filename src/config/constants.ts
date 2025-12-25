@@ -15,6 +15,7 @@ export const CACHE_TTL = {
   PROVISIONED_LANGUAGES: 6 * 60 * 60 * 1000, // 6 hours
   METADATA: 30 * 60 * 1000, // 30 minutes
   SHORT: 5 * 60 * 1000, // 5 minutes
+  EDITING_PERMISSION: 4 * 60 * 60 * 1000, // 4 hours
 } as const;
 
 // Form Types
@@ -91,4 +92,14 @@ export const HTTP = {
   TIMEOUT: 30000, // 30 seconds
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000, // 1 second
+} as const;
+
+// Environment Variables
+export const ENV_VAR = {
+  EDITING_ENABLED_SUFFIX: 'D365TranslationManagerEditingEnabled',
+} as const;
+
+// User Messages
+export const MESSAGES = {
+  EDITING_BLOCKED: 'Editing is currently disabled for this environment. Contact your system administrator to enable translation editing.',
 } as const;

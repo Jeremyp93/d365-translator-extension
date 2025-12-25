@@ -10,8 +10,8 @@ import type { D365ContextState } from '../types/popup';
 
 export function useD365Context(): D365ContextState {
   const [state, setState] = useState<D365ContextState>({
-    isValidContext: true,
-    isDynamicsEnv: true,
+    isValidContext: false,
+    isDynamicsEnv: false,
     contextChecking: true,
   });
 
