@@ -167,11 +167,17 @@ Two AI reviewers will automatically review your PRs:
 - Focus areas: TypeScript, React patterns, Chrome API usage, security
 
 #### Claude Code
-- Reviews architecture, design patterns, security vulnerabilities
+- On-demand AI assistant for code reviews and questions
 - Configured in [.github/workflows/claude-code-review.yml](.github/workflows/claude-code-review.yml)
-- References project documentation (CODE_REVIEW.md, openspec/project.md)
+- **Trigger**: Mention `@claude` in any PR comment or review comment
+- Can answer questions, review code, suggest improvements, and reference project documentation
 
-**You can interact with both AI reviewers** by mentioning them in PR comments with questions or requesting clarification.
+**How to use**:
+- Comment on a PR with `@claude review this PR` for a full review
+- Ask specific questions: `@claude how can I improve the performance of this function?`
+- Request help: `@claude suggest a better approach for this implementation`
+
+CodeRabbit will automatically review PRs, while Claude Code responds to your `@claude` mentions.
 
 ## Submitting Changes
 

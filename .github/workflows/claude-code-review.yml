@@ -1,44 +1,23 @@
 name: Claude Code Review
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
 
 permissions:
   contents: read
   pull-requests: write
+  issues: write
 
 jobs:
-  review:
+  claude:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Claude Code Review
-        uses: anthropics/anthropic-review-action@v1
+      - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Review configuration
-          review_prompt: |
-            Review this pull request for a Chrome Extension (Manifest V3) for Microsoft Dynamics 365 translation management.
-
-            Focus areas:
-            - TypeScript strict mode compliance
-            - React best practices (functional components only, proper hooks usage)
-            - Chrome Extension API usage and Manifest V3 patterns
-            - Service layer separation of concerns
-            - Fluent UI component usage and styling
-            - Code quality and potential bugs
-            - Security vulnerabilities (XSS, injection attacks)
-
-            Reference these project conventions:
-            - CLAUDE.md for project instructions
-            - CODE_REVIEW.md for review checklist
-            - openspec/project.md for architecture patterns
-            - CONTRIBUTING.md for coding standards
-
-            Provide constructive feedback with specific suggestions for improvement.
+          # Optional: Use Claude Opus 4.5 for more thorough reviews
+          # claude_args: "--model claude-opus-4-5-20251101"
