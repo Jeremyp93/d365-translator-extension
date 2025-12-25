@@ -13,8 +13,8 @@ function controlMatchesQuery(control: FormControl, query: string): boolean {
   const controlLabel = getDisplayLabel(control.labels);
   return (
     controlLabel.toLowerCase().includes(query) ||
-    control.name?.toLowerCase().includes(query) ||
-    control.datafieldname?.toLowerCase().includes(query)
+    (control.name?.toLowerCase().includes(query) ?? false) ||
+    (control.datafieldname?.toLowerCase().includes(query) ?? false)
   );
 }
 

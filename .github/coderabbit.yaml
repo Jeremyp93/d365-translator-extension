@@ -1,0 +1,90 @@
+# CodeRabbit Configuration for D365 Translator Extension
+# Learn more at: https://docs.coderabbit.ai/guides/configure-coderabbit
+
+language: "en-US"
+early_access: false
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+  tools:
+    biome:
+      enabled: false
+    shellcheck:
+      enabled: true
+    ruff:
+      enabled: false
+    markdownlint:
+      enabled: true
+
+# Project-specific instructions
+knowledge_base:
+  - "This is a Chrome Extension (Manifest V3) for Microsoft Dynamics 365 translation management"
+  - "Built with React 18, TypeScript (strict mode), and Vite"
+  - "Uses Fluent UI (@fluentui/react-components) for Microsoft design system"
+  - "Architecture follows service layer pattern - business logic in src/services/"
+  - "Only functional React components are allowed, no class components"
+  - "Custom hooks in src/hooks/ for state management"
+  - "Path aliases configured: @ maps to src/"
+
+# Review focus areas
+review_instructions:
+  - "Verify TypeScript strict mode compliance - no 'any' types unless absolutely necessary"
+  - "Check React patterns: functional components only, proper hooks usage, avoid unnecessary re-renders"
+  - "Validate Chrome Extension API usage - ensure Manifest V3 compatibility"
+  - "Review service layer separation - business logic should be in services/, not components"
+  - "Check Fluent UI component usage - use design tokens, avoid inline styles"
+  - "Security: Watch for XSS vulnerabilities, injection attacks, unsafe Chrome API usage"
+  - "Performance: Check for unnecessary dependencies, large bundle impacts"
+  - "Code organization: Components use PascalCase, functions use camelCase"
+  - "Reference CODE_REVIEW.md and openspec/project.md for project-specific patterns"
+
+# Path-specific instructions
+path_instructions:
+  - path: "src/services/**"
+    instructions:
+      - "Business logic should be framework-agnostic"
+      - "No React hooks or components in service files"
+      - "Proper error handling with typed errors"
+      - "Clear separation of concerns"
+
+  - path: "src/components/**"
+    instructions:
+      - "Functional components only"
+      - "Use custom hooks for complex state logic"
+      - "Avoid prop drilling - use React context when needed"
+      - "Fluent UI components preferred over custom styling"
+
+  - path: "src/hooks/**"
+    instructions:
+      - "Follow React hooks naming convention (use*)"
+      - "Proper dependency arrays to avoid stale closures"
+      - "Document hook behavior and return values"
+
+  - path: "public/manifest.json"
+    instructions:
+      - "Validate Manifest V3 schema compliance"
+      - "Check permissions - only request what's necessary"
+      - "Verify content_security_policy is secure"
+
+  - path: "src/background.ts"
+    instructions:
+      - "Service worker patterns for Manifest V3"
+      - "No persistent state - use chrome.storage API"
+      - "Proper message passing with content scripts"
+
+  - path: "src/controller/**"
+    instructions:
+      - "Content script best practices"
+      - "Isolated world considerations"
+      - "Message relay patterns for frame communication"
+
+# Auto-reply settings
+chat:
+  auto_reply: true
