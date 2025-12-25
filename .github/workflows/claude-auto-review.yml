@@ -13,20 +13,6 @@ jobs:
   auto-review:
     runs-on: ubuntu-latest
     steps:
-      - name: Get PR information
-        id: pr-info
-        run: |
-          # Get the PR number from GitHub context
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-
-          # Fetch PR details using GitHub CLI (no checkout needed)
-          echo "Fetching PR #$PR_NUMBER information..."
-          gh pr view $PR_NUMBER --json files --jq '.files[].path'
-
-          echo "PR information retrieved successfully"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Create review prompt
         id: review-prompt
         run: |
