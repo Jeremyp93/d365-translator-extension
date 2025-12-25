@@ -66,7 +66,8 @@ async function fetchEditingPermissionFromApi(
 
     // Block only if value is exactly "false", otherwise allow (fail-open)
     // Value can be: "false" (block), "true" (allow), null (allow), or any other value (allow)
-    return value !== "no" && value !== "false";
+    const normalizedValue = value?.toLowerCase();
+    return normalizedValue !== "no" && normalizedValue !== "false";
     
   } catch (error) {
     // Fail-open: on any error, allow editing

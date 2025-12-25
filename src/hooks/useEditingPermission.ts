@@ -55,7 +55,7 @@ export function useEditingPermission(clientUrl: string, apiVersion: string = 'v9
     return () => {
       isMounted = false;
     };
-  }, [clientUrl]);
+  }, [clientUrl, apiVersion]);
 
   return { isEditingBlocked, loading, error };
 }

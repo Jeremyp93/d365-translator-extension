@@ -112,7 +112,6 @@ export default function App(): JSX.Element {
     const getUrl = async () => {
       try {
         const tab = await getActiveTab();
-        console.log("tab", { id: tab?.id, windowId: tab?.windowId, url: tab?.url });
         if (tab?.url) {
           // Extract base URL (e.g., https://org.crm.dynamics.com)
           const url = new URL(tab.url);
@@ -130,7 +129,7 @@ export default function App(): JSX.Element {
     }
 
   getUrl();
-  }, [isDynamicsEnv]);
+  }, [isDynamicsEnv, contextChecking]);
 
   // Check editing permission (hook must be called unconditionally)
   const { isEditingBlocked } = useEditingPermission(clientUrl);
