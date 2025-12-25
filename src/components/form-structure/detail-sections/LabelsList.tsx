@@ -10,11 +10,11 @@ import {
   CardHeader,
   Divider,
   makeStyles,
-  shorthands,
   Text,
   tokens,
 } from '@fluentui/react-components';
 import { ArrowExport20Regular } from '@fluentui/react-icons';
+
 import type { Label } from '../../../types';
 import { spacing } from '../../../styles/theme';
 import TranslationsTable from '../../TranslationsTable';
@@ -29,13 +29,13 @@ const useStyles = makeStyles({
   headerLeft: {
     display: 'flex',
     alignItems: 'center',
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   tableContainer: {
-    ...shorthands.padding(spacing.lg),
+    padding: spacing.lg,
   },
   emptyState: {
-    ...shorthands.padding(spacing.lg),
+    padding: spacing.lg,
     textAlign: 'center',
     color: tokens.colorNeutralForeground3,
   },

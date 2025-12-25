@@ -4,7 +4,6 @@
 
 import {
   makeStyles,
-  shorthands,
   tokens,
   Text,
   Button,
@@ -14,24 +13,24 @@ import {
   Checkbox,
 } from '@fluentui/react-components';
 import { Settings20Regular, ArrowClockwiseRegular } from '@fluentui/react-icons';
+
 import { PluginTraceLogFilters } from '../../services/pluginTraceLogService';
-import { spacing } from '../../styles/theme';
 
 const useStyles = makeStyles({
   filterSection: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap('16px'),
-    ...shorthands.padding('16px'),
+    gap: '16px',
+    padding: '16px',
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
     marginBottom: '24px',
   },
   filterTitle: {
     display: 'flex',
     alignItems: 'center',
-    ...shorthands.gap('8px'),
+    gap: '8px',
     fontSize: tokens.fontSizeBase400,
     fontWeight: tokens.fontWeightSemibold,
   },
@@ -50,7 +49,7 @@ const useStyles = makeStyles({
   },
   filterActions: {
     display: 'flex',
-    ...shorthands.gap('8px'),
+    gap: '8px',
     justifyContent: 'flex-end',
     marginTop: '8px',
   },

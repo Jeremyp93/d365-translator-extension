@@ -10,10 +10,10 @@ import {
   Badge,
   Spinner,
   makeStyles,
-  shorthands,
   tokens,
 } from "@fluentui/react-components";
 import { Database24Regular, Search20Regular } from "@fluentui/react-icons";
+
 import Section from "./ui/Section";
 import { ErrorBox } from "./ui/Notice";
 import { spacing } from "../styles/theme";
@@ -35,22 +35,22 @@ const useStyles = makeStyles({
   dependencyList: {
     display: "flex",
     flexDirection: "column",
-    ...shorthands.gap(spacing.xs),
+    gap: spacing.xs,
     maxHeight: "400px",
     overflowY: "auto",
-    ...shorthands.padding(spacing.sm),
+    padding: spacing.sm,
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke2),
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   dependencyItem: {
-    ...shorthands.padding(spacing.sm, spacing.md),
-    ...shorthands.borderRadius(tokens.borderRadiusSmall),
+    padding: `${spacing.sm} ${spacing.md}`,
+    borderRadius: tokens.borderRadiusSmall,
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.border("1px", "solid", "transparent"),
+    border: `1px solid transparent`,
     "&:hover": {
       backgroundColor: tokens.colorNeutralBackground1Hover,
-      ...shorthands.border("1px", "solid", tokens.colorBrandStroke1),
+      border: `1px solid ${tokens.colorBrandStroke1}`,
     },
   },
   clickableDependency: {
@@ -58,11 +58,11 @@ const useStyles = makeStyles({
   },
   loadingContainer: {
     textAlign: "center",
-    ...shorthands.padding(spacing.lg),
+    padding: spacing.lg,
   },
   emptyState: {
     textAlign: "center",
-    ...shorthands.padding(spacing.xl),
+    padding: spacing.xl,
     color: tokens.colorNeutralForeground3,
   },
 });

@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Input, InputProps } from '@fluentui/react-components';
 
 export default function TextInput(props: InputProps) {

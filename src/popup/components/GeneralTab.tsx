@@ -2,8 +2,7 @@
  * General tab content - Quick Actions and Translation Tools
  */
 
-import * as React from 'react';
-import { Divider, makeStyles, shorthands, tokens } from '@fluentui/react-components';
+import { Divider, makeStyles, tokens } from '@fluentui/react-components';
 import {
   Eye24Regular,
   PaintBrush24Regular,
@@ -12,6 +11,7 @@ import {
   Database24Regular,
   Grid24Regular,
 } from '@fluentui/react-icons';
+
 import { spacing } from '../../styles/theme';
 import { ActionButton } from './ActionButton';
 import type { TooltipKey } from '../../types/popup';
@@ -20,7 +20,7 @@ const useStyles = makeStyles({
   section: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   sectionTitle: {
     fontSize: tokens.fontSizeBase300,
@@ -33,12 +33,12 @@ const useStyles = makeStyles({
   buttonGroup: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   tabContent: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap(spacing.md),
+    gap: spacing.md,
   },
 });
 

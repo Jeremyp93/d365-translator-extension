@@ -1,5 +1,5 @@
-import * as React from "react";
 import { Text } from "@fluentui/react-components";
+
 import { useSharedStyles } from "../../styles/theme";
 
 interface SectionProps {

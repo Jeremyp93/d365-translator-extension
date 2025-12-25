@@ -17,12 +17,12 @@ import ReactFlow, {
   Handle,
   Position
 } from 'reactflow';
-import 'reactflow/dist/style.css';
 
 import { getLogsForCorrelation, PluginTraceLog } from '../../services/pluginTraceLogService';
 import { useOrgContext } from '../../hooks/useOrgContext';
 import { buildFlowGraph, FlowNode, FlowEdge, FlowGraph, FlowNodeData } from '../../utils/flowGraphBuilder';
 
+import 'reactflow/dist/style.css';
 import '../../styles/flow.css';
 
 const useStyles = makeStyles({

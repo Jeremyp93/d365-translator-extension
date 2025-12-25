@@ -6,6 +6,7 @@ import {
   CardHeader,
   makeStyles,
 } from "@fluentui/react-components";
+
 import TranslationsTable from "../components/TranslationsTable";
 import Button from "./ui/Button";
 import { ErrorBox, Info } from "./ui/Notice";

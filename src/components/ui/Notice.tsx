@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { MessageBar, MessageBarBody, MessageBarTitle } from '@fluentui/react-components';
 
 export function Info({ children, title = '' }: { children: React.ReactNode; title?: string }) {

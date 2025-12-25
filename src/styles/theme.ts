@@ -1,4 +1,4 @@
-import { tokens, makeStyles, shorthands } from "@fluentui/react-components";
+import { tokens, makeStyles } from "@fluentui/react-components";
 
 /**
  * Shared theme configuration for D365 Translator Extension
@@ -67,12 +67,12 @@ export const useSharedStyles = makeStyles({
   },
   
   pageHeader: {
-    ...shorthands.padding(spacing.lg, spacing.xl),
-    ...shorthands.borderBottom("2px", "solid", tokens.colorNeutralStroke1),
+    padding: `${spacing.lg} ${spacing.xl}`,
+    borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: tokens.shadow4,
     "@media (max-width: 768px)": {
-      ...shorthands.padding(spacing.md, spacing.lg),
+      padding: `${spacing.md} ${spacing.lg}`,
     },
   },
   
@@ -83,7 +83,7 @@ export const useSharedStyles = makeStyles({
     //marginBottom: spacing.sm,
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.md),
+    gap: spacing.md,
   },
   
   pageSubtitle: {
@@ -102,10 +102,10 @@ export const useSharedStyles = makeStyles({
     },
   
   section: {
-    ...shorthands.padding(spacing.lg),
+    padding: spacing.lg,
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderRadius(borderRadius.md),
-    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke1),
+    borderRadius: borderRadius.md,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
     boxShadow: tokens.shadow4,
     marginBottom: spacing.lg,
   },
@@ -117,14 +117,14 @@ export const useSharedStyles = makeStyles({
     marginBottom: spacing.md,
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   
   card: {
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderRadius(borderRadius.md),
-    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke1),
-    ...shorthands.padding(spacing.lg),
+    borderRadius: borderRadius.md,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    padding: spacing.lg,
     boxShadow: tokens.shadow4,
     transition: "box-shadow 0.2s ease, transform 0.2s ease",
     ":hover": {
@@ -149,7 +149,7 @@ export const useSharedStyles = makeStyles({
     justifyContent: "center",
     width: "32px",
     height: "32px",
-    ...shorthands.borderRadius(borderRadius.sm),
+    borderRadius: borderRadius.sm,
     backgroundColor: tokens.colorBrandBackground,
     color: tokens.colorNeutralForegroundOnBrand,
   },
@@ -167,20 +167,20 @@ export const useSharedStyles = makeStyles({
   },
   
   divider: {
-    ...shorthands.margin(spacing.md, "0"),
-    ...shorthands.borderBottom("1px", "solid", tokens.colorNeutralStroke2),
+    margin: `${spacing.md} 0`,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   
   actionBar: {
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
     flexWrap: "wrap",
   },
   
   statusBadge: {
-    ...shorthands.padding(spacing.xs, spacing.md),
-    ...shorthands.borderRadius(borderRadius.sm),
+    padding: `${spacing.xs} ${spacing.md}`,
+    borderRadius: borderRadius.sm,
     fontSize: tokens.fontSizeBase200,
     fontWeight: tokens.fontWeightSemibold,
     textTransform: "uppercase",
@@ -190,49 +190,49 @@ export const useSharedStyles = makeStyles({
   successMessage: {
     backgroundColor: themeColors.status.success,
     color: themeColors.status.successText,
-    ...shorthands.padding(spacing.md),
-    ...shorthands.borderRadius(borderRadius.md),
-    ...shorthands.border("1px", "solid", themeColors.status.successText),
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    border: `1px solid ${themeColors.status.successText}`,
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   
   errorMessage: {
     backgroundColor: themeColors.status.error,
     color: themeColors.status.errorText,
-    ...shorthands.padding(spacing.md),
-    ...shorthands.borderRadius(borderRadius.md),
-    ...shorthands.border("1px", "solid", themeColors.status.errorText),
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    border: `1px solid ${themeColors.status.errorText}`,
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   
   infoMessage: {
     backgroundColor: themeColors.status.info,
     color: themeColors.status.infoText,
-    ...shorthands.padding(spacing.md),
-    ...shorthands.borderRadius(borderRadius.md),
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   
   codeBlock: {
     backgroundColor: tokens.colorNeutralBackground3,
-    ...shorthands.padding(spacing.md),
-    ...shorthands.borderRadius(borderRadius.md),
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
     fontSize: tokens.fontSizeBase200,
     fontFamily: tokens.fontFamilyMonospace,
     overflowX: "auto",
-    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke2),
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   
   scrollContainer: {
     overflowY: "auto",
     overflowX: "hidden",
-    ...shorthands.padding(spacing.lg),
+    padding: spacing.lg,
     "::-webkit-scrollbar": {
       width: "8px",
     },
@@ -241,7 +241,7 @@ export const useSharedStyles = makeStyles({
     },
     "::-webkit-scrollbar-thumb": {
       backgroundColor: tokens.colorNeutralStroke1,
-      ...shorthands.borderRadius("4px"),
+      borderRadius: "4px",
       ":hover": {
         backgroundColor: tokens.colorNeutralStroke2,
       },
@@ -251,13 +251,13 @@ export const useSharedStyles = makeStyles({
   flexRow: {
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   
   flexColumn: {
     display: "flex",
     flexDirection: "column",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   
   grow: {

@@ -2,33 +2,33 @@
  * Reusable message display components for info/error/warning states
  */
 
-import * as React from 'react';
-import { Text, makeStyles, shorthands, tokens } from '@fluentui/react-components';
+import { Text, makeStyles, tokens } from '@fluentui/react-components';
+
 import { spacing } from '../../styles/theme';
 
 const useStyles = makeStyles({
   message: {
-    ...shorthands.padding(spacing.sm, spacing.md),
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    padding: `${spacing.sm} ${spacing.md}`,
+    borderRadius: tokens.borderRadiusMedium,
     fontSize: tokens.fontSizeBase200,
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap(spacing.xs),
+    gap: spacing.xs,
   },
   errorMessage: {
     backgroundColor: tokens.colorPaletteRedBackground2,
     color: tokens.colorPaletteRedForeground1,
-    ...shorthands.border('1px', 'solid', tokens.colorPaletteRedBorder2),
+    border: `1px solid ${tokens.colorPaletteRedBorder2}`,
   },
   infoMessage: {
     backgroundColor: tokens.colorBrandBackground,
     color: tokens.colorNeutralForegroundOnBrand,
-    ...shorthands.border('1px', 'solid', tokens.colorBrandStroke1),
+    border: `1px solid ${tokens.colorBrandStroke1}`,
   },
   warningMessage: {
     backgroundColor: tokens.colorPaletteYellowBackground2,
     color: tokens.colorPaletteYellowForeground2,
-    ...shorthands.border('1px', 'solid', tokens.colorPaletteYellowBorder2),
+    border: `1px solid ${tokens.colorPaletteYellowBorder2}`,
   },
 });
 

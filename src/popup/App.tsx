@@ -3,16 +3,16 @@
  * Orchestrates UI components and manages top-level state
  */
 
-import * as React from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   FluentProvider,
   makeStyles,
-  shorthands,
   tokens,
   TabList,
   Tab,
 } from '@fluentui/react-components';
 import { Home20Regular, Settings20Regular } from '@fluentui/react-icons';
+
 import { spacing } from '../styles/theme';
 import { useTheme } from '../context/ThemeContext';
 import { useD365Controller } from '../hooks/useD365Controller';
@@ -49,8 +49,8 @@ const useStyles = makeStyles({
     overflowX: 'hidden',
   },
   contentWrapper: {
-    ...shorthands.padding(spacing.lg),
-    ...shorthands.gap(spacing.md),
+    padding: spacing.lg,
+    gap: spacing.md,
     display: 'flex',
     flexDirection: 'column',
   },
@@ -69,7 +69,7 @@ const useStyles = makeStyles({
     borderTopColor: tokens.colorNeutralStroke1,
     boxShadow: tokens.shadow16,
     display: 'flex',
-    ...shorthands.padding(spacing.sm, 0),
+    padding: `${spacing.sm} 0`,
     zIndex: 1000,
     '& .fui-TabList': {
       width: '100%',
@@ -103,11 +103,11 @@ export default function App(): JSX.Element {
     setInfo,
   } = useD365Controller();
 
-  const [hoveredButton, setHoveredButton] = React.useState<TooltipKey | null>(null);
-  const [clientUrl, setClientUrl] = React.useState<string>("");
+  const [hoveredButton, setHoveredButton] = useState<TooltipKey | null>(null);
+  const [clientUrl, setClientUrl] = useState<string>("");
 
   // Get client URL from active tab
-  React.useEffect(() => {
+  useEffect(() => {
     
     const getUrl = async () => {
       try {
@@ -137,7 +137,7 @@ export default function App(): JSX.Element {
   // Auto-dismiss info messages
   useAutoDismiss(info, () => setInfo(null), 3000);
 
-  const handleTabChange = React.useCallback<TabSelectHandler>(
+  const handleTabChange = useCallback<TabSelectHandler>(
     (_, data) => {
       setActiveTab(data.value as 'general' | 'developer');
     },

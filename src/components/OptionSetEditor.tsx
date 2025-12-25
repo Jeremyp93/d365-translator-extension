@@ -8,6 +8,7 @@ import {
   Badge,
   Link,
 } from "@fluentui/react-components";
+
 import TranslationsTable from "./TranslationsTable";
 import Button from "./ui/Button";
 import { ErrorBox, Info } from "./ui/Notice";

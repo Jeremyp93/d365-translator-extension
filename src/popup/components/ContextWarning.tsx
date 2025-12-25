@@ -2,7 +2,6 @@
  * Context warning component for non-D365 environments
  */
 
-import * as React from 'react';
 import { WarningMessage } from './MessageDisplay';
 import type { PopupTab } from '../../types/popup';
 

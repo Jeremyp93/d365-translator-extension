@@ -3,10 +3,9 @@
  * Features: column resizing, row expansion, sorting, responsive design
  */
 
-import * as React from 'react';
+import { forwardRef, Fragment, useCallback, useImperativeHandle, useMemo, useState } from 'react';
 import {
   makeStyles,
-  shorthands,
   tokens,
   Text,
   Button,
@@ -21,6 +20,7 @@ import {
   ChevronDown20Regular,
   FlowRegular,
 } from '@fluentui/react-icons';
+
 import {
   PluginTraceLog,
   formatDuration,
@@ -32,9 +32,9 @@ import {
 const useStyles = makeStyles({
   tableContainer: {
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
-    ...shorthands.overflow('hidden'),
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    overflow: 'hidden',
     width: '100%',
     overflowX: 'auto',
     '@media (max-width: 768px)': {
@@ -78,7 +78,7 @@ const useStyles = makeStyles({
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    ...shorthands.gap('4px'),
+    gap: '4px',
     color: tokens.colorBrandForeground1,
   },
   exceptionText: {
@@ -90,9 +90,9 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
   expandedContent: {
-    ...shorthands.padding('16px'),
+    padding: '16px',
     backgroundColor: tokens.colorNeutralBackground2,
-    ...shorthands.borderTop('1px', 'solid', tokens.colorNeutralStroke1),
+    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
   },
   traceBlock: {
     fontFamily: 'monospace',
@@ -100,15 +100,15 @@ const useStyles = makeStyles({
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.padding('12px'),
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
+    padding: '12px',
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
     maxHeight: '400px',
     overflowY: 'auto',
   },
   detailRow: {
     display: 'flex',
-    ...shorthands.gap('8px'),
+    gap: '8px',
     marginBottom: '8px',
   },
   detailLabel: {
@@ -118,51 +118,51 @@ const useStyles = makeStyles({
   flexColumn: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap('4px'),
+    gap: '4px',
   },
   detailSection: {
     marginTop: '12px',
   },
   // Table header styles
   tableHeader: {
-    ...shorthands.borderBottom('2px', 'solid', tokens.colorNeutralStroke1),
+    borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground2,
   },
   tableHeaderCell: {
-    ...shorthands.padding('8px'),
+    padding: '8px',
     textAlign: 'left',
     fontWeight: tokens.fontWeightSemibold,
   },
   tableHeaderCellSortable: {
-    ...shorthands.padding('8px'),
+    padding: '8px',
     textAlign: 'left',
     fontWeight: tokens.fontWeightSemibold,
     cursor: 'pointer',
   },
   tableHeaderCellExpand: {
     width: '40px',
-    ...shorthands.padding('8px'),
+    padding: '8px',
   },
   // Table row styles
   tableRow: {
-    ...shorthands.borderBottom('1px', 'solid', tokens.colorNeutralStroke2),
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
     backgroundColor: tokens.colorNeutralBackground1,
   },
   tableCell: {
-    ...shorthands.padding('8px'),
+    padding: '8px',
   },
   tableCellCenter: {
-    ...shorthands.padding('8px'),
+    padding: '8px',
     textAlign: 'center',
   },
   tableCellTypeName: {
-    ...shorthands.padding('8px'),
-    ...shorthands.overflow('hidden'),
+    padding: '8px',
+    overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
   expandedRow: {
-    ...shorthands.padding(0),
+    padding: 0,
     backgroundColor: tokens.colorNeutralBackground2,
   },
 });
@@ -179,11 +179,11 @@ export interface ResultsTableHandle {
   resetSort: () => void;
 }
 
-const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(
+const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
   ({ logs, onSortChange, onViewFlow, expandedRows, onToggleRow }, ref) => {
     const styles = useStyles();
-    const [typeNameWidth, setTypeNameWidth] = React.useState<number>(350);
-    const [isResizing, setIsResizing] = React.useState<boolean>(false);
+    const [typeNameWidth, setTypeNameWidth] = useState<number>(350);
+    const [isResizing, setIsResizing] = useState<boolean>(false);
 
     const toggleRow = onToggleRow;
 
@@ -330,7 +330,7 @@ const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(
       }),
     ];
 
-    const [sortState, setSortState] = React.useState<{
+    const [sortState, setSortState] = useState<{
       sortColumn: TableColumnId | undefined;
       sortDirection: 'ascending' | 'descending';
     }>({
@@ -338,7 +338,7 @@ const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(
       sortDirection: 'descending',
     });
 
-    const sortedLogs = React.useMemo(() => {
+    const sortedLogs = useMemo(() => {
       if (!sortState.sortColumn) return logs;
 
       const column = columns.find((col) => col.columnId === sortState.sortColumn);
@@ -348,7 +348,7 @@ const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(
       return sortState.sortDirection === 'descending' ? sorted.reverse() : sorted;
     }, [logs, sortState, columns]);
 
-    const handleSortChange = React.useCallback(
+    const handleSortChange = useCallback(
       (_: unknown, data: { sortColumn: TableColumnId | undefined; sortDirection: 'ascending' | 'descending' }) => {
         if (data.sortColumn) {
           setSortState({ sortColumn: data.sortColumn, sortDirection: data.sortDirection });
@@ -358,11 +358,11 @@ const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(
       [onSortChange]
     );
 
-    const resetSort = React.useCallback(() => {
+    const resetSort = useCallback(() => {
       setSortState({ sortColumn: 'createdon', sortDirection: 'descending' });
     }, []);
 
-    React.useImperativeHandle(
+    useImperativeHandle(
       ref,
       () => ({
         resetSort,
@@ -472,7 +472,7 @@ const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(
               const hasDetails = !!(log.messageblock || log.exceptiondetails || log.correlationid);
 
               return (
-                <React.Fragment key={log.plugintracelogid}>
+                <Fragment key={log.plugintracelogid}>
                   <tr data-row-id={log.plugintracelogid} className={styles.tableRow}>
                     <td className={styles.tableCellCenter}>
                       {hasDetails && (
@@ -587,7 +587,7 @@ const ResultsTable = React.forwardRef<ResultsTableHandle, ResultsTableProps>(
                       </td>
                     </tr>
                   )}
-                </React.Fragment>
+                </Fragment>
               );
             })}
           </tbody>

@@ -1,7 +1,6 @@
-import * as React from 'react';
+import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import {
   makeStyles,
-  shorthands,
   tokens,
   Text,
   Button,
@@ -11,10 +10,10 @@ import {
   TableColumnId,
 } from '@fluentui/react-components';
 import { WeatherMoon20Regular, WeatherSunny20Regular, Search20Regular, Dismiss20Regular, DocumentText24Regular } from '@fluentui/react-icons';
+
 import { useOrgContext } from '../../hooks/useOrgContext';
 import { usePluginTraceLogs } from '../../hooks/usePluginTraceLogs';
 import { useTheme } from '../../context/ThemeContext';
-import { lazy } from 'react';
 import PageHeader from '../../components/ui/PageHeader';
 import FilterSection from '../../components/plugin-trace/FilterSection';
 import ResultsTable, { ResultsTableHandle } from '../../components/plugin-trace/ResultsTable';
@@ -33,15 +32,15 @@ const useStyles = makeStyles({
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    ...shorthands.padding('16px', '24px'),
-    ...shorthands.borderBottom('2px', 'solid', tokens.colorNeutralStroke1),
+    padding: '16px 24px',
+    borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: tokens.shadow8,
   },
   headerLeft: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap('4px'),
+    gap: '4px',
   },
   title: {
     fontSize: tokens.fontSizeHero700,
@@ -57,28 +56,28 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
     display: 'flex',
     alignItems: 'center',
-    ...shorthands.gap('6px'),
+    gap: '6px',
   },
   content: {
     flex: 1,
-    ...shorthands.padding('24px'),
+    padding: '24px',
     '@media (max-width: 768px)': {
-      ...shorthands.padding('16px'),
+      padding: '16px',
     },
   },
   quickSearchSection: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap('12px'),
-    ...shorthands.padding('16px'),
+    gap: '12px',
+    padding: '16px',
     backgroundColor: tokens.colorNeutralBackground2,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    borderRadius: tokens.borderRadiusMedium,
     marginBottom: '16px',
   },
   quickSearchTitle: {
     display: 'flex',
     alignItems: 'center',
-    ...shorthands.gap('8px'),
+    gap: '8px',
     fontSize: tokens.fontSizeBase400,
     fontWeight: tokens.fontWeightSemibold,
   },
@@ -89,17 +88,17 @@ const useStyles = makeStyles({
   filterSection: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap('16px'),
-    ...shorthands.padding('16px'),
+    gap: '16px',
+    padding: '16px',
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
     marginBottom: '24px',
   },
   filterTitle: {
     display: 'flex',
     alignItems: 'center',
-    ...shorthands.gap('8px'),
+    gap: '8px',
     fontSize: tokens.fontSizeBase400,
     fontWeight: tokens.fontWeightSemibold,
   },
@@ -118,14 +117,14 @@ const useStyles = makeStyles({
   },
   filterActions: {
     display: 'flex',
-    ...shorthands.gap('8px'),
+    gap: '8px',
     justifyContent: 'flex-end',
     marginTop: '8px',
   },
   resultsSection: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap('12px'),
+    gap: '12px',
   },
   resultsHeader: {
     display: 'flex',
@@ -135,9 +134,9 @@ const useStyles = makeStyles({
   },
   tableContainer: {
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
-    ...shorthands.overflow('hidden'),
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    overflow: 'hidden',
     width: '100%',
     // Responsive table handling
     overflowX: 'auto',
@@ -148,16 +147,16 @@ const useStyles = makeStyles({
     },
   },
   errorMessage: {
-    ...shorthands.padding('12px'),
+    padding: '12px',
     backgroundColor: tokens.colorPaletteRedBackground2,
     color: tokens.colorPaletteRedForeground2,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    borderRadius: tokens.borderRadiusMedium,
   },
   loadingContainer: {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    ...shorthands.padding('48px'),
+    padding: '48px',
   },
   exceptionText: {
     fontFamily: 'monospace',
@@ -171,13 +170,13 @@ const useStyles = makeStyles({
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    ...shorthands.gap('4px'),
+    gap: '4px',
     color: tokens.colorBrandForeground1,
   },
   expandedContent: {
-    ...shorthands.padding('16px'),
+    padding: '16px',
     backgroundColor: tokens.colorNeutralBackground2,
-    ...shorthands.borderTop('1px', 'solid', tokens.colorNeutralStroke1),
+    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
   },
   traceBlock: {
     fontFamily: 'monospace',
@@ -185,15 +184,15 @@ const useStyles = makeStyles({
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.padding('12px'),
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
+    padding: '12px',
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
     maxHeight: '400px',
     overflowY: 'auto',
   },
   detailRow: {
     display: 'flex',
-    ...shorthands.gap('8px'),
+    gap: '8px',
     marginBottom: '8px',
   },
   detailLabel: {
@@ -242,21 +241,21 @@ const useStyles = makeStyles({
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    ...shorthands.padding('24px'),
+    padding: '24px',
   },
   clickableIcon: {
     cursor: 'pointer',
   },
   sortNotice: {
-    ...shorthands.padding('12px', '16px'),
+    padding: '12px 16px',
     marginBottom: '12px',
     backgroundColor: tokens.colorNeutralBackground2,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    ...shorthands.gap('12px'),
+    gap: '12px',
   },
 });
 
@@ -283,22 +282,22 @@ export default function PluginTraceLogPage(): JSX.Element {
   const { mode, toggleTheme } = useTheme();
 
   // Ref to call resetSort on ResultsTable
-  const resultsTableRef = React.useRef<ResultsTableHandle>(null);
+  const resultsTableRef = useRef<ResultsTableHandle>(null);
 
   // Track current sort state to disable infinite scroll when sorting changes
-  const [currentSort, setCurrentSort] = React.useState<{ column?: TableColumnId; direction: 'ascending' | 'descending' }>({
+  const [currentSort, setCurrentSort] = useState<{ column?: TableColumnId; direction: 'ascending' | 'descending' }>({
     column: 'createdon',
     direction: 'descending'
   });
 
   // Manual control for infinite scroll
-  const [infiniteScrollEnabled, setInfiniteScrollEnabled] = React.useState<boolean>(true);
+  const [infiniteScrollEnabled, setInfiniteScrollEnabled] = useState<boolean>(true);
 
-  const handleTableSortChange = React.useCallback((column: TableColumnId | undefined, direction: 'ascending' | 'descending') => {
+  const handleTableSortChange = useCallback((column: TableColumnId | undefined, direction: 'ascending' | 'descending') => {
     setCurrentSort({ column, direction });
   }, []);
 
-  const handleResetSort = React.useCallback(() => {
+  const handleResetSort = useCallback(() => {
     setCurrentSort({ column: 'createdon', direction: 'descending' });
     resultsTableRef.current?.resetSort();
   }, []);
@@ -307,13 +306,13 @@ export default function PluginTraceLogPage(): JSX.Element {
   const isDefaultSort = currentSort.column === 'createdon' && currentSort.direction === 'descending';
 
   // Correlation flow panel state
-  const [isPanelOpen, setIsPanelOpen] = React.useState(false);
-  const [panelCorrelationId, setPanelCorrelationId] = React.useState<string | null>(null);
-  const [selectedRowId, setSelectedRowId] = React.useState<string | null>(null);
-  const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [panelCorrelationId, setPanelCorrelationId] = useState<string | null>(null);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // Handle row toggle
-  const handleToggleRow = React.useCallback((rowId: string) => {
+  const handleToggleRow = useCallback((rowId: string) => {
     setExpandedRows(prev => {
       const next = new Set(prev);
       if (next.has(rowId)) {
@@ -326,9 +325,9 @@ export default function PluginTraceLogPage(): JSX.Element {
   }, []);
 
   // Infinite scroll implementation - only active when using default sort and enabled by user
-  const sentinelRef = React.useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!hasMore || isLoadingMore || !isDefaultSort || !infiniteScrollEnabled) return;
     if (!sentinelRef.current) return;
 
@@ -350,24 +349,24 @@ export default function PluginTraceLogPage(): JSX.Element {
     };
   }, [hasMore, isLoadingMore, loadMoreLogs, filteredLogs.length, isDefaultSort, infiniteScrollEnabled]); // Re-run when filteredLogs or sort changes
 
-  const handlePageSizeChange = React.useCallback((size: number) => {
+  const handlePageSizeChange = useCallback((size: number) => {
     setPageSize(size);
   }, [setPageSize]);
 
   // Handle opening correlation flow panel
-  const handleViewFlow = React.useCallback((correlationId: string, rowId: string) => {
+  const handleViewFlow = useCallback((correlationId: string, rowId: string) => {
     setPanelCorrelationId(correlationId);
     setSelectedRowId(rowId);
     setIsPanelOpen(true);
   }, []);
 
   // Handle closing panel
-  const handleClosePanel = React.useCallback(() => {
+  const handleClosePanel = useCallback(() => {
     setIsPanelOpen(false);
   }, []);
 
   // Handle node click in diagram - scroll to and expand row
-  const handleNodeClick = React.useCallback((rowId: string) => {
+  const handleNodeClick = useCallback((rowId: string) => {
     setSelectedRowId(rowId);
     // Expand the row if not already expanded
     setExpandedRows(prev => {

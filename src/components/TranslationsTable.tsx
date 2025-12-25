@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useMemo } from "react";
 import {
   Spinner,
   Table,
@@ -9,27 +9,27 @@ import {
   TableRow,
   Text,
   makeStyles,
-  shorthands,
   tokens,
   Badge,
 } from "@fluentui/react-components";
 import { Globe20Regular } from "@fluentui/react-icons";
+
 import TextInput from "./ui/TextInput";
 import { getLanguageDisplayName } from "../utils/languageNames";
 import { spacing } from "../styles/theme";
 
 const useStyles = makeStyles({
   container: {
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.overflow("hidden"),
+    borderRadius: tokens.borderRadiusMedium,
+    overflow: "hidden",
     width: "100%",
     overflowX: "auto",
   },
   loadingContainer: {
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.sm),
-    ...shorthands.padding(spacing.lg),
+    gap: spacing.sm,
+    padding: spacing.lg,
   },
   table: {
     width: "100%",
@@ -42,23 +42,23 @@ const useStyles = makeStyles({
   headerCell: {
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground1,
-    ...shorthands.padding(spacing.md),
+    padding: spacing.md,
   },
   languageCell: {
     width: "280px",
     minWidth: "200px",
     maxWidth: "320px",
-    ...shorthands.padding(spacing.md),
+    padding: spacing.md,
     verticalAlign: "middle",
   },
   labelCell: {
-    ...shorthands.padding(spacing.md),
+    padding: spacing.md,
     verticalAlign: "middle",
   },
   languageDisplay: {
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   languageName: {
     fontFamily: tokens.fontFamilyMonospace,
@@ -108,7 +108,7 @@ export default function TranslationsTable({
   const styles = useStyles();
 
   // Sort with default language first, then by LCID
-  const ordered = React.useMemo(() => {
+  const ordered = useMemo(() => {
     const sorted = (lcids ?? []).slice().sort((a, b) => {
       if (a === defaultLcid) return -1;
       if (b === defaultLcid) return 1;

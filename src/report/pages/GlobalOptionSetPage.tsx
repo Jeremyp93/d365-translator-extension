@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from "react";
 import {
   Text,
   makeStyles,
-  shorthands,
   tokens,
   Button,
 } from "@fluentui/react-components";
@@ -43,12 +42,12 @@ const useStyles = makeStyles({
   },
   content: {
     flex: 1,
-    ...shorthands.padding(spacing.xl),
+    padding: spacing.xl,
     display: "flex",
     flexDirection: "column",
-    ...shorthands.gap(spacing.lg),
+    gap: spacing.lg,
     "@media (max-width: 768px)": {
-      ...shorthands.padding(spacing.md),
+      padding: spacing.md,
     },
   },
   splitLayout: {
@@ -58,7 +57,7 @@ const useStyles = makeStyles({
       "sidebar detail"
       "usage  usage"
     `,
-    ...shorthands.gap(spacing.lg),
+    gap: spacing.lg,
     // Large desktops: show all 3 columns side by side
     '@media (min-width: 1600px)': {
       gridTemplateColumns: 'minmax(250px, 400px) minmax(0, 1fr) minmax(250px, 340px)',
@@ -78,7 +77,7 @@ const useStyles = makeStyles({
     gridArea: 'sidebar',
     display: "flex",
     flexDirection: "column",
-    ...shorthands.gap(spacing.md),
+    gap: spacing.md,
   },
   searchBox: {
     width: "100%",
@@ -86,37 +85,37 @@ const useStyles = makeStyles({
   optionSetList: {
     display: "flex",
     flexDirection: "column",
-    ...shorthands.gap(spacing.xs),
+    gap: spacing.xs,
     maxHeight: "70vh",
     overflowY: "auto",
-    ...shorthands.padding(spacing.sm),
+    padding: spacing.sm,
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke2),
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   optionSetItem: {
-    ...shorthands.padding(spacing.sm, spacing.md),
-    ...shorthands.borderRadius(tokens.borderRadiusSmall),
+    padding: `${spacing.sm} ${spacing.md}`,
+    borderRadius: tokens.borderRadiusSmall,
     cursor: "pointer",
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.border("1px", "solid", "transparent"),
+    border: `1px solid transparent`,
     "&:hover": {
       backgroundColor: tokens.colorNeutralBackground1Hover,
-      ...shorthands.border("1px", "solid", tokens.colorBrandStroke1),
+      border: `1px solid ${tokens.colorBrandStroke1}`,
     },
     "&.selected": {
       backgroundColor: tokens.colorBrandBackground2,
-      ...shorthands.border("1px", "solid", tokens.colorBrandStroke1),
+      border: `1px solid ${tokens.colorBrandStroke1}`,
     },
   },
   usageItem: {
-    ...shorthands.padding(spacing.sm, spacing.md),
-    ...shorthands.borderRadius(tokens.borderRadiusSmall),
+    padding: `${spacing.sm} ${spacing.md}`,
+    borderRadius: tokens.borderRadiusSmall,
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.border("1px", "solid", "transparent"),
+    border: `1px solid transparent`,
     "&:hover": {
       backgroundColor: tokens.colorNeutralBackground1Hover,
-      ...shorthands.border("1px", "solid", tokens.colorBrandStroke1),
+      border: `1px solid ${tokens.colorBrandStroke1}`,
     },
   },
   optionSetName: {
@@ -125,7 +124,7 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground1,
     marginBottom: spacing.xs,
     whiteSpace: "nowrap",
-    ...shorthands.overflow("hidden"),
+    overflow: "hidden",
     textOverflow: "ellipsis",
   },
   optionSetMeta: {
@@ -134,14 +133,14 @@ const useStyles = makeStyles({
     display: "flex",
     justifyContent: "space-between",
     whiteSpace: "nowrap",
-    ...shorthands.overflow("hidden"),
+    overflow: "hidden",
     textOverflow: "ellipsis",
   },
   detailPanel: {
     gridArea: 'detail',
     display: "flex",
     flexDirection: "column",
-    ...shorthands.gap(spacing.md),
+    gap: spacing.md,
     minWidth: 0,
     overflow: "hidden",
   },
@@ -159,7 +158,7 @@ const useStyles = makeStyles({
   optionHeader: {
     display: "flex",
     alignItems: "baseline",
-    ...shorthands.gap(spacing.md),
+    gap: spacing.md,
     marginBottom: spacing.md,
   },
   optionValue: {
@@ -174,27 +173,27 @@ const useStyles = makeStyles({
   },
   actions: {
     display: "flex",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
     marginTop: spacing.md,
   },
   emptyState: {
     textAlign: "center",
-    ...shorthands.padding(spacing.xl),
+    padding: spacing.xl,
     color: tokens.colorNeutralForeground3,
   },
   spinnerContainer: {
     textAlign: "center",
-    ...shorthands.padding(spacing.lg),
+    padding: spacing.lg,
   },
   spinnerContainerLarge: {
     textAlign: "center",
-    ...shorthands.padding(spacing.xl),
+    padding: spacing.xl,
   },
   cardPadding: {
-    ...shorthands.padding(spacing.md),
+    padding: spacing.md,
   },
   dividerMargin: {
-    ...shorthands.margin(spacing.md, 0),
+    margin: `${spacing.md} 0`,
   },
   scrollableContent: {
     maxHeight: "60vh",
@@ -203,7 +202,7 @@ const useStyles = makeStyles({
   flexGapSmall: {
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   usageHeader: {
     display: 'flex',
@@ -227,7 +226,7 @@ const useStyles = makeStyles({
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground3,
     whiteSpace: "nowrap",
-    ...shorthands.overflow("hidden"),
+    overflow: "hidden",
     textOverflow: "ellipsis",
   },
 });

@@ -2,7 +2,8 @@
  * EntityFormSelector - Entity and form dropdown selectors
  */
 
-import { Combobox, Dropdown, makeStyles, Option, OptionGroup, shorthands, Spinner, tokens } from '@fluentui/react-components';
+import { Combobox, Dropdown, makeStyles, Option, OptionGroup, Spinner, tokens } from '@fluentui/react-components';
+
 import type { EntitySummary } from '../../services/entityMetadataService';
 import { getEntityDisplayName } from '../../services/entityMetadataService';
 import type { SystemForm } from '../../services/d365Api';
@@ -14,7 +15,7 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   spinnerContainer: {
     marginTop: spacing.sm,

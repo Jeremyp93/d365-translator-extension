@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Button as FButton, ButtonProps } from '@fluentui/react-components';
 
 export type Props = ButtonProps & { variant?: 'primary' | 'ghost' };

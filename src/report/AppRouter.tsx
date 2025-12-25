@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import { lazy } from "react";
 import { FluentProvider } from "@fluentui/react-components";
+
 import { useTheme } from "../context/ThemeContext";
 
 const FieldReportPage = lazy(() => import('./pages/FieldReportPage'));

@@ -10,10 +10,10 @@ import {
   makeStyles,
   tokens,
   Text,
-  Divider,
   Spinner,
 } from '@fluentui/react-components';
 import { Dismiss24Regular, Delete24Regular } from '@fluentui/react-icons';
+
 import { ErrorBox, Info } from './ui/Notice';
 import type { PendingChange, BatchUpdateResult } from '../types';
 import { batchUpdateAttributeLabels } from '../services/entityLabelService';

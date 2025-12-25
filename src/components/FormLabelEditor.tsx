@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useMemo, useState } from "react";
 import {
   Card,
   CardHeader,
@@ -6,6 +6,7 @@ import {
   Divider,
   makeStyles,
 } from "@fluentui/react-components";
+
 import Button from "./ui/Button";
 import { Info, ErrorBox } from "./ui/Notice";
 import TranslationsTable from "./TranslationsTable";
@@ -57,23 +58,23 @@ export default function FormLabelEditor({
 
   // Load provisioned languages once
   const { langs, error: langsError } = useLanguages(clientUrl);
-  const langList = React.useMemo(
+  const langList = useMemo(
     () => (langs ?? []).slice().sort((a, b) => a - b),
     [langs]
   );
 
   // Values per LCID
-  const [formValues, setFormValues] = React.useState<Record<number, string>>(
+  const [formValues, setFormValues] = useState<Record<number, string>>(
     {}
   );
 
   // UI state
-  const [busyLoad, setBusyLoad] = React.useState(false);
-  const [busySave, setBusySave] = React.useState(false);
-  const [info, setInfo] = React.useState<string | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
+  const [busyLoad, setBusyLoad] = useState(false);
+  const [busySave, setBusySave] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   // Only show table once the user explicitly loads the labels
-  const [hasLoadedTable, setHasLoadedTable] = React.useState(false);
+  const [hasLoadedTable, setHasLoadedTable] = useState(false);
 
   const compositeError = error || langsError || null;
 
