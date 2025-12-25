@@ -157,6 +157,34 @@ The repository uses GitHub Actions for continuous integration:
 
 You can download the built extension artifact from the "Actions" tab → select your workflow run → "Artifacts" section.
 
+### Creating Releases
+
+The repository includes an on-demand release workflow that creates GitHub releases with downloadable extension zips.
+
+**To create a release:**
+
+1. Go to **Actions** tab → **Create Release** workflow
+2. Click **Run workflow**
+3. Choose options:
+   - **version**: Leave empty to use version from manifest.json, or specify custom version (e.g., `1.2.0`)
+   - **prerelease**: Check this for beta/preview releases
+4. Click **Run workflow**
+
+The workflow will:
+- Build the extension
+- Create a properly formatted zip file (single zip, not nested)
+- Create a GitHub release with auto-generated release notes
+- Attach the zip file to the release
+
+**Version Management:**
+- Version is controlled by `public/manifest.json` → `version` field
+- Update the manifest version before creating a release
+- Use semantic versioning (e.g., `1.0.0`, `1.1.0`, `2.0.0`)
+
+**Finding Releases:**
+- Go to the repository homepage → **Releases** section (right sidebar)
+- Or navigate to: `https://github.com/[owner]/d365-translator-extension/releases`
+
 ### AI Code Reviews
 
 Three AI review mechanisms are configured for all PRs:
