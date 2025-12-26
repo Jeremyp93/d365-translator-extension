@@ -188,34 +188,13 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
 
     const handleSortChange = useCallback(
       (data: { sortColumn: TableColumnId | undefined; sortDirection: 'ascending' | 'descending' }) => {
-        console.log('handleSortChange called with:', data); // DEBUG
         if (data.sortColumn) {
           setSortState({ sortColumn: data.sortColumn, sortDirection: data.sortDirection });
-          console.log('About to call onSortChange:', onSortChange); // DEBUG
           onSortChange?.(data.sortColumn, data.sortDirection);
         }
       },
       [onSortChange]
     );
-
-    // const handleSortChange = useCallback(
-    //   (
-    //     _: unknown,
-    //     data: {
-    //       sortColumn: TableColumnId | undefined;
-    //       sortDirection: "ascending" | "descending";
-    //     }
-    //   ) => {
-    //     if (data.sortColumn) {
-    //       setSortState({
-    //         sortColumn: data.sortColumn,
-    //         sortDirection: data.sortDirection,
-    //       });
-    //       onSortChange?.(data.sortColumn, data.sortDirection);
-    //     }
-    //   },
-    //   [onSortChange]
-    // );
 
     const resetSort = useCallback(() => {
       setSortState({ sortColumn: "createdon", sortDirection: "descending" });

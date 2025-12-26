@@ -91,8 +91,17 @@ function ResultsTableRow({
             <div
               className={styles.expandButton}
               onClick={() => onToggleRow(log.plugintracelogid)}
+              onKeyDown={(e: React.KeyboardEvent) => {
+                if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+                  if (e.key === " " || e.key === "Spacebar") {
+                    e.preventDefault(); // Prevent page scroll
+                  }
+                  onToggleRow(log.plugintracelogid);
+                }
+              }}
               role="button"
               tabIndex={0}
+              aria-expanded={isExpanded}
             >
               {isExpanded ? (
                 <ChevronDown20Regular />

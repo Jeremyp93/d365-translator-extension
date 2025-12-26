@@ -4,12 +4,8 @@ import {
   TableColumnDefinition,
   Button,
   Badge,
-  Text,
-  tokens,
 } from "@fluentui/react-components";
 import {
-  ChevronRight20Regular,
-  ChevronDown20Regular,
   FlowRegular,
 } from "@fluentui/react-icons";
 
@@ -20,6 +16,8 @@ import {
   getOperationTypeLabel,
   getDurationColor,
 } from "../../services/pluginTraceLogService";
+import ExpandButtonCell from "./cells/ExpandButtonCell";
+import ExceptionCell from "./cells/ExceptionCell";
 
 export function createResultsTableColumns(
   expandedRows: Set<string>,
@@ -40,26 +38,10 @@ export function createResultsTableColumns(
 
         const isExpanded = expandedRows.has(log.plugintracelogid);
         return (
-          <TableCellLayout>
-            <div
-              style={{
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                color: tokens.colorBrandForeground1,
-              }}
-              onClick={() => toggleRow(log.plugintracelogid)}
-              role="button"
-              tabIndex={0}
-            >
-              {isExpanded ? (
-                <ChevronDown20Regular />
-              ) : (
-                <ChevronRight20Regular />
-              )}
-            </div>
-          </TableCellLayout>
+          <ExpandButtonCell
+            isExpanded={isExpanded}
+            onToggle={() => toggleRow(log.plugintracelogid)}
+          />
         );
       },
     }),
@@ -153,33 +135,7 @@ export function createResultsTableColumns(
       },
       renderHeaderCell: () => "Exception",
       renderCell: (log) => (
-        <TableCellLayout truncate title={log.exceptiondetails}>
-          {log.exceptiondetails ? (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "4px",
-              }}
-            >
-              <Badge color="danger">Yes</Badge>
-              <Text
-                style={{
-                  fontFamily: "monospace",
-                  fontSize: tokens.fontSizeBase200,
-                  maxWidth: "400px",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {log.exceptiondetails}
-              </Text>
-            </div>
-          ) : (
-            "-"
-          )}
-        </TableCellLayout>
+        <ExceptionCell exceptionDetails={log.exceptiondetails} />
       ),
     }),
     createTableColumn<PluginTraceLog>({

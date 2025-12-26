@@ -141,8 +141,8 @@ export default function EntityLabelEditor({
     attribute,
     lcids.join(","),
     reloadTrigger,
-    pendingChanges.length,
-  ]); // re-run if langs change, reload triggered, or pending changes added/removed
+    pendingChanges,
+  ]); // re-run if langs change, reload triggered, or pending changes updated
 
   const onChange = (lcid: number, v: string) => {
     setValues((prev) => ({ ...prev, [lcid]: v }));
