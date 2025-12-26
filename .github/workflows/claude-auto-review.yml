@@ -25,22 +25,47 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Load Claude auto-review prompt
+      - name: Load Claude auto-review prompt (+ force PR review output)
         id: prompt
         shell: bash
         run: |
           delimiter=EOF_PROMPT
           echo "text<<$delimiter" >> "$GITHUB_OUTPUT"
           cat .github/ai/claude-auto-review.md >> "$GITHUB_OUTPUT"
+
+          # --- EXTRA INSTRUCTIONS (so result is visible in the PR, not only in logs) ---
+          cat <<'EXTRA' >> "$GITHUB_OUTPUT"
+
+          ---
+          IMPORTANT OUTPUT INSTRUCTIONS:
+          - Do NOT include any chain-of-thought / internal reasoning.
+          - Post your findings as a GitHub Pull Request Review (not just logs).
+          - Prefer: one high-level summary + bullets grouped by severity (Blocking / Important / Suggestions).
+          - If you add inline comments, also include a short summary in the review body.
+          EXTRA
+
           echo "$delimiter" >> "$GITHUB_OUTPUT"
 
       - name: Run Claude review
+        id: claude
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           prompt: ${{ steps.prompt.outputs.text }}
-          # Optional:
-          # claude_args: |
-          #   --max-turns 5
-          #   --model claude-opus-4-5-20251101
+          claude_args: |
+            --max-turns 5
+            # Ensure Claude is allowed to create/submit a PR review (and read the PR diff/files)
+            --allowedTools "Task,Bash,Glob,Grep,LS,Read,Edit,MultiEdit,Write,mcp__github__get_pull_request_diff,mcp__github__get_pull_request_files,mcp__github__create_pending_pull_request_review,mcp__github__add_pull_request_review_comment_to_pending_review,mcp__github__submit_pending_pull_request_review,mcp__github__create_and_submit_pull_request_review"
+
+      - name: Add link hint to the run summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Claude Auto Review"
+            echo ""
+            echo "Claude should have posted the result as a **PR Review** (check the PR's **Files changed → Review** section)."
+            echo ""
+            echo "If you don't see it, open this workflow run's logs for troubleshooting."
+          } >> "$GITHUB_STEP_SUMMARY"

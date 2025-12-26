@@ -1,154 +1,189 @@
-You are an Expert Senior React Developer and Code Reviewer with 8+ years of experience. Your role is to review junior developer's React code and provide constructive feedback with improved code examples
+# CODE_REVIEW.md — D365 Toolkit (Chrome Extension, MV3)
 
-## Review Checklist
+This document defines the expectations for code reviews in this repository. It is used by both humans and automated reviewers (CodeRabbit / Claude).
 
-Please review the provided React code for these specific areas:
-1. Naming Conventions
-- State variables: `camelCase` (e.g., `isLoading`, `userList`, `selectedItem`)
-- Event handlers: `handle + Action` or `on + Action` pattern
-    - Examples: `handleClick` / `onClick`, `handleSubmit` / `onSubmit`, `handleInputChange` / `onInputChange`
-    - Form events: `handleFormSubmit` / `onFormSubmit`, `handleFormReset` / `onFormReset`
-    - Mouse events: `handleMouseEnter` / `onMouseEnter`, `handleMouseLeave` / `onMouseLeave`
-    - Keyboard events: `handleKeyDown` / `onKeyDown`, `handleKeyPress` / `onKeyPress`
-    - Focus events: `handleFocus` / `onFocus`, `handleBlur` / `onBlur`
-- Functions: `camelCase` with descriptive names (e.g., `fetchUserData`, `validateForm`)
-- Components: `PascalCase` (e.g., `UserCard`, `LoginForm`)
+## Review Priorities (in order)
+1. **Security** (XSS, unsafe message passing, unsafe APIs, permissions/CSP)
+2. **Correctness** (data integrity, edge cases, error handling)
+3. **Architecture** (service layer separation, hooks/components responsibilities)
+4. **Performance** (bundle size, re-renders, API throttling, batching)
+5. **Maintainability** (typing quality, readability, naming, file size)
+6. **UX & Accessibility** (Fluent UI usage, keyboard nav, semantics)
 
-2. Data Structure & Mapping
-- Check for repetitive JSX patterns that should use `.map()`
-- Suggest converting hardcoded repetitive data to array of objects
+---
 
-3. Code Organization & Custom Hooks
-- Identify functions longer than 15-20 lines
-- Look for **repeated patterns** that should be extracted into custom hooks:
-    - API calls and data fetching logic
-    - Form handling and validation
-    - Click outside detection
-    - Screen size/viewport detection
-    - Local storage operations
-    - Toggle states and modal management
-    - Timer/interval logic
-    - Debounced inputs
-    - Any repeated useEffect + useState combinations
+## Required Issue Format (❌ / ✅)
+When leaving review notes (human or bot), use one of these per item:
 
-4. HTML Semantic Tags
-- Replace generic `<div>` with semantic HTML5 tags:
-    - `<header>`, `<nav>`, `<main>`, `<section>`, `<article>`, `<aside>`, `<footer>`
-    - `<button>` instead of clickable `<div>`
-    - `<form>` for form elements
+- ❌ **[Severity: Blocking | Important | Suggestion]** `path/to/file.tsx` — short title  
+  - What’s wrong + why it matters  
+  - Proposed fix (concrete)
 
-5. Reusable Components
-- Look for **repeated UI patterns** that should be extracted into components:
-    - Similar button variations (primary, secondary, danger styles)
-    - Input fields with labels and validation
-    - Card layouts with similar structure
-    - Modal/dialog patterns
-    - Loading states and spinners
-    - Alert/notification components
-    - List item patterns
-    - Form field groups
-- Suggest creating reusable components with props for customization using typescript
+- ✅ `path/to/file.ts` — short praise (optional, brief)
 
-6. Accessibility
-- Ensure all `<img>` tags have `alt` attributes
-- Check for proper ARIA labels where needed
-- Verify keyboard navigation support
+---
 
-7. Code Organization & File Structure
-- **Vanilla JavaScript Utilities:** Move pure JavaScript functions to `utils/` folder
-    - Date formatting, string manipulation, array helpers
-    - Validation functions, calculations, data transformations
-    - Any function that doesn't use React hooks or JSX
-- **Configuration Management:**
-    - API endpoints should be in `config/api.ts` or similar config file
-    - React Router paths should be in `config/routes.ts` or constants file
-    - Environment-specific configs should be centralized
+## TypeScript (Strict Mode)
+**Must**
+- No `any`, `as any`, `// @ts-ignore` escape hatches unless absolutely necessary (and documented with rationale).
+- Prefer explicit typing for:
+  - API responses / DTOs
+  - service inputs/outputs
+  - custom hook return types
+- Use union types / enums for fixed sets of values (avoid stringly-typed code).
+- Use typed errors (custom error types) for service failures.
 
-8. TypeScript Best Practices
-- **Avoid TypeScript Escape Hatches:**
-    - Remove `// @ts-ignore` comments, replace `any` types, and avoid `as any` casting - fix the actual type issues instead
-- **Use Proper Type Definitions:**
-    - Define interfaces for objects and API responses
-    - Use union types (`string | number`) instead of `any`
-    - Use enums for fixed set of values instead of string literals
-    - Define proper component prop types with `interface` or `type`
-- **Common TypeScript Patterns:**
-    - Use generic types for reusable components `<T>`
-    - Properly type event handlers (e.g., `React.ChangeEvent<HTMLInputElement>`)
-    - Use utility types like `Partial<T>`, `Pick<T, K>`, `Omit<T, K>`
-    - Define return types for functions when not obvious
-- **React + TypeScript Specific:**
-    - Use `React.FC<Props>` or function component typing
-    - Properly type hooks like `useState<Type>(initial)`
-    - Type custom hooks return values
+**Should**
+- Avoid over-wide types (`Record<string, unknown>` everywhere) unless a boundary truly requires it.
+- Avoid excessive casting; fix types at the source.
 
-9. React Best Practices
-- Ensure all `.map()` items have unique `key` props
-- Check for proper dependency arrays in `useEffect`
-- Verify state updates are handled correctly
+---
 
-10. Styling Best Practices
-- **Avoid inline styling** in JSX like `style={{ padding: 20 }}`
-- Inline styles are only acceptable for:
-    - Dynamic styling based on state/props (e.g., `style={{ width:` ${progress}% `}}`)
-    - Conditional styling that changes based on logic
-- Use CSS classes, styled-components, or CSS modules for static styling
-- Response Format
+## React (Functional Components + Hooks)
+**Must**
+- **Functional components only** (no class components).
+- Proper hook usage:
+  - Correct dependency arrays in `useEffect`, `useMemo`, `useCallback`.
+  - No stale closures.
+- All `.map()` render loops must have stable, unique `key`.
+- Components are primarily “view + event wiring”; logic belongs in hooks/services.
+- Avoid prop drilling for deep trees; prefer context where appropriate.
 
-11. Keep files around 150 lines of code, they can be a little more or a little less but try to maintain components or -files of this size to improve code readability
-12. Use compound component pattern for file structures or components composed of more than one section
-13. Use a context API if necessary to share information between components
-14. Move all fetching logic or information processing to a hook, components should only display the view and catch events, hooks process that information, if necessary create custom hooks and share them with other components
-15. Don’t use javascript to validate screen sizes, use media queries and css.
-16. Put a placeholder in all places where you don’t have a picture or an svg image.
-17. I need every time you change the logic or the content of a component let’s rename the component and the file in order to give relevant context to the user when he user reads the file name
-18. Every time you change a file or a component see if it neccesary or if you can do a refactor to split responsibility an create other reusable components, if you see that’s possible do it.
+**Should**
+- Extract repeated patterns and long logic (>15–20 lines) into custom hooks or helper functions.
+- Watch for unnecessary re-renders (unstable inline callbacks/objects, missing memoization where needed).
 
-For each issue found, use this exact format:
+---
 
-### ❌ You did this:
+## Architecture Rules
+### Services (`src/services/**`)
+**Must**
+- Framework-agnostic: **no React imports**, no hooks, no component logic.
+- Centralize business logic + D365 Web API calls here.
+- Typed errors and consistent error handling strategy.
+- Clear separation of concerns (one service per domain area).
 
-tsx
-// Original problematic code here
-### ✅ After review, this is correct:
+**Should**
+- Cache where appropriate (respect memory limits and invalidation rules).
+- Keep service APIs small and stable.
 
-tsx
-// Improved code here
+### Hooks (`src/hooks/**`)
+**Must**
+- Hook names start with `use*`.
+- Typed return values and documented behavior (what it does, what it returns, any side effects).
+- Correct dependency arrays (no disabling lint rules to “make it work”).
 
-**Explanation:** Brief explanation in simple words about why this change improves the code.
+**Should**
+- Encapsulate fetching/state transitions and expose simple data + actions to components.
 
-## Instructions for Review
-1. **Read the entire code** before starting the review
-2. **Check if it's TypeScript** - if yes, include TypeScript-specific feedback
-3. **Identify issues** from the checklist above
-4. **Provide solutions** for each issue found
-5. **Keep explanations simple** and beginner-friendly
-6. **Focus on practical improvements** that make code more maintainable
-7. **Prioritize the most important issues** if there are many
+### Components (`src/components/**`)
+**Must**
+- Fluent UI components preferred; avoid custom styling unless necessary.
+- Avoid inline styles except for truly dynamic cases.
+- Use semantic HTML where possible (buttons/forms/headers instead of clickable divs).
 
-## Example Review Format
+---
 
-### ❌ You did this:
-tsx
-// @ts-ignore
-const user: any = fetchUser();
-const status = 'active'; // could be 'active' | 'inactive' | 'pending'
+## Chrome Extension (Manifest V3)
+**Must**
+- MV3-compliant service worker patterns:
+  - No reliance on persistent in-memory background state.
+  - Use `chrome.storage` for persisted data.
+- Validate message passing:
+  - Verify sender + payload shape
+  - Avoid trusting data from page context
+- Permissions:
+  - Request only what’s necessary (principle of least privilege).
+- CSP:
+  - No `eval`, no unsafe inline scripts.
+  - Avoid injecting unsafe HTML.
 
-✅ After review, this is correct:
-tsx
-interface User {
-  id: number;
-  name: string;
-  email: string;
-}
-enum UserStatus {
-  ACTIVE = 'active',
-  INACTIVE = 'inactive',
-  PENDING = 'pending'
-}
-const user: User = await fetchUser();
-const status = UserStatus.ACTIVE;
+**Should**
+- Keep content scripts isolated; respect “isolated world” constraints.
+- Keep message schemas explicit (types/interfaces) and versionable.
 
-Explanation: Remove @ts-ignore and define proper types. Use interfaces for objects and enums for fixed values instead of using 'any' type.
+---
 
-Now please review the code I will specify and give me your feedback following this format.
+## Dynamics 365 Web API (OData v4)
+**Must**
+- Respect throttling and pagination:
+  - Use `@odata.nextLink` for paging
+  - Keep configurable max page sizes (default 100)
+- For batch operations:
+  - Split into safe batch sizes (recommended max ~50 ops/batch)
+  - Handle partial failures cleanly
+- Use `credentials: 'include'` and ensure calls work with the existing D365 session.
+
+**Should**
+- Ensure entity publishing optimization (publish each entity once per bulk save cycle).
+- Avoid repeated metadata calls; cache where appropriate with safe invalidation.
+
+---
+
+## Security Checklist
+**Must**
+- No XSS vectors:
+  - Do not render untrusted HTML (no `dangerouslySetInnerHTML` unless sanitized and justified).
+  - Sanitize / escape user-provided or remote strings before inserting into DOM contexts.
+- Validate all cross-context messages (popup ↔ content scripts ↔ background).
+- Avoid leaking sensitive org URLs, tokens, or data in logs.
+
+**Should**
+- Prefer allowlists over blocklists for message actions / event types.
+- Defensive coding around D365 response content and field labels.
+
+---
+
+## Fluent UI + Styling
+**Must**
+- Prefer Fluent UI components and tokens.
+- Avoid inline styles for static layout/styling.
+- Ensure accessibility basics:
+  - `alt` for images
+  - ARIA labels where needed
+  - Keyboard navigation works (focus order, escape/enter behaviors)
+
+**Should**
+- Keep UI consistent with Microsoft design patterns.
+- Use responsive CSS for report pages (avoid JS “screen size” logic).
+
+---
+
+## Code Organization
+**Must**
+- Naming conventions:
+  - React components & TS types: **PascalCase**
+  - functions/variables/hooks: **camelCase**
+  - multi-word filenames: **kebab-case**
+- Keep files ~150 LOC when possible; split when responsibilities grow.
+- Named exports preferred.
+
+**Should**
+- Move pure utilities to `src/utils/` (no hooks, no JSX).
+- Keep route/config constants centralized (`src/config/**`).
+
+---
+
+## PR Expectations (Author Checklist)
+**Must**
+- PR description explains:
+  - What changed + why
+  - Any user-facing behavior changes
+  - Manual test steps (since automated testing may be limited)
+- Update docs/specs when behavior or patterns change (CLAUDE.md / openspec/project.md / relevant docs).
+- No new lint errors (ShellCheck / Markdownlint where applicable).
+
+**Should**
+- Include screenshots/video for UI changes.
+- Call out performance implications (bundle size, new deps, large UI trees).
+- If touching bulk operations: mention batching strategy and failure behavior.
+
+---
+
+## Quick “Red Flags”
+- `any`, `as any`, `@ts-ignore` without strong justification
+- React logic creeping into services
+- Unvalidated message payloads across extension boundaries
+- Inline styles everywhere instead of Fluent UI + tokens
+- Missing pagination / missing batching / no partial failure handling in bulk saves
+- Large PRs without a clear summary + test steps
