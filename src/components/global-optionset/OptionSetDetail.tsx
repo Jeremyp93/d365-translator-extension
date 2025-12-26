@@ -29,7 +29,6 @@ const useStyles = makeStyles({
   spinnerContainerLarge: {
     textAlign: "center",
     padding: spacing.xl,
-
   },
   cardPadding: {
     padding: spacing.md,

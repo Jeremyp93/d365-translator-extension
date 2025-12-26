@@ -35,6 +35,9 @@ const useStyles = makeStyles({
   sectionGap: {
     marginTop: "12px",
   },
+  noticeContainer: {
+    marginTop: "10px",
+  },
 });
 
 type Editable = Record<number, string>;
@@ -260,12 +263,12 @@ export default function EntityLabelEditor({
       />
 
       {error && (
-        <div style={{ marginTop: 10 }}>
+        <div className={styles.noticeContainer}>
           <ErrorBox>Error: {error}</ErrorBox>
         </div>
       )}
       {info && !error && (
-        <div style={{ marginTop: 10 }}>
+        <div className={styles.noticeContainer}>
           <Info>{info}</Info>
         </div>
       )}

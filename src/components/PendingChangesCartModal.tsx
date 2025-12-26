@@ -234,8 +234,8 @@ export default function PendingChangesCartModal({
           onSaveSuccess?.(successfulChanges);
         }
       }
-    } catch (err: any) {
-      setError(err?.message ?? String(err));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
       onSavingChange?.(false);

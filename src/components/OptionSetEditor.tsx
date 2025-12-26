@@ -63,6 +63,9 @@ const useStyles = makeStyles({
     maxHeight: "400px",
     overflowY: "auto",
   },
+  noticeContainer: {
+    marginTop: "10px",
+  },
 });
 
 type EditableOptions = Record<number, Record<number, string>>; // optionValue -> lcid -> label
@@ -215,12 +218,12 @@ export default function OptionSetEditor({
       />
 
       {error && (
-        <div style={{ marginTop: 10 }}>
+        <div className={styles.noticeContainer}>
           <ErrorBox>Error: {error}</ErrorBox>
         </div>
       )}
       {info && !error && (
-        <div style={{ marginTop: 10 }}>
+        <div className={styles.noticeContainer}>
           <Info>{info}</Info>
         </div>
       )}
