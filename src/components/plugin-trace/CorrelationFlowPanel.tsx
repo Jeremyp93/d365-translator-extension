@@ -14,8 +14,6 @@ import ReactFlow, {
   ReactFlowProvider,
   Node,
   MarkerType,
-  Handle,
-  Position,
 } from "reactflow";
 
 import {
@@ -30,6 +28,8 @@ import {
   FlowGraph,
   FlowNodeData,
 } from "../../utils/flowGraphBuilder";
+import { LRUCache } from "../../utils/lruCache";
+import CorrelationFlowNode from "./CorrelationFlowNode";
 
 import "reactflow/dist/style.css";
 import "../../styles/flow.css";
@@ -131,199 +131,11 @@ interface CorrelationFlowPanelProps {
   onNodeClick: (rowId: string) => void;
 }
 
-/**
- * LRU Cache for correlation flow data
- */
-class LRUCache<K, V> {
-  private maxSize: number;
-  private cache: Map<K, V>;
-
-  constructor(maxSize: number = 20) {
-    this.maxSize = maxSize;
-    this.cache = new Map();
-  }
-
-  get(key: K): V | undefined {
-    if (!this.cache.has(key)) {
-      return undefined;
-    }
-    // Move to end (most recently used)
-    const value = this.cache.get(key)!;
-    this.cache.delete(key);
-    this.cache.set(key, value);
-    return value;
-  }
-
-  set(key: K, value: V): void {
-    if (this.cache.has(key)) {
-      this.cache.delete(key);
-    } else if (this.cache.size >= this.maxSize) {
-      // Remove least recently used (first item)
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey !== undefined) {
-        this.cache.delete(firstKey);
-      }
-    }
-    this.cache.set(key, value);
-  }
-
-  clear(): void {
-    this.cache.clear();
-  }
-}
-
 // Session-level cache for correlation flow data
 const flowCache = new LRUCache<string, FlowGraph>(20);
 
-/**
- * Custom node component with styling based on state
- */
-const CustomNode = ({
-  data,
-  selected,
-}: {
-  data: FlowNodeData;
-  selected: boolean;
-}) => {
-  const styles = useStyles();
-
-  const nodeStyle: React.CSSProperties = {
-    position: "relative",
-    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalM}`,
-    borderRadius: tokens.borderRadiusMedium,
-    border: data.hasException
-      ? `2px solid ${tokens.colorPaletteRedBorder1}`
-      : selected
-      ? `2px solid ${tokens.colorBrandStroke1}`
-      : `1px solid ${tokens.colorNeutralStroke1}`,
-    borderStyle: data.mode === "Asynchronous" ? "dashed" : "solid",
-    backgroundColor: selected
-      ? tokens.colorBrandBackground2
-      : data.hasException
-      ? tokens.colorPaletteRedBackground1
-      : tokens.colorNeutralBackground1,
-    minWidth: "200px",
-    maxWidth: "240px",
-    fontSize: tokens.fontSizeBase200,
-    boxShadow: selected ? tokens.shadow8 : tokens.shadow4,
-    transition: "all 0.2s ease",
-    cursor: "pointer",
-  };
-
-  const getDurationBadgeColor = (duration: number) => {
-    if (duration < 1000) return tokens.colorPaletteGreenForeground1;
-    if (duration < 5000) return tokens.colorPaletteDarkOrangeForeground1;
-    return tokens.colorPaletteRedForeground1;
-  };
-
-  // Truncate long type names for better display
-  const displayName = data.typeName.split(",")[0];
-
-  return (
-    <div style={nodeStyle}>
-      <Handle
-        type="target"
-        position={Position.Left}
-        style={{
-          width: 8,
-          height: 8,
-          background: tokens.colorNeutralStroke1,
-          border: `1px solid ${tokens.colorNeutralBackground1}`,
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        style={{
-          width: 8,
-          height: 8,
-          background: tokens.colorNeutralStroke1,
-          border: `1px solid ${tokens.colorNeutralBackground1}`,
-        }}
-      />
-      {data.hasException && <div className={styles.exceptionBadge}>!</div>}
-      <div
-        style={{
-          fontSize: tokens.fontSizeBase300,
-          fontWeight: tokens.fontWeightSemibold,
-          marginBottom: tokens.spacingVerticalS,
-          color: tokens.colorNeutralForeground1,
-          wordBreak: "break-word",
-          lineHeight: "1.2",
-        }}
-        title={data.typeName}
-      >
-        {displayName}
-      </div>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: tokens.spacingVerticalXXS,
-          borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
-          paddingTop: tokens.spacingVerticalXS,
-          marginTop: tokens.spacingVerticalXXS,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: tokens.spacingHorizontalXS,
-          }}
-        >
-          <div
-            style={{
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
-              backgroundColor: getDurationBadgeColor(data.duration),
-              flexShrink: 0,
-            }}
-          />
-          <div
-            style={{
-              fontSize: tokens.fontSizeBase200,
-              color: tokens.colorNeutralForeground2,
-            }}
-          >
-            {data.duration}ms
-          </div>
-        </div>
-        <div
-          style={{
-            fontSize: tokens.fontSizeBase200,
-            color: tokens.colorNeutralForeground2,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <span title={data.message}>
-            {data.message.length > 15
-              ? data.message.substring(0, 15) + "..."
-              : data.message}
-          </span>
-          <span>{data.depth}</span>
-          {data.mode === "Asynchronous" && (
-            <span
-              style={{
-                fontSize: tokens.fontSizeBase100,
-                color: tokens.colorNeutralForeground3,
-                fontStyle: "italic",
-              }}
-            >
-              (Async)
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const nodeTypes = {
-  default: CustomNode,
+  default: CorrelationFlowNode,
 };
 
 function CorrelationFlowPanel({

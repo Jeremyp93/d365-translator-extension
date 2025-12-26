@@ -5,7 +5,6 @@
 
 import {
   forwardRef,
-  Fragment,
   useCallback,
   useImperativeHandle,
   useMemo,
@@ -14,27 +13,13 @@ import {
 import {
   makeStyles,
   tokens,
-  Text,
-  Button,
-  Badge,
-  TableCellLayout,
   TableColumnId,
-  createTableColumn,
-  TableColumnDefinition,
 } from "@fluentui/react-components";
-import {
-  ChevronRight20Regular,
-  ChevronDown20Regular,
-  FlowRegular,
-} from "@fluentui/react-icons";
 
-import {
-  PluginTraceLog,
-  formatDuration,
-  getModeLabel,
-  getOperationTypeLabel,
-  getDurationColor,
-} from "../../services/pluginTraceLogService";
+import { PluginTraceLog } from "../../services/pluginTraceLogService";
+import { createResultsTableColumns } from "./ResultsTableColumns";
+import ResultsTableRow from "./ResultsTableRow";
+import { spacing } from "../../styles/theme";
 
 const useStyles = makeStyles({
   tableContainer: {
@@ -81,96 +66,50 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorBrandBackground,
     opacity: 0.7,
   },
-  expandButton: {
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: "4px",
-    color: tokens.colorBrandForeground1,
-  },
-  exceptionText: {
-    fontFamily: "monospace",
-    fontSize: tokens.fontSizeBase200,
-    maxWidth: "400px",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  expandedContent: {
-    padding: "16px",
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  traceBlock: {
-    fontFamily: "monospace",
-    fontSize: tokens.fontSizeBase200,
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
-    backgroundColor: tokens.colorNeutralBackground1,
-    padding: "12px",
-    borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    maxHeight: "400px",
-    overflowY: "auto",
-  },
-  detailRow: {
-    display: "flex",
-    gap: "8px",
-    marginBottom: "8px",
-  },
-  detailLabel: {
-    fontWeight: tokens.fontWeightSemibold,
-    minWidth: "150px",
-  },
-  flexColumn: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-  },
-  detailSection: {
-    marginTop: "12px",
-  },
   // Table header styles
   tableHeader: {
     borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground2,
   },
   tableHeaderCell: {
-    padding: "8px",
+    padding: spacing.sm,
     textAlign: "left",
     fontWeight: tokens.fontWeightSemibold,
   },
   tableHeaderCellSortable: {
-    padding: "8px",
+    padding: spacing.sm,
     textAlign: "left",
     fontWeight: tokens.fontWeightSemibold,
     cursor: "pointer",
   },
   tableHeaderCellExpand: {
     width: "40px",
-    padding: "8px",
+    padding: spacing.sm,
   },
-  // Table row styles
-  tableRow: {
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-    backgroundColor: tokens.colorNeutralBackground1,
+  // Column header min widths
+  headerActions: {
+    minWidth: "120px",
   },
-  tableCell: {
-    padding: "8px",
+  headerMessageName: {
+    minWidth: "150px",
   },
-  tableCellCenter: {
-    padding: "8px",
-    textAlign: "center",
+  headerMode: {
+    minWidth: "120px",
   },
-  tableCellTypeName: {
-    padding: "8px",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
+  headerType: {
+    minWidth: "100px",
   },
-  expandedRow: {
-    padding: 0,
-    backgroundColor: tokens.colorNeutralBackground2,
+  headerDepth: {
+    minWidth: "80px",
+  },
+  headerDuration: {
+    minWidth: "100px",
+  },
+  headerException: {
+    minWidth: "250px",
+  },
+  headerCreatedOn: {
+    minWidth: "180px",
   },
 });
 
@@ -220,153 +159,10 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
       document.addEventListener("mouseup", handleMouseUp);
     };
 
-    const columns: TableColumnDefinition<PluginTraceLog>[] = [
-      createTableColumn<PluginTraceLog>({
-        columnId: "expand",
-        renderHeaderCell: () => "",
-        renderCell: (log) => {
-          const hasDetails = !!(
-            log.messageblock ||
-            log.exceptiondetails ||
-            log.correlationid
-          );
-          if (!hasDetails) return null;
-
-          const isExpanded = expandedRows.has(log.plugintracelogid);
-          return (
-            <TableCellLayout>
-              <div
-                className={styles.expandButton}
-                onClick={() => toggleRow(log.plugintracelogid)}
-                role="button"
-                tabIndex={0}
-              >
-                {isExpanded ? (
-                  <ChevronDown20Regular />
-                ) : (
-                  <ChevronRight20Regular />
-                )}
-              </div>
-            </TableCellLayout>
-          );
-        },
-      }),
-      createTableColumn<PluginTraceLog>({
-        columnId: "actions",
-        renderHeaderCell: () => "Actions",
-        renderCell: (log) => (
-          <TableCellLayout>
-            {log.correlationid && onViewFlow && (
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<FlowRegular />}
-                onClick={() =>
-                  onViewFlow(log.correlationid!, log.plugintracelogid)
-                }
-                title="View correlation flow diagram"
-              >
-                View flow
-              </Button>
-            )}
-          </TableCellLayout>
-        ),
-      }),
-      createTableColumn<PluginTraceLog>({
-        columnId: "typename",
-        compare: (a, b) => (a.typename || "").localeCompare(b.typename || ""),
-        renderHeaderCell: () => "Type Name",
-        renderCell: (log) => (
-          <TableCellLayout truncate title={log.typename}>
-            {log.typename || "N/A"}
-          </TableCellLayout>
-        ),
-      }),
-      createTableColumn<PluginTraceLog>({
-        columnId: "messagename",
-        compare: (a, b) =>
-          (a.messagename || "").localeCompare(b.messagename || ""),
-        renderHeaderCell: () => "Message",
-        renderCell: (log) => (
-          <TableCellLayout>{log.messagename || "N/A"}</TableCellLayout>
-        ),
-      }),
-      createTableColumn<PluginTraceLog>({
-        columnId: "mode",
-        compare: (a, b) => a.mode - b.mode,
-        renderHeaderCell: () => "Mode",
-        renderCell: (log) => (
-          <TableCellLayout>{getModeLabel(log.mode)}</TableCellLayout>
-        ),
-      }),
-      createTableColumn<PluginTraceLog>({
-        columnId: "operationtype",
-        compare: (a, b) => a.operationtype - b.operationtype,
-        renderHeaderCell: () => "Type",
-        renderCell: (log) => (
-          <TableCellLayout>
-            {getOperationTypeLabel(log.operationtype)}
-          </TableCellLayout>
-        ),
-      }),
-      createTableColumn<PluginTraceLog>({
-        columnId: "depth",
-        compare: (a, b) => a.depth - b.depth,
-        renderHeaderCell: () => "Depth",
-        renderCell: (log) => <TableCellLayout>{log.depth}</TableCellLayout>,
-      }),
-      createTableColumn<PluginTraceLog>({
-        columnId: "duration",
-        compare: (a, b) =>
-          (a.performanceexecutionduration || 0) -
-          (b.performanceexecutionduration || 0),
-        renderHeaderCell: () => "Duration",
-        renderCell: (log) => {
-          const color = getDurationColor(log.performanceexecutionduration);
-          return (
-            <TableCellLayout>
-              <Badge appearance="filled" color={color}>
-                {formatDuration(log.performanceexecutionduration)}
-              </Badge>
-            </TableCellLayout>
-          );
-        },
-      }),
-      createTableColumn<PluginTraceLog>({
-        columnId: "exception",
-        compare: (a, b) => {
-          const aHas = !!a.exceptiondetails;
-          const bHas = !!b.exceptiondetails;
-          return aHas === bHas ? 0 : aHas ? -1 : 1;
-        },
-        renderHeaderCell: () => "Exception",
-        renderCell: (log) => (
-          <TableCellLayout truncate title={log.exceptiondetails}>
-            {log.exceptiondetails ? (
-              <div className={styles.flexColumn}>
-                <Badge color="danger">Yes</Badge>
-                <Text className={styles.exceptionText}>
-                  {log.exceptiondetails}
-                </Text>
-              </div>
-            ) : (
-              "-"
-            )}
-          </TableCellLayout>
-        ),
-      }),
-      createTableColumn<PluginTraceLog>({
-        columnId: "createdon",
-        compare: (a, b) =>
-          new Date(a.createdon).getTime() - new Date(b.createdon).getTime(),
-        renderHeaderCell: () => "Created On",
-        renderCell: (log) => (
-          <TableCellLayout>
-            {new Date(log.createdon).toLocaleString()}
-          </TableCellLayout>
-        ),
-      }),
-    ];
+    const columns = useMemo(
+      () => createResultsTableColumns(expandedRows, toggleRow, onViewFlow),
+      [expandedRows, toggleRow, onViewFlow]
+    );
 
     const [sortState, setSortState] = useState<{
       sortColumn: TableColumnId | undefined;
@@ -440,8 +236,7 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
             <tr className={styles.tableHeader}>
               <th className={styles.tableHeaderCellExpand}></th>
               <th
-                className={styles.tableHeaderCell}
-                style={{ minWidth: "120px" }}
+                className={`${styles.tableHeaderCell} ${styles.headerActions}`}
               >
                 Actions
               </th>
@@ -479,8 +274,7 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
                 />
               </th>
               <th
-                className={styles.tableHeaderCellSortable}
-                style={{ minWidth: "150px" }}
+                className={`${styles.tableHeaderCellSortable} ${styles.headerMessageName}`}
                 onClick={() =>
                   handleSortChange({
                     sortColumn: "messagename",
@@ -497,26 +291,22 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
                   (sortState.sortDirection === "ascending" ? "↑" : "↓")}
               </th>
               <th
-                className={styles.tableHeaderCell}
-                style={{ minWidth: "120px" }}
+                className={`${styles.tableHeaderCell} ${styles.headerMode}`}
               >
                 Mode
               </th>
               <th
-                className={styles.tableHeaderCell}
-                style={{ minWidth: "100px" }}
+                className={`${styles.tableHeaderCell} ${styles.headerType}`}
               >
                 Type
               </th>
               <th
-                className={styles.tableHeaderCell}
-                style={{ minWidth: "80px" }}
+                className={`${styles.tableHeaderCell} ${styles.headerDepth}`}
               >
                 Depth
               </th>
               <th
-                className={styles.tableHeaderCellSortable}
-                style={{ minWidth: "100px" }}
+                className={`${styles.tableHeaderCellSortable} ${styles.headerDuration}`}
                 onClick={() =>
                   handleSortChange({
                     sortColumn: "duration",
@@ -533,14 +323,12 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
                   (sortState.sortDirection === "ascending" ? "↑" : "↓")}
               </th>
               <th
-                className={styles.tableHeaderCell}
-                style={{ minWidth: "250px" }}
+                className={`${styles.tableHeaderCell} ${styles.headerException}`}
               >
                 Exception
               </th>
               <th
-                className={styles.tableHeaderCellSortable}
-                style={{ minWidth: "180px" }}
+                className={`${styles.tableHeaderCellSortable} ${styles.headerCreatedOn}`}
                 onClick={() =>
                   handleSortChange({
                     sortColumn: "createdon",
@@ -561,184 +349,15 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
           <tbody>
             {sortedLogs.map((log) => {
               const isExpanded = expandedRows.has(log.plugintracelogid);
-              const hasDetails = !!(
-                log.messageblock ||
-                log.exceptiondetails ||
-                log.correlationid
-              );
-
               return (
-                <Fragment key={log.plugintracelogid}>
-                  <tr
-                    data-row-id={log.plugintracelogid}
-                    className={styles.tableRow}
-                  >
-                    <td className={styles.tableCellCenter}>
-                      {hasDetails && (
-                        <div
-                          className={styles.expandButton}
-                          onClick={() => toggleRow(log.plugintracelogid)}
-                          role="button"
-                          tabIndex={0}
-                        >
-                          {isExpanded ? (
-                            <ChevronDown20Regular />
-                          ) : (
-                            <ChevronRight20Regular />
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className={styles.tableCellCenter}>
-                      {log.correlationid && onViewFlow && (
-                        <Button
-                          appearance="subtle"
-                          size="small"
-                          icon={<FlowRegular />}
-                          onClick={() =>
-                            onViewFlow(log.correlationid!, log.plugintracelogid)
-                          }
-                          title="View correlation flow diagram"
-                        >
-                          View flow
-                        </Button>
-                      )}
-                    </td>
-                    <td
-                      className={styles.tableCellTypeName}
-                      style={{
-                        width: `${typeNameWidth}px`,
-                        minWidth: `${typeNameWidth}px`,
-                        maxWidth: `${typeNameWidth}px`,
-                      }}
-                      title={log.typename}
-                    >
-                      {log.typename || "N/A"}
-                    </td>
-                    <td className={styles.tableCell}>
-                      {log.messagename || "N/A"}
-                    </td>
-                    <td className={styles.tableCell}>
-                      {getModeLabel(log.mode)}
-                    </td>
-                    <td className={styles.tableCell}>
-                      {getOperationTypeLabel(log.operationtype)}
-                    </td>
-                    <td className={styles.tableCell}>{log.depth}</td>
-                    <td className={styles.tableCell}>
-                      <Badge
-                        appearance="filled"
-                        color={getDurationColor(
-                          log.performanceexecutionduration
-                        )}
-                      >
-                        {formatDuration(log.performanceexecutionduration)}
-                      </Badge>
-                    </td>
-                    <td className={styles.tableCell}>
-                      {log.exceptiondetails ? (
-                        <div className={styles.flexColumn}>
-                          <Badge color="danger">Yes</Badge>
-                          <Text className={styles.exceptionText}>
-                            {log.exceptiondetails}
-                          </Text>
-                        </div>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className={styles.tableCell}>
-                      {new Date(log.createdon).toLocaleString()}
-                    </td>
-                  </tr>
-                  {isExpanded && (
-                    <tr>
-                      <td colSpan={10} className={styles.expandedRow}>
-                        <div className={styles.expandedContent}>
-                          <div className={styles.detailRow}>
-                            <Text className={styles.detailLabel}>
-                              Type Name:
-                            </Text>
-                            <Text>{log.typename || "N/A"}</Text>
-                          </div>
-                          <div className={styles.detailRow}>
-                            <Text className={styles.detailLabel}>
-                              Message Name:
-                            </Text>
-                            <Text>{log.messagename || "N/A"}</Text>
-                          </div>
-                          <div className={styles.detailRow}>
-                            <Text className={styles.detailLabel}>
-                              Execution Mode:
-                            </Text>
-                            <Text>{getModeLabel(log.mode)}</Text>
-                          </div>
-                          <div className={styles.detailRow}>
-                            <Text className={styles.detailLabel}>
-                              Operation Type:
-                            </Text>
-                            <Text>
-                              {getOperationTypeLabel(log.operationtype)}
-                            </Text>
-                          </div>
-                          <div className={styles.detailRow}>
-                            <Text className={styles.detailLabel}>Depth:</Text>
-                            <Text>{log.depth}</Text>
-                          </div>
-                          <div className={styles.detailRow}>
-                            <Text className={styles.detailLabel}>
-                              Duration:
-                            </Text>
-                            <Badge
-                              appearance="filled"
-                              color={getDurationColor(
-                                log.performanceexecutionduration
-                              )}
-                            >
-                              {formatDuration(log.performanceexecutionduration)}
-                            </Badge>
-                          </div>
-                          <div className={styles.detailRow}>
-                            <Text className={styles.detailLabel}>
-                              Created On:
-                            </Text>
-                            <Text>
-                              {new Date(log.createdon).toLocaleString()}
-                            </Text>
-                          </div>
-                          {log.correlationid && (
-                            <div className={styles.detailRow}>
-                              <Text className={styles.detailLabel}>
-                                Correlation ID:
-                              </Text>
-                              <Text>{log.correlationid}</Text>
-                            </div>
-                          )}
-                          {log.exceptiondetails && (
-                            <div className={styles.detailSection}>
-                              <Text className={styles.detailLabel}>
-                                Exception Details:
-                              </Text>
-                              <div className={styles.traceBlock}>
-                                {log.exceptiondetails}
-                              </div>
-                            </div>
-                          )}
-                          {log.messageblock && (
-                            <div className={styles.detailSection}>
-                              <Text className={styles.detailLabel}>
-                                Trace Log:
-                              </Text>
-                              <div className={styles.traceBlock}>
-                                {log.messageblock}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
+                <ResultsTableRow
+                  key={log.plugintracelogid}
+                  log={log}
+                  isExpanded={isExpanded}
+                  typeNameWidth={typeNameWidth}
+                  onToggleRow={toggleRow}
+                  onViewFlow={onViewFlow}
+                />
               );
             })}
           </tbody>
