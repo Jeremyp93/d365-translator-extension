@@ -2,14 +2,15 @@
  * SaveStatusBar - Display save status messages
  */
 
-import { makeStyles, MessageBar, MessageBarBody, MessageBarTitle, shorthands, tokens } from '@fluentui/react-components';
+import { makeStyles, MessageBar, MessageBarBody, MessageBarTitle, tokens } from '@fluentui/react-components';
 import { CheckmarkCircle20Regular, ErrorCircle20Regular, Info20Regular } from '@fluentui/react-icons';
+
 import { spacing } from '../../styles/theme';
 
 const useStyles = makeStyles({
   container: {
-    ...shorthands.padding(spacing.lg, spacing.xl),
-    ...shorthands.borderBottom('1px', 'solid', tokens.colorNeutralStroke1),
+    padding: `${spacing.lg} ${spacing.xl}`,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
   },
 });
 

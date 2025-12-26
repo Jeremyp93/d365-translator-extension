@@ -4,7 +4,6 @@
 
 import {
   makeStyles,
-  shorthands,
   Text,
   Spinner,
   Badge,
@@ -14,6 +13,7 @@ import {
   tokens,
 } from "@fluentui/react-components";
 import { Database24Regular, Code24Regular } from "@fluentui/react-icons";
+
 import Section from "../ui/Section";
 import CustomButton from "../ui/Button";
 import TranslationsTable from "../TranslationsTable";
@@ -23,18 +23,18 @@ import { spacing } from "../../styles/theme";
 const useStyles = makeStyles({
   emptyState: {
     textAlign: "center",
-    ...shorthands.padding(spacing.xl),
+    padding: spacing.xl,
     color: tokens.colorNeutralForeground3,
   },
   spinnerContainerLarge: {
     textAlign: "center",
-    ...shorthands.padding(spacing.xl),
+    padding: spacing.xl,
   },
   cardPadding: {
-    ...shorthands.padding(spacing.md),
+    padding: spacing.md,
   },
   dividerMargin: {
-    ...shorthands.margin(spacing.md, 0),
+    margin: `${spacing.md} 0`,
   },
   scrollableContent: {
     maxHeight: "60vh",
@@ -46,7 +46,7 @@ const useStyles = makeStyles({
   optionHeader: {
     display: "flex",
     alignItems: "baseline",
-    ...shorthands.gap(spacing.md),
+    gap: spacing.md,
     marginBottom: spacing.md,
   },
   optionValue: {
@@ -61,13 +61,13 @@ const useStyles = makeStyles({
   },
   actions: {
     display: "flex",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
     marginTop: spacing.md,
   },
   flexGapSmall: {
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
 });
 

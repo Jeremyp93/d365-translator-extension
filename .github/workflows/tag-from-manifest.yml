@@ -1,0 +1,73 @@
+name: Create tag from manifest
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Read version from manifest
+        id: get_version
+        run: |
+          if [ ! -f "public/manifest.json" ]; then
+            echo "Error: public/manifest.json not found"
+            exit 1
+          fi
+
+          VERSION=$(node -p "
+            try {
+              const manifest = require('./public/manifest.json');
+              if (!manifest.version) {
+                console.error('Error: version field not found in manifest.json');
+                process.exit(1);
+              }
+              manifest.version;
+            } catch (error) {
+              console.error('Error reading manifest.json:', error.message);
+              process.exit(1);
+            }
+          ")
+
+          if [ -z "$VERSION" ]; then
+            echo "Error: Failed to extract version from manifest.json"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Will create tag: v$VERSION"
+
+      - name: Create and push tag
+        run: |
+          TAG="${{ steps.get_version.outputs.tag }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Error: Tag $TAG already exists."
+            exit 1
+          fi
+
+          git tag -a "$TAG" -m "$TAG"
+          git push origin "$TAG"
+
+      - name: Summary
+        run: |
+          {
+            echo "## Tag created"
+            echo ""
+            echo "- Tag: \`${{ steps.get_version.outputs.tag }}\`"
+            echo "- This tag push will trigger **Release (tag)** automatically."
+          } >> "$GITHUB_STEP_SUMMARY"

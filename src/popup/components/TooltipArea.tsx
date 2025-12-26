@@ -2,8 +2,8 @@
  * Sticky tooltip display area at bottom of popup
  */
 
-import * as React from 'react';
-import { Text, makeStyles, shorthands, tokens } from '@fluentui/react-components';
+import { Text, makeStyles, tokens } from '@fluentui/react-components';
+
 import { spacing } from '../../styles/theme';
 import type { TooltipKey, ButtonTooltip } from '../../types/popup';
 
@@ -12,8 +12,8 @@ const useStyles = makeStyles({
     position: 'sticky',
     bottom: '52px',
     minHeight: '48px',
-    ...shorthands.padding(spacing.md),
-    ...shorthands.borderTop('1px', 'solid', tokens.colorNeutralStroke2),
+    padding: spacing.md,
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
     backgroundColor: tokens.colorNeutralBackground1,
     display: 'flex',
     alignItems: 'center',

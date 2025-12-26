@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Badge, BadgeProps, makeStyles, tokens } from '@fluentui/react-components';
 
 const useStyles = makeStyles({

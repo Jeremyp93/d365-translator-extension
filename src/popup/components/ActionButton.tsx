@@ -2,15 +2,15 @@
  * Reusable action button component with icon and hover support
  */
 
-import * as React from 'react';
-import { Button, makeStyles, shorthands } from '@fluentui/react-components';
+import { Button, makeStyles } from '@fluentui/react-components';
+
 import { spacing } from '../../styles/theme';
 
 const useStyles = makeStyles({
   actionButton: {
     justifyContent: 'flex-start',
     height: '48px',
-    ...shorthands.padding(spacing.md),
+    padding: spacing.md,
   },
 });
 

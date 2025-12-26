@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Text,
   Divider,
@@ -6,6 +6,7 @@ import {
   CardHeader,
   makeStyles,
 } from "@fluentui/react-components";
+
 import TranslationsTable from "../components/TranslationsTable";
 import Button from "./ui/Button";
 import { ErrorBox, Info } from "./ui/Notice";
@@ -33,6 +34,9 @@ const useStyles = makeStyles({
   },
   sectionGap: {
     marginTop: "12px",
+  },
+  noticeContainer: {
+    marginTop: "10px",
   },
 });
 
@@ -131,7 +135,14 @@ export default function EntityLabelEditor({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientUrl, entity, attribute, lcids.join(","), reloadTrigger, pendingChanges.length]); // re-run if langs change, reload triggered, or pending changes added/removed
+  }, [
+    clientUrl,
+    entity,
+    attribute,
+    lcids.join(","),
+    reloadTrigger,
+    pendingChanges,
+  ]); // re-run if langs change, reload triggered, or pending changes updated
 
   const onChange = (lcid: number, v: string) => {
     setValues((prev) => ({ ...prev, [lcid]: v }));
@@ -166,7 +177,12 @@ export default function EntityLabelEditor({
         return;
       }
 
-      await updateAttributeLabelsViaWebApi(clientUrl, entity, attribute, labels);
+      await updateAttributeLabelsViaWebApi(
+        clientUrl,
+        entity,
+        attribute,
+        labels
+      );
 
       setInfo("Publishing…");
       await publishEntityViaWebApi(clientUrl, entity);
@@ -223,12 +239,20 @@ export default function EntityLabelEditor({
     // 3. Still see the same diff from D365 (not from last "add to cart")
 
     // Show success feedback
-    setInfo(`Added ${changes.length} translation${changes.length > 1 ? 's' : ''} to the changes`);
+    setInfo(
+      `Added ${changes.length} translation${
+        changes.length > 1 ? "s" : ""
+      } to the changes`
+    );
     setTimeout(() => setInfo(null), 2000);
   };
 
   const handleSave = bulkMode ? handleAddToCart : handleImmediateSave;
-  const buttonLabel = bulkMode ? "Add to Changes" : (saving ? "Saving…" : "Save & Publish");
+  const buttonLabel = bulkMode
+    ? "Add to Changes"
+    : saving
+    ? "Saving…"
+    : "Save & Publish";
 
   return (
     <Card className={styles.root}>
@@ -239,12 +263,12 @@ export default function EntityLabelEditor({
       />
 
       {error && (
-        <div style={{ marginTop: 10 }}>
+        <div className={styles.noticeContainer}>
           <ErrorBox>Error: {error}</ErrorBox>
         </div>
       )}
       {info && !error && (
-        <div style={{ marginTop: 10 }}>
+        <div className={styles.noticeContainer}>
           <Info>{info}</Info>
         </div>
       )}

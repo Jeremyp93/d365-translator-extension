@@ -16,11 +16,11 @@ import {
   createTableColumn,
   TableCellLayout,
   makeStyles,
-  shorthands,
   tokens,
   type TableColumnDefinition,
 } from "@fluentui/react-components";
 import { Database24Regular, Search20Regular } from "@fluentui/react-icons";
+
 import Section from "../ui/Section";
 import { spacing } from "../../styles/theme";
 import {
@@ -62,7 +62,7 @@ const useStyles = makeStyles({
   },
   emptyState: {
     textAlign: "center",
-    ...shorthands.padding(spacing.xl),
+    padding: spacing.xl,
     color: tokens.colorNeutralForeground3,
   },
 });
@@ -79,8 +79,6 @@ export interface AttributeItem {
 interface AttributeDataGridProps {
   /** List of attributes to display */
   attributes: AttributeSummary[];
-  /** Currently selected attribute logical name */
-  selectedAttribute: string | null;
   /** Callback when unlocked attribute is selected */
   onSelectAttribute: (attribute: AttributeItem) => void;
   /** Callback when locked attribute is clicked */
@@ -93,7 +91,6 @@ interface AttributeDataGridProps {
  */
 export default function AttributeDataGrid({
   attributes,
-  selectedAttribute,
   onSelectAttribute,
   onLockedAttributeClick,
 }: AttributeDataGridProps): JSX.Element {

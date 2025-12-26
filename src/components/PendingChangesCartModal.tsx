@@ -10,10 +10,10 @@ import {
   makeStyles,
   tokens,
   Text,
-  Divider,
   Spinner,
 } from '@fluentui/react-components';
 import { Dismiss24Regular, Delete24Regular } from '@fluentui/react-icons';
+
 import { ErrorBox, Info } from './ui/Notice';
 import type { PendingChange, BatchUpdateResult } from '../types';
 import { batchUpdateAttributeLabels } from '../services/entityLabelService';
@@ -234,8 +234,8 @@ export default function PendingChangesCartModal({
           onSaveSuccess?.(successfulChanges);
         }
       }
-    } catch (err: any) {
-      setError(err?.message ?? String(err));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
       onSavingChange?.(false);

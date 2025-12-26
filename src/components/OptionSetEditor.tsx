@@ -8,6 +8,7 @@ import {
   Badge,
   Link,
 } from "@fluentui/react-components";
+
 import TranslationsTable from "./TranslationsTable";
 import Button from "./ui/Button";
 import { ErrorBox, Info } from "./ui/Notice";
@@ -61,6 +62,9 @@ const useStyles = makeStyles({
   tableWrapper: {
     maxHeight: "400px",
     overflowY: "auto",
+  },
+  noticeContainer: {
+    marginTop: "10px",
   },
 });
 
@@ -129,7 +133,7 @@ export default function OptionSetEditor({
           setInfo(null);
         }
       } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? String(e));
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -172,7 +176,7 @@ export default function OptionSetEditor({
           : "Saved & published. If you still see old text, hard refresh (Ctrl/Cmd+Shift+R)."
       );
     } catch (e: any) {
-      setError(e?.message ?? String(e));
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
@@ -214,12 +218,12 @@ export default function OptionSetEditor({
       />
 
       {error && (
-        <div style={{ marginTop: 10 }}>
+        <div className={styles.noticeContainer}>
           <ErrorBox>Error: {error}</ErrorBox>
         </div>
       )}
       {info && !error && (
-        <div style={{ marginTop: 10 }}>
+        <div className={styles.noticeContainer}>
           <Info>{info}</Info>
         </div>
       )}

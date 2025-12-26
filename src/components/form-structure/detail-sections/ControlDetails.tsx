@@ -2,7 +2,8 @@
  * ControlDetails - Display properties for a form control
  */
 
-import { Badge, Card, CardHeader, Divider, makeStyles, shorthands, Text, tokens } from '@fluentui/react-components';
+import { Badge, Card, CardHeader, Divider, makeStyles, Text, tokens } from '@fluentui/react-components';
+
 import type { FormControl } from '../../../types';
 import { spacing } from '../../../styles/theme';
 import { getControlTypeName, isEditableControlType } from '../../../utils/controlClassIds';
@@ -12,7 +13,7 @@ const useStyles = makeStyles({
   detailsCard: {
     marginBottom: spacing.lg,
     boxShadow: tokens.shadow8,
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
   },
   propertiesTable: {
@@ -24,26 +25,26 @@ const useStyles = makeStyles({
     '@media (max-width: 768px)': { fontSize: tokens.fontSizeBase200 },
   },
   propertyRow: {
-    ...shorthands.borderBottom('1px', 'solid', tokens.colorNeutralStroke2),
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   propertyLabel: {
-    ...shorthands.padding(spacing.md),
+    paddingRight: spacing.md,
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground2,
     width: '180px',
     verticalAlign: 'top',
     '@media (max-width: 768px)': {
       width: '120px',
-      ...shorthands.padding(spacing.sm),
+      paddingLeft: spacing.sm,
     },
   },
   propertyValue: {
-    ...shorthands.padding(spacing.md),
+    padding: spacing.md,
     color: tokens.colorNeutralForeground1,
     wordWrap: 'break-word',
     overflowWrap: 'break-word',
     '@media (max-width: 768px)': {
-      ...shorthands.padding(spacing.sm),
+      padding: spacing.sm,
     },
   },
   smallCode: {

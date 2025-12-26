@@ -1,267 +1,36 @@
-import * as React from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
-  makeStyles,
-  shorthands,
-  tokens,
   Text,
   Button,
   Input,
   Checkbox,
   Spinner,
   TableColumnId,
-} from '@fluentui/react-components';
-import { WeatherMoon20Regular, WeatherSunny20Regular, Search20Regular, Dismiss20Regular, DocumentText24Regular } from '@fluentui/react-icons';
-import { useOrgContext } from '../../hooks/useOrgContext';
-import { usePluginTraceLogs } from '../../hooks/usePluginTraceLogs';
-import { useTheme } from '../../context/ThemeContext';
-import { lazy } from 'react';
-import PageHeader from '../../components/ui/PageHeader';
-import FilterSection from '../../components/plugin-trace/FilterSection';
-import ResultsTable, { ResultsTableHandle } from '../../components/plugin-trace/ResultsTable';
+} from "@fluentui/react-components";
+import {
+  WeatherMoon20Regular,
+  WeatherSunny20Regular,
+  Search20Regular,
+  Dismiss20Regular,
+  DocumentText24Regular,
+} from "@fluentui/react-icons";
 
-const FlowSidePanel = lazy(() => import('../../components/plugin-trace/CorrelationFlowPanel'));
+import { useOrgContext } from "../../hooks/useOrgContext";
+import { usePluginTraceLogs } from "../../hooks/usePluginTraceLogs";
+import { useTheme } from "../../context/ThemeContext";
+import PageHeader from "../../components/ui/PageHeader";
+import FilterSection from "../../components/plugin-trace/FilterSection";
+import ResultsTable, {
+  ResultsTableHandle,
+} from "../../components/plugin-trace/ResultsTable";
+import { usePluginTraceLogPageStyles } from "./PluginTraceLogPage.styles";
 
-const useStyles = makeStyles({
-  page: {
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: '100vh',
-    width: '100%',
-    backgroundColor: tokens.colorNeutralBackground3,
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    ...shorthands.padding('16px', '24px'),
-    ...shorthands.borderBottom('2px', 'solid', tokens.colorNeutralStroke1),
-    backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: tokens.shadow8,
-  },
-  headerLeft: {
-    display: 'flex',
-    flexDirection: 'column',
-    ...shorthands.gap('4px'),
-  },
-  title: {
-    fontSize: tokens.fontSizeHero700,
-    fontWeight: tokens.fontWeightSemibold,
-    color: tokens.colorNeutralForeground1,
-  },
-  subtitle: {
-    fontSize: tokens.fontSizeBase300,
-    color: tokens.colorNeutralForeground2,
-  },
-  connectionInfo: {
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground3,
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('6px'),
-  },
-  content: {
-    flex: 1,
-    ...shorthands.padding('24px'),
-    '@media (max-width: 768px)': {
-      ...shorthands.padding('16px'),
-    },
-  },
-  quickSearchSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    ...shorthands.gap('12px'),
-    ...shorthands.padding('16px'),
-    backgroundColor: tokens.colorNeutralBackground2,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    marginBottom: '16px',
-  },
-  quickSearchTitle: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('8px'),
-    fontSize: tokens.fontSizeBase400,
-    fontWeight: tokens.fontWeightSemibold,
-  },
-  quickSearchHelp: {
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground3,
-  },
-  filterSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    ...shorthands.gap('16px'),
-    ...shorthands.padding('16px'),
-    backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
-    marginBottom: '24px',
-  },
-  filterTitle: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('8px'),
-    fontSize: tokens.fontSizeBase400,
-    fontWeight: tokens.fontWeightSemibold,
-  },
-  filterGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    columnGap: '16px',
-    rowGap: '16px',
-    alignItems: 'end',
-    '@media (max-width: 1200px)': {
-      gridTemplateColumns: 'repeat(2, 1fr)',
-    },
-    '@media (max-width: 768px)': {
-      gridTemplateColumns: '1fr',
-    },
-  },
-  filterActions: {
-    display: 'flex',
-    ...shorthands.gap('8px'),
-    justifyContent: 'flex-end',
-    marginTop: '8px',
-  },
-  resultsSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    ...shorthands.gap('12px'),
-  },
-  resultsHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '12px',
-  },
-  tableContainer: {
-    backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
-    ...shorthands.overflow('hidden'),
-    width: '100%',
-    // Responsive table handling
-    overflowX: 'auto',
-    '@media (max-width: 768px)': {
-      // Mobile: horizontal scroll for full table
-      overflowX: 'scroll',
-      WebkitOverflowScrolling: 'touch',
-    },
-  },
-  errorMessage: {
-    ...shorthands.padding('12px'),
-    backgroundColor: tokens.colorPaletteRedBackground2,
-    color: tokens.colorPaletteRedForeground2,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-  },
-  loadingContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shorthands.padding('48px'),
-  },
-  exceptionText: {
-    fontFamily: 'monospace',
-    fontSize: tokens.fontSizeBase200,
-    maxWidth: '400px',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  expandButton: {
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('4px'),
-    color: tokens.colorBrandForeground1,
-  },
-  expandedContent: {
-    ...shorthands.padding('16px'),
-    backgroundColor: tokens.colorNeutralBackground2,
-    ...shorthands.borderTop('1px', 'solid', tokens.colorNeutralStroke1),
-  },
-  traceBlock: {
-    fontFamily: 'monospace',
-    fontSize: tokens.fontSizeBase200,
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word',
-    backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.padding('12px'),
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
-    maxHeight: '400px',
-    overflowY: 'auto',
-  },
-  detailRow: {
-    display: 'flex',
-    ...shorthands.gap('8px'),
-    marginBottom: '8px',
-  },
-  detailLabel: {
-    fontWeight: tokens.fontWeightSemibold,
-    minWidth: '150px',
-  },
-  responsiveTable: {
-    width: '100%',
-    borderCollapse: 'collapse' as const,
-    minWidth: '1200px', // Desktop: full width with all columns
-    '@media (min-width: 768px) and (max-width: 1024px)': {
-      // Tablet: slightly reduced min-width, flexible columns
-      minWidth: '900px',
-    },
-    '@media (max-width: 767px)': {
-      // Mobile: minimum table width, will scroll horizontally
-      minWidth: '800px',
-    },
-  },
-  resizableHeader: {
-    position: 'relative' as const,
-    userSelect: 'none' as const,
-  },
-  resizeHandle: {
-    position: 'absolute' as const,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: '8px',
-    cursor: 'col-resize',
-    backgroundColor: 'transparent',
-    ':hover': {
-      backgroundColor: tokens.colorBrandBackground,
-      opacity: 0.5,
-    },
-  },
-  resizing: {
-    backgroundColor: tokens.colorBrandBackground,
-    opacity: 0.7,
-  },
-  scrollSentinel: {
-    height: '1px',
-    width: '100%',
-  },
-  loadingMore: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shorthands.padding('24px'),
-  },
-  clickableIcon: {
-    cursor: 'pointer',
-  },
-  sortNotice: {
-    ...shorthands.padding('12px', '16px'),
-    marginBottom: '12px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    ...shorthands.gap('12px'),
-  },
-});
+const FlowSidePanel = lazy(
+  () => import("../../components/plugin-trace/CorrelationFlowPanel")
+);
 
 export default function PluginTraceLogPage(): JSX.Element {
-  const styles = useStyles();
+  const styles = usePluginTraceLogPageStyles();
   const { clientUrl, apiVersion } = useOrgContext();
   const {
     serverLogs,
@@ -283,38 +52,52 @@ export default function PluginTraceLogPage(): JSX.Element {
   const { mode, toggleTheme } = useTheme();
 
   // Ref to call resetSort on ResultsTable
-  const resultsTableRef = React.useRef<ResultsTableHandle>(null);
+  const resultsTableRef = useRef<ResultsTableHandle>(null);
 
   // Track current sort state to disable infinite scroll when sorting changes
-  const [currentSort, setCurrentSort] = React.useState<{ column?: TableColumnId; direction: 'ascending' | 'descending' }>({
-    column: 'createdon',
-    direction: 'descending'
+  const [currentSort, setCurrentSort] = useState<{
+    column?: TableColumnId;
+    direction: "ascending" | "descending";
+  }>({
+    column: "createdon",
+    direction: "descending",
   });
 
   // Manual control for infinite scroll
-  const [infiniteScrollEnabled, setInfiniteScrollEnabled] = React.useState<boolean>(true);
+  const [infiniteScrollEnabled, setInfiniteScrollEnabled] =
+    useState<boolean>(true);
 
-  const handleTableSortChange = React.useCallback((column: TableColumnId | undefined, direction: 'ascending' | 'descending') => {
-    setCurrentSort({ column, direction });
-  }, []);
+  const handleTableSortChange = useCallback(
+    (
+      column: TableColumnId | undefined,
+      direction: "ascending" | "descending"
+    ) => {
+      setCurrentSort({ column, direction });
+    },
+    []
+  );
 
-  const handleResetSort = React.useCallback(() => {
-    setCurrentSort({ column: 'createdon', direction: 'descending' });
+  const handleResetSort = useCallback(() => {
+    setCurrentSort({ column: "createdon", direction: "descending" });
     resultsTableRef.current?.resetSort();
   }, []);
 
   // Check if current sort matches server default (createdon descending)
-  const isDefaultSort = currentSort.column === 'createdon' && currentSort.direction === 'descending';
+  const isDefaultSort =
+    currentSort.column === "createdon" &&
+    currentSort.direction === "descending";
 
   // Correlation flow panel state
-  const [isPanelOpen, setIsPanelOpen] = React.useState(false);
-  const [panelCorrelationId, setPanelCorrelationId] = React.useState<string | null>(null);
-  const [selectedRowId, setSelectedRowId] = React.useState<string | null>(null);
-  const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [panelCorrelationId, setPanelCorrelationId] = useState<string | null>(
+    null
+  );
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // Handle row toggle
-  const handleToggleRow = React.useCallback((rowId: string) => {
-    setExpandedRows(prev => {
+  const handleToggleRow = useCallback((rowId: string) => {
+    setExpandedRows((prev) => {
       const next = new Set(prev);
       if (next.has(rowId)) {
         next.delete(rowId);
@@ -326,21 +109,32 @@ export default function PluginTraceLogPage(): JSX.Element {
   }, []);
 
   // Infinite scroll implementation - only active when using default sort and enabled by user
-  const sentinelRef = React.useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
-    if (!hasMore || isLoadingMore || !isDefaultSort || !infiniteScrollEnabled) return;
+  useEffect(() => {
+      document.title = 'Plugin Trace Logs - D365 Translator';
+    }, []);
+
+  useEffect(() => {
+    if (!hasMore || isLoadingMore || !isDefaultSort || !infiniteScrollEnabled)
+      return;
     if (!sentinelRef.current) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore && isDefaultSort && infiniteScrollEnabled) {
+        if (
+          entries[0].isIntersecting &&
+          hasMore &&
+          !isLoadingMore &&
+          isDefaultSort &&
+          infiniteScrollEnabled
+        ) {
           loadMoreLogs();
         }
       },
       {
-        rootMargin: '50px',
-        threshold: 0.1
+        rootMargin: "50px",
+        threshold: 0.1,
       }
     );
 
@@ -348,29 +142,39 @@ export default function PluginTraceLogPage(): JSX.Element {
     return () => {
       observer.disconnect();
     };
-  }, [hasMore, isLoadingMore, loadMoreLogs, filteredLogs.length, isDefaultSort, infiniteScrollEnabled]); // Re-run when filteredLogs or sort changes
+  }, [
+    hasMore,
+    isLoadingMore,
+    loadMoreLogs,
+    filteredLogs.length,
+    isDefaultSort,
+    infiniteScrollEnabled,
+  ]); // Re-run when filteredLogs or sort changes
 
-  const handlePageSizeChange = React.useCallback((size: number) => {
-    setPageSize(size);
-  }, [setPageSize]);
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      setPageSize(size);
+    },
+    [setPageSize]
+  );
 
   // Handle opening correlation flow panel
-  const handleViewFlow = React.useCallback((correlationId: string, rowId: string) => {
+  const handleViewFlow = useCallback((correlationId: string, rowId: string) => {
     setPanelCorrelationId(correlationId);
     setSelectedRowId(rowId);
     setIsPanelOpen(true);
   }, []);
 
   // Handle closing panel
-  const handleClosePanel = React.useCallback(() => {
+  const handleClosePanel = useCallback(() => {
     setIsPanelOpen(false);
   }, []);
 
   // Handle node click in diagram - scroll to and expand row
-  const handleNodeClick = React.useCallback((rowId: string) => {
+  const handleNodeClick = useCallback((rowId: string) => {
     setSelectedRowId(rowId);
     // Expand the row if not already expanded
-    setExpandedRows(prev => {
+    setExpandedRows((prev) => {
       const next = new Set(prev);
       next.add(rowId);
       return next;
@@ -379,7 +183,7 @@ export default function PluginTraceLogPage(): JSX.Element {
     setTimeout(() => {
       const rowElement = document.querySelector(`[data-row-id="${rowId}"]`);
       if (rowElement) {
-        rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        rowElement.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }, 100); // Small delay to ensure row expansion state is updated
   }, []);
@@ -389,7 +193,9 @@ export default function PluginTraceLogPage(): JSX.Element {
       <div className={styles.page}>
         <div className={styles.errorMessage}>
           <Text weight="semibold">Error loading organization context</Text>
-          <Text>Could not determine organization URL from query parameters</Text>
+          <Text>
+            Could not determine organization URL from query parameters
+          </Text>
         </div>
       </div>
     );
@@ -398,19 +204,25 @@ export default function PluginTraceLogPage(): JSX.Element {
   return (
     <main className={styles.page}>
       <PageHeader
-              title="Plugin Trace Logs"
-              subtitle="View and analyze plugin execution traces with detailed filtering options"
-              icon={<DocumentText24Regular />}
-              connectionInfo={{ clientUrl, apiVersion }}
-              actions={
-                <Button
-          appearance="subtle"
-          icon={mode === 'dark' ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />}
-          onClick={toggleTheme}
-          title={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}
-        />
-              }
-            />
+        title="Plugin Trace Logs"
+        subtitle="View and analyze plugin execution traces with detailed filtering options"
+        icon={<DocumentText24Regular />}
+        connectionInfo={{ clientUrl, apiVersion }}
+        actions={
+          <Button
+            appearance="subtle"
+            icon={
+              mode === "dark" ? (
+                <WeatherSunny20Regular />
+              ) : (
+                <WeatherMoon20Regular />
+              )
+            }
+            onClick={toggleTheme}
+            title={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}
+          />
+        }
+      />
 
       <div className={styles.content}>
         {/* Server Filters Section */}
@@ -427,7 +239,10 @@ export default function PluginTraceLogPage(): JSX.Element {
         </section>
 
         {/* Quick Search Section */}
-        <section className={styles.quickSearchSection} aria-label="Quick Search">
+        <section
+          className={styles.quickSearchSection}
+          aria-label="Quick Search"
+        >
           <Text className={styles.quickSearchTitle}>
             <Search20Regular />
             Quick Search
@@ -436,7 +251,16 @@ export default function PluginTraceLogPage(): JSX.Element {
             placeholder="Search in results (Type Name, Message, Exception, Trace Log...)"
             value={searchQuery}
             onChange={(_, data) => setSearchQuery(data.value)}
-            contentAfter={searchQuery ? <Dismiss20Regular onClick={() => setSearchQuery('')} className={styles.clickableIcon} /> : <Search20Regular />}
+            contentAfter={
+              searchQuery ? (
+                <Dismiss20Regular
+                  onClick={() => setSearchQuery("")}
+                  className={styles.clickableIcon}
+                />
+              ) : (
+                <Search20Regular />
+              )
+            }
           />
           <Text className={styles.quickSearchHelp}>
             Instantly filters loaded results • No server calls
@@ -446,16 +270,18 @@ export default function PluginTraceLogPage(): JSX.Element {
         <section className={styles.resultsSection} aria-label="Results">
           <div className={styles.resultsHeader}>
             <Text weight="semibold" size={500}>
-              {searchQuery ? (
-                `Results (${filteredLogs.length} of ${serverLogs.length})`
-              ) : (
-                `Results (Loaded ${filteredLogs.length}${hasMore ? '+' : ''} ${hasMore ? '' : '(all)'})`
-              )}
+              {searchQuery
+                ? `Results (${filteredLogs.length} of ${serverLogs.length})`
+                : `Results (Loaded ${filteredLogs.length}${
+                    hasMore ? "+" : ""
+                  } ${hasMore ? "" : "(all)"})`}
             </Text>
             <Checkbox
               label="Infinite scroll"
               checked={infiniteScrollEnabled}
-              onChange={(_, data) => setInfiniteScrollEnabled(data.checked === true)}
+              onChange={(_, data) =>
+                setInfiniteScrollEnabled(data.checked === true)
+              }
               disabled={!isDefaultSort || !!searchQuery}
             />
           </div>
@@ -473,33 +299,50 @@ export default function PluginTraceLogPage(): JSX.Element {
             </div>
           )}
 
-          {!loading && !error && filteredLogs.length === 0 && serverLogs.length === 0 && (
-            <Text>No plugin trace logs found matching the current server filters.</Text>
-          )}
-
-          {!loading && !error && filteredLogs.length === 0 && serverLogs.length > 0 && searchQuery && (
-            <Text>No results match "{searchQuery}". Try a different search term or clear the search.</Text>
-          )}
-
-          {!loading && !error && filteredLogs.length > 0 && !isDefaultSort && hasMore && (
-            <div className={styles.sortNotice}>
+          {!loading &&
+            !error &&
+            filteredLogs.length === 0 &&
+            serverLogs.length === 0 && (
               <Text>
-                Infinite scroll is disabled when sorting. More records are available on the server.
+                No plugin trace logs found matching the current server filters.
               </Text>
-              <Button
-                appearance="primary"
-                size="small"
-                onClick={handleResetSort}
-              >
-                Reset to Default Sort
-              </Button>
-            </div>
-          )}
+            )}
+
+          {!loading &&
+            !error &&
+            filteredLogs.length === 0 &&
+            serverLogs.length > 0 &&
+            searchQuery && (
+              <Text>
+                No results match "{searchQuery}". Try a different search term or
+                clear the search.
+              </Text>
+            )}
+
+          {!loading &&
+            !error &&
+            filteredLogs.length > 0 &&
+            !isDefaultSort &&
+            hasMore && (
+              <div className={styles.sortNotice}>
+                <Text>
+                  Infinite scroll is disabled when sorting. More records are
+                  available on the server.
+                </Text>
+                <Button
+                  appearance="primary"
+                  size="small"
+                  onClick={handleResetSort}
+                >
+                  Reset to Default Sort
+                </Button>
+              </div>
+            )}
 
           {!loading && !error && filteredLogs.length > 0 && (
-            <ResultsTable 
-              ref={resultsTableRef} 
-              logs={filteredLogs} 
+            <ResultsTable
+              ref={resultsTableRef}
+              logs={filteredLogs}
               onSortChange={handleTableSortChange}
               onViewFlow={handleViewFlow}
               expandedRows={expandedRows}
@@ -522,14 +365,16 @@ export default function PluginTraceLogPage(): JSX.Element {
       </div>
 
       {/* Correlation Flow Panel */}
-      <FlowSidePanel
-        isOpen={isPanelOpen}
-        correlationId={panelCorrelationId}
-        selectedRowId={selectedRowId}
-        expandedRowIds={expandedRows}
-        onClose={handleClosePanel}
-        onNodeClick={handleNodeClick}
-      />
+      <Suspense fallback={<Spinner label="Loading panel..." />}>
+        <FlowSidePanel
+          isOpen={isPanelOpen}
+          correlationId={panelCorrelationId}
+          selectedRowId={selectedRowId}
+          expandedRowIds={expandedRows}
+          onClose={handleClosePanel}
+          onNodeClick={handleNodeClick}
+        />
+      </Suspense>
     </main>
   );
 }

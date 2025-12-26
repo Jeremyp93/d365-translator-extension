@@ -2,24 +2,24 @@
  * Popup header component with theme toggle and status badge
  */
 
-import * as React from 'react';
-import { Text, Button, Badge, makeStyles, shorthands, tokens } from '@fluentui/react-components';
+import { Text, Button, Badge, makeStyles, tokens } from '@fluentui/react-components';
 import {
   Sparkle24Regular,
   WeatherMoon20Regular,
   WeatherSunny20Regular,
 } from '@fluentui/react-icons';
+
 import { spacing } from '../../styles/theme';
 import { useTheme } from '../../context/ThemeContext';
 
 const useStyles = makeStyles({
   header: {
-    ...shorthands.padding(spacing.lg),
+    padding: spacing.lg,
     backgroundColor: tokens.colorBrandBackground,
     color: tokens.colorNeutralForegroundOnBrand,
     display: 'flex',
     alignItems: 'center',
-    ...shorthands.gap(spacing.md),
+    gap: spacing.md,
     boxShadow: tokens.shadow8,
   },
   headerIcon: {

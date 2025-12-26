@@ -1,24 +1,23 @@
-import * as React from "react";
-import { Text, makeStyles, shorthands, tokens } from "@fluentui/react-components";
-import { useSharedStyles, spacing } from "../../styles/theme";
+import { Text, makeStyles } from "@fluentui/react-components";
 import { Building20Regular } from "@fluentui/react-icons";
+
+import { useSharedStyles, spacing } from "../../styles/theme";
 
 const useStyles = makeStyles({
   container: {
     display: "flex",
     flexDirection: "column",
-    //...shorthands.gap(spacing.sm),
   },
   titleRow: {
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.md),
+    gap: spacing.md,
   },
   actions: {
     marginLeft: "auto",
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   }
 });
 

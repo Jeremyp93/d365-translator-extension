@@ -15,7 +15,6 @@ import {
   MessageBarTitle,
   Option,
   OptionGroup,
-  shorthands,
   Spinner,
   Text,
   tokens,
@@ -26,7 +25,6 @@ import {
   AccordionPanel,
 } from '@fluentui/react-components';
 import {
-  ArrowExport20Regular,
   CheckmarkCircle20Regular,
   ChevronDoubleDown20Regular,
   ChevronDoubleUp20Regular,
@@ -50,8 +48,6 @@ import { useOrgContext } from '../../hooks/useOrgContext';
 import { useFormStructure } from '../../hooks/useFormStructure';
 import { useEditingPermission } from '../../hooks/useEditingPermission';
 import { useTheme } from '../../context/ThemeContext';
-import { useTreeExpansion } from '../../hooks/useTreeExpansion';
-import { useFormStructureSearch } from '../../hooks/useFormStructureSearch';
 import { spacing } from '../../styles/theme';
 
 import type { FormControl, FormSection, FormTab, Label } from '../../types';
@@ -60,11 +56,9 @@ import { getEntityDisplayName, listAllEntities } from '../../services/entityMeta
 import type { SystemForm } from '../../services/d365Api';
 import { getFormsForEntity, isFormCustomizable, publishEntityViaWebApi } from '../../services/d365Api';
 import { buildPath, getDisplayLabel, saveFormStructure } from '../../services/formStructureService';
-import { getControlTypeName, isEditableControlType } from '../../utils/controlClassIds';
 import { replaceHashQuery } from '../../utils/hashQueryUtils';
 import { getFormTypeLabel } from '../../utils/formTypeUtils';
 import { deepClone } from '../../utils/objectUtils';
-import SaveStatusBar from '../../components/form-structure/SaveStatusBar';
 import TabDetails from '../../components/form-structure/detail-sections/TabDetails';
 import SectionDetails from '../../components/form-structure/detail-sections/SectionDetails';
 import ControlDetails from '../../components/form-structure/detail-sections/ControlDetails';
@@ -90,7 +84,7 @@ const useStyles = makeStyles({
     width: '360px',
     minWidth: '300px',
     maxWidth: '360px',
-    ...shorthands.borderRight('2px', 'solid', tokens.colorNeutralStroke1),
+    borderRight: `2px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
     display: 'flex',
     flexDirection: 'column',
@@ -106,13 +100,13 @@ const useStyles = makeStyles({
       minWidth: 'unset',
       maxWidth: 'unset',
       height: '40vh',
-      ...shorthands.borderRight('none'),
-      ...shorthands.borderBottom('2px', 'solid', tokens.colorNeutralStroke1),
+      borderRight: 'none',
+      borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
     },
   },
   sidebarHeader: {
-    ...shorthands.padding(spacing.md, spacing.lg),
-    ...shorthands.borderBottom('2px', 'solid', tokens.colorNeutralStroke1),
+    padding: `${spacing.md} ${spacing.lg}`,
+    borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground2,
     position: 'relative',
     zIndex: 100,
@@ -123,49 +117,49 @@ const useStyles = makeStyles({
     marginBottom: spacing.sm,
     display: 'flex',
     alignItems: 'center',
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   searchBox: {
     marginTop: spacing.sm,
   },
   expandButtons: {
     display: 'flex',
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
     marginBottom: spacing.sm,
   },
   treeContainer: {
     flex: 1,
     overflowY: 'auto',
-    ...shorthands.padding(spacing.sm),
+    padding: spacing.sm,
     '::-webkit-scrollbar': { width: '8px' },
     '::-webkit-scrollbar-track': { backgroundColor: tokens.colorNeutralBackground1 },
     '::-webkit-scrollbar-thumb': {
       backgroundColor: tokens.colorNeutralStroke1,
-      ...shorthands.borderRadius('4px'),
+      borderRadius: '4px',
       ':hover': { backgroundColor: tokens.colorNeutralStroke2 },
     },
   },
   treeItem: {
-    ...shorthands.padding(spacing.sm, spacing.md),
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    padding: `${spacing.sm} ${spacing.md}`,
+    borderRadius: tokens.borderRadiusMedium,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
     fontSize: tokens.fontSizeBase300,
     marginBottom: '2px',
     transition: 'all 0.15s ease',
-    ...shorthands.border('1px', 'solid', 'transparent'),
+    border: '1px solid transparent',
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground3,
-      ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
+      border: `1px solid ${tokens.colorNeutralStroke1}`,
     },
   },
   treeItemSelected: {
     backgroundColor: tokens.colorBrandBackground,
     color: tokens.colorNeutralForegroundOnBrand,
     fontWeight: tokens.fontWeightSemibold,
-    ...shorthands.border('1px', 'solid', tokens.colorBrandStroke1),
+    border: `1px solid ${tokens.colorBrandStroke1}`,
     ':hover': {
       backgroundColor: tokens.colorBrandBackgroundHover,
       color: tokens.colorNeutralForegroundOnBrand,
@@ -181,24 +175,24 @@ const useStyles = makeStyles({
     flex: 1,
     overflowY: 'auto',
     overflowX: 'hidden',
-    ...shorthands.padding(spacing.xl),
+    padding: `${spacing.xl} ${spacing.xl}`,
     backgroundColor: tokens.colorNeutralBackground2,
     minWidth: 0,
     '@media (max-width: 768px)': {
-      ...shorthands.padding(spacing.md),
+      padding: `${spacing.md} ${spacing.md}`,
     },
     '::-webkit-scrollbar': { width: '8px' },
     '::-webkit-scrollbar-track': { backgroundColor: tokens.colorNeutralBackground1 },
     '::-webkit-scrollbar-thumb': {
       backgroundColor: tokens.colorNeutralStroke1,
-      ...shorthands.borderRadius('4px'),
+      borderRadius: '4px',
       ':hover': { backgroundColor: tokens.colorNeutralStroke2 },
     },
   },
   detailsCard: {
     marginBottom: spacing.lg,
     boxShadow: tokens.shadow8,
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
   },
   propertiesTable: {
@@ -210,44 +204,44 @@ const useStyles = makeStyles({
     '@media (max-width: 768px)': { fontSize: tokens.fontSizeBase200 },
   },
   propertyRow: {
-    ...shorthands.borderBottom('1px', 'solid', tokens.colorNeutralStroke2),
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   propertyLabel: {
-    ...shorthands.padding(spacing.md),
+    padding: spacing.md,
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground2,
     width: '180px',
     verticalAlign: 'top',
     '@media (max-width: 768px)': {
       width: '120px',
-      ...shorthands.padding(spacing.sm),
+      padding: spacing.sm,
     },
   },
   propertyValue: {
-    ...shorthands.padding(spacing.md),
+    padding: spacing.md,
     color: tokens.colorNeutralForeground1,
     wordWrap: 'break-word',
     overflowWrap: 'break-word',
     '@media (max-width: 768px)': {
-      ...shorthands.padding(spacing.sm),
+      padding: spacing.sm,
     },
   },
   codeBlock: {
     backgroundColor: tokens.colorNeutralBackground3,
-    ...shorthands.padding(spacing.md),
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    padding: spacing.md,
+    borderRadius: tokens.borderRadiusMedium,
     fontSize: tokens.fontSizeBase200,
     fontFamily: tokens.fontFamilyMonospace,
     overflowX: 'auto',
     maxHeight: '500px',
     overflowY: 'auto',
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
     wordBreak: 'break-all',
     whiteSpace: 'pre-wrap',
   },
   actionBar: {
     display: 'flex',
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
     marginBottom: spacing.lg,
     flexWrap: 'wrap',
   },
@@ -256,12 +250,12 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    ...shorthands.padding('64px', spacing.xl),
+    padding: `64px ${spacing.xl}`,
     color: tokens.colorNeutralForeground3,
   },
   messageContainer: {
-    ...shorthands.padding(spacing.lg, spacing.xl),
-    ...shorthands.borderBottom('1px', 'solid', tokens.colorNeutralStroke1),
+    padding: `${spacing.lg} ${spacing.xl}`,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
   },
   dropdownListbox: {
     backgroundColor: tokens.colorNeutralBackground1,

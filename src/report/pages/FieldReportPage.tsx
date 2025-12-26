@@ -6,7 +6,6 @@
 import { useEffect } from "react";
 import {
   makeStyles,
-  shorthands,
   tokens,
   Button,
 } from "@fluentui/react-components";
@@ -25,7 +24,6 @@ import OptionSetEditor from "../../components/OptionSetEditor";
 import PageHeader from "../../components/ui/PageHeader";
 import Section from "../../components/ui/Section";
 import { EditingBlockedBanner } from "../../components/ui/EditingBlockedBanner";
-
 import { useOrgContext } from "../../hooks/useOrgContext";
 import { useAttributeType } from "../../hooks/useAttributeType";
 import { useEditingPermission } from "../../hooks/useEditingPermission";
@@ -44,12 +42,12 @@ const useStyles = makeStyles({
   },
   content: {
     flex: 1,
-    ...shorthands.padding(spacing.xl),
+    padding: spacing.xl,
     display: "flex",
     flexDirection: "column",
-    ...shorthands.gap(spacing.lg),
+    gap: spacing.lg,
     "@media (max-width: 768px)": {
-      ...shorthands.padding(spacing.md),
+      padding: spacing.md,
     },
   },
   metaGrid: {
@@ -67,9 +65,9 @@ const useStyles = makeStyles({
     fontFamily: tokens.fontFamilyMonospace,
     color: tokens.colorNeutralForeground1,
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.padding(spacing.xs, spacing.sm),
-    ...shorthands.borderRadius(tokens.borderRadiusSmall),
-    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke2),
+    padding: `${spacing.xs} ${spacing.sm}`,
+    borderRadius: tokens.borderRadiusSmall,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
 });
 

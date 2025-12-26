@@ -6,7 +6,6 @@
 import { useEffect, useState, useMemo } from "react";
 import {
   makeStyles,
-  shorthands,
   tokens,
   Button,
   CounterBadge,
@@ -53,12 +52,12 @@ const useStyles = makeStyles({
   },
   content: {
     flex: 1,
-    ...shorthands.padding(spacing.xl),
+    padding: spacing.xl,
     display: "flex",
     flexDirection: "column",
-    ...shorthands.gap(spacing.lg),
+    gap: spacing.lg,
     "@media (max-width: 768px)": {
-      ...shorthands.padding(spacing.md),
+      padding: spacing.md,
     },
   },
   splitLayout: {
@@ -68,7 +67,7 @@ const useStyles = makeStyles({
       "sidebar detail"
       "dependencies dependencies"
     `,
-    ...shorthands.gap(spacing.lg),
+    gap: spacing.lg,
     '@media (min-width: 1600px)': {
       gridTemplateColumns: 'minmax(250px, 400px) minmax(0, 1fr) minmax(250px, 340px)',
       gridTemplateAreas: `"sidebar detail dependencies"`,
@@ -93,13 +92,13 @@ const useStyles = makeStyles({
     gridArea: 'sidebar',
     display: "flex",
     flexDirection: "column",
-    ...shorthands.gap(spacing.md),
+    gap: spacing.md,
   },
   detailPanel: {
     gridArea: 'detail',
     display: "flex",
     flexDirection: "column",
-    ...shorthands.gap(spacing.md),
+    gap: spacing.md,
     minWidth: 0,
     overflow: "hidden",
   },
@@ -117,11 +116,11 @@ const useStyles = makeStyles({
   headerActions: {
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(spacing.sm),
+    gap: spacing.sm,
   },
   emptyState: {
     textAlign: "center",
-    ...shorthands.padding(spacing.xl),
+    padding: spacing.xl,
     color: tokens.colorNeutralForeground3,
   },
 });
@@ -176,7 +175,8 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
     const handler = (e: BeforeUnloadEvent) => {
       if (pendingCount > 0) {
         e.preventDefault();
-        e.returnValue = '';
+        // Modern browsers ignore custom messages, but preventDefault() triggers the warning
+        return '';
       }
     };
     window.addEventListener('beforeunload', handler);
@@ -325,7 +325,6 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
               <>
                 <AttributeDataGrid
                   attributes={attributes}
-                  selectedAttribute={selectedAttribute}
                   onSelectAttribute={handleAttributeSelect}
                   onLockedAttributeClick={handleLockedAttributeClick}
                 />

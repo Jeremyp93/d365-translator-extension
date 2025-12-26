@@ -1,4 +1,4 @@
-import * as React from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Theme, webLightTheme, webDarkTheme } from "@fluentui/react-components";
 
 type ThemeMode = "light" | "dark";
@@ -9,13 +9,13 @@ interface ThemeContextType {
   toggleTheme: () => void;
 }
 
-const ThemeContext = React.createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = React.useState<ThemeMode>("dark");
+  const [mode, setMode] = useState<ThemeMode>("dark");
 
   // Load theme preference from storage on mount
-  React.useEffect(() => {
+  useEffect(() => {
     const loadTheme = async () => {
       try {
         const result = await chrome.storage.local.get("themeMode");
@@ -29,7 +29,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     loadTheme();
   }, []);
 
-  const toggleTheme = React.useCallback(async () => {
+  const toggleTheme = useCallback(async () => {
     const newMode: ThemeMode = mode === "dark" ? "light" : "dark";
     setMode(newMode);
     try {
@@ -49,7 +49,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useTheme() {
-  const context = React.useContext(ThemeContext);
+  const context = useContext(ThemeContext);
   if (!context) {
     throw new Error("useTheme must be used within ThemeProvider");
   }
