@@ -16,6 +16,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          token: ${{ secrets.PAT_FOR_RELEASES || github.token }}
 
       - name: Read version from manifest
         id: get_version
@@ -70,4 +71,8 @@ jobs:
             echo ""
             echo "- Tag: \`${{ steps.get_version.outputs.tag }}\`"
             echo "- This tag push will trigger **Release (tag)** automatically."
+            echo ""
+            echo "### Note"
+            echo "If the release workflow doesn't trigger, ensure \`PAT_FOR_RELEASES\` secret is configured."
+            echo "GitHub Actions won't trigger workflows from tags pushed with the default GITHUB_TOKEN."
           } >> "$GITHUB_STEP_SUMMARY"
