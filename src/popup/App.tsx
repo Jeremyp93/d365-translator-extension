@@ -20,7 +20,9 @@ import { useD365Context } from '../hooks/useD365Context';
 import { useEditingPermission } from '../hooks/useEditingPermission';
 import { usePopupTab } from '../hooks/usePopupTab';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
+import { useLanguages } from '../hooks/useLanguages';
 import { getActiveTab } from '../services/chromeTabService';
+import { getLanguageDisplayName } from '../utils/languageNames';
 import { PopupHeader } from './components/PopupHeader';
 import { ContextWarning } from './components/ContextWarning';
 import { EditingBlockedBanner } from '../components/ui/EditingBlockedBanner';
@@ -105,6 +107,11 @@ export default function App(): JSX.Element {
 
   const [hoveredButton, setHoveredButton] = useState<TooltipKey | null>(null);
   const [clientUrl, setClientUrl] = useState<string>("");
+  const [currentUserLcid, setCurrentUserLcid] = useState<number | null>(null);
+  const [switchingLanguage, setSwitchingLanguage] = useState<boolean>(false);
+
+  // Initialize language hook
+  const { langs, readUserUiLanguage, switchUserUiLanguage } = useLanguages(clientUrl);
 
   // Get client URL from active tab
   useEffect(() => {
@@ -131,6 +138,25 @@ export default function App(): JSX.Element {
   getUrl();
   }, [isDynamicsEnv, contextChecking]);
 
+  // Load current user language
+  useEffect(() => {
+    if (!clientUrl || !isDynamicsEnv) {
+      setCurrentUserLcid(null);
+      return;
+    }
+
+    const loadCurrentLanguage = async () => {
+      try {
+        const lcid = await readUserUiLanguage();
+        setCurrentUserLcid(lcid);
+      } catch (e) {
+        console.error('Failed to get current language:', e);
+      }
+    };
+
+    loadCurrentLanguage();
+  }, [clientUrl, isDynamicsEnv, readUserUiLanguage]);
+
   // Check editing permission (hook must be called unconditionally)
   const { isEditingBlocked } = useEditingPermission(clientUrl);
 
@@ -142,6 +168,39 @@ export default function App(): JSX.Element {
       setActiveTab(data.value as 'general' | 'developer');
     },
     [setActiveTab]
+  );
+
+  const handleLanguageSwitch = useCallback(
+    async (targetLcid: number) => {
+      setSwitchingLanguage(true);
+      const langName = getLanguageDisplayName(targetLcid);
+      setInfo(`Switching to ${langName}...`);
+
+      try {
+        await switchUserUiLanguage(targetLcid);
+        setCurrentUserLcid(targetLcid); // Update local state to reflect the change
+        setInfo(`Language changed to ${langName}. Reloading page...`);
+
+        // Hard reload the active D365 tab after a short delay (bypass cache)
+        setTimeout(async () => {
+          try {
+            const tab = await getActiveTab();
+            if (tab?.id) {
+              await chrome.tabs.reload(tab.id, { bypassCache: true });
+            }
+          } catch (e) {
+            console.error('Failed to reload tab:', e);
+          } finally {
+            // Re-enable dropdown after reload is triggered
+            setSwitchingLanguage(false);
+          }
+        }, 1500);
+      } catch (e) {
+        console.error('Failed to switch language:', e);
+        setSwitchingLanguage(false);
+      }
+    },
+    [switchUserUiLanguage, setInfo]
   );
 
   return (
@@ -169,12 +228,16 @@ export default function App(): JSX.Element {
                 isValidContext={isValidContext}
                 isDynamicsEnv={isDynamicsEnv}
                 contextChecking={contextChecking}
+                switchingLanguage={switchingLanguage}
+                availableLanguages={langs || []}
+                currentUserLcid={currentUserLcid}
                 onShowAllFields={showAllFields}
                 onActivate={activate}
                 onDeactivate={deactivate}
                 onOpenFormReport={openFormReportPage}
                 onOpenGlobalOptionSets={openGlobalOptionSetsPage}
                 onOpenEntityBrowser={openEntityBrowserPage}
+                onLanguageSwitch={handleLanguageSwitch}
                 onHoverButton={setHoveredButton}
               />
             )}

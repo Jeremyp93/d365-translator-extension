@@ -1,5 +1,10 @@
 // services/languageService.ts
-import { getProvisionedLanguages as getProvisionedLanguagesLive, getOrgBaseLanguageCode } from './d365Api';
+import { 
+  getProvisionedLanguages as getProvisionedLanguagesLive, 
+  getOrgBaseLanguageCode,
+  whoAmI,
+  getUserSettingsRow,
+} from './d365Api';
 import { storageGet, storageRemove, storageSet } from './storageCache';
 import { CACHE_TTL } from '../config/constants';
 
@@ -46,4 +51,45 @@ export async function getLanguagesBundle(
     getOrgBaseLanguageCode(baseUrl, apiVersion),
   ]);
   return { langs, baseLcid };
+}
+
+type UserLangCache = { when: number; lcid: number };
+const USER_LANG_TTL_MS = CACHE_TTL.USER_LANGUAGE;
+
+/** Cached current user UI language. Falls back to live if cache missing/stale. */
+export async function getUserLanguageCached(
+  baseUrl: string,
+  apiVersion: string = 'v9.2',
+  opts: { ttlMs?: number } = {}
+): Promise<number> {
+  const ttlMs = opts.ttlMs ?? USER_LANG_TTL_MS;
+  const key = 'userLang';
+
+  const cached = await storageGet<UserLangCache>(baseUrl, key);
+  if (cached && typeof cached.lcid === 'number' && Date.now() - cached.when < ttlMs) {
+    return cached.lcid;
+  }
+
+  // Cache miss/stale - fetch from API
+  const userId = await whoAmI(baseUrl, apiVersion);
+  const userSettings = await getUserSettingsRow(baseUrl, userId, apiVersion);
+  const lcid = userSettings.uilanguageid;
+  
+  await storageSet<UserLangCache>(baseUrl, key, { when: Date.now(), lcid });
+  return lcid;
+}
+
+/** Update user language cache after a language switch. */
+export async function updateUserLanguageCache(
+  baseUrl: string,
+  lcid: number
+): Promise<void> {
+  const key = 'userLang';
+  await storageSet<UserLangCache>(baseUrl, key, { when: Date.now(), lcid });
+}
+
+/** Clear user language cache. */
+export async function clearUserLanguageCache(baseUrl: string): Promise<void> {
+  const key = 'userLang';
+  await storageRemove(baseUrl, key);
 }
