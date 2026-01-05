@@ -21,4 +21,6 @@ export const BUTTON_TOOLTIPS: ButtonTooltip = {
     'View plugin execution trace logs with filtering options',
   entityBrowser:
     'Browse all entities and attributes with translation capabilities',
+  languageSelector:
+    'Switch your Dynamics 365 UI language. The page will reload automatically to apply the new language.',
 };

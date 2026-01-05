@@ -14,7 +14,25 @@ import {
 
 import { spacing } from '../../styles/theme';
 import { ActionButton } from './ActionButton';
+import { LanguageSelector } from './LanguageSelector';
 import type { TooltipKey } from '../../types/popup';
+
+export interface LanguageSelectorConfig {
+  switching: boolean;
+  available: number[];
+  currentLcid: number | null;
+  loading: boolean;
+  error: string | null;
+  onSwitch: (lcid: number) => void;
+}
+
+export interface AppStateConfig {
+  busy: boolean;
+  active: boolean;
+  isValidContext: boolean;
+  isDynamicsEnv: boolean;
+  contextChecking: boolean;
+}
 
 const useStyles = makeStyles({
   section: {
@@ -43,11 +61,8 @@ const useStyles = makeStyles({
 });
 
 interface GeneralTabProps {
-  busy: boolean;
-  active: boolean;
-  isValidContext: boolean;
-  isDynamicsEnv: boolean;
-  contextChecking: boolean;
+  appState: AppStateConfig;
+  language: LanguageSelectorConfig;
   onShowAllFields: () => void;
   onActivate: () => void;
   onDeactivate: () => void;
@@ -58,11 +73,8 @@ interface GeneralTabProps {
 }
 
 export function GeneralTab({
-  busy,
-  active,
-  isValidContext,
-  isDynamicsEnv,
-  contextChecking,
+  appState,
+  language,
   onShowAllFields,
   onActivate,
   onDeactivate,
@@ -73,12 +85,28 @@ export function GeneralTab({
 }: GeneralTabProps) {
   const styles = useStyles();
 
+  const { busy, active, isValidContext, isDynamicsEnv, contextChecking } = appState;
+  const { available, currentLcid, loading, error, switching, onSwitch } = language;
+
   return (
     <div className={styles.tabContent}>
       {/* Quick Actions Section */}
       <div className={styles.section}>
         <div className={styles.sectionTitle}>Quick Actions</div>
         <div className={styles.buttonGroup}>
+          <LanguageSelector
+            availableLanguages={available}
+            currentUserLcid={currentLcid}
+            languagesLoading={loading}
+            languagesError={error}
+            switchingLanguage={switching}
+            busy={busy}
+            isDynamicsEnv={isDynamicsEnv}
+            contextChecking={contextChecking}
+            onLanguageSwitch={onSwitch}
+            onHoverButton={onHoverButton}
+          />
+
           <ActionButton
             icon={<Eye24Regular />}
             onClick={onShowAllFields}

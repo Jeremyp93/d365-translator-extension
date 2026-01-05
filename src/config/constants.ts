@@ -16,6 +16,7 @@ export const CACHE_TTL = {
   METADATA: 30 * 60 * 1000, // 30 minutes
   SHORT: 5 * 60 * 1000, // 5 minutes
   EDITING_PERMISSION: 4 * 60 * 60 * 1000, // 4 hours
+  USER_LANGUAGE: 60 * 60 * 1000, // 1 hour
 } as const;
 
 // Form Types

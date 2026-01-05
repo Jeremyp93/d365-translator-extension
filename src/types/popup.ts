@@ -15,6 +15,7 @@ export interface ButtonTooltip {
   globalOptionSets: string;
   pluginTraceLogs: string;
   entityBrowser: string;
+  languageSelector: string;
 }
 
 export type TooltipKey = keyof ButtonTooltip;

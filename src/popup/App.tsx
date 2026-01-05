@@ -3,7 +3,7 @@
  * Orchestrates UI components and manages top-level state
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import {
   FluentProvider,
   makeStyles,
@@ -20,7 +20,9 @@ import { useD365Context } from '../hooks/useD365Context';
 import { useEditingPermission } from '../hooks/useEditingPermission';
 import { usePopupTab } from '../hooks/usePopupTab';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
+import { useLanguages } from '../hooks/useLanguages';
 import { getActiveTab } from '../services/chromeTabService';
+import { getLanguageDisplayName } from '../utils/languageNames';
 import { PopupHeader } from './components/PopupHeader';
 import { ContextWarning } from './components/ContextWarning';
 import { EditingBlockedBanner } from '../components/ui/EditingBlockedBanner';
@@ -105,6 +107,12 @@ export default function App(): JSX.Element {
 
   const [hoveredButton, setHoveredButton] = useState<TooltipKey | null>(null);
   const [clientUrl, setClientUrl] = useState<string>("");
+  const [currentUserLcid, setCurrentUserLcid] = useState<number | null>(null);
+  const [switchingLanguage, setSwitchingLanguage] = useState<boolean>(false);
+  const languageSwitchTimerRef = useRef<number | null>(null);
+
+  // Initialize language hook
+  const { langs, readUserUiLanguage, switchUserUiLanguage, error: languageError } = useLanguages(clientUrl);
 
   // Get client URL from active tab
   useEffect(() => {
@@ -131,17 +139,101 @@ export default function App(): JSX.Element {
   getUrl();
   }, [isDynamicsEnv, contextChecking]);
 
+  // Load current user language
+  useEffect(() => {
+    if (!clientUrl || !isDynamicsEnv) {
+      setCurrentUserLcid(null);
+      return;
+    }
+
+    const loadCurrentLanguage = async () => {
+      try {
+        const lcid = await readUserUiLanguage();
+        setCurrentUserLcid(lcid);
+      } catch (e) {
+        console.error('Failed to get current language:', e);
+      }
+    };
+
+    loadCurrentLanguage();
+  }, [clientUrl, isDynamicsEnv, readUserUiLanguage]);
+
   // Check editing permission (hook must be called unconditionally)
   const { isEditingBlocked } = useEditingPermission(clientUrl);
 
   // Auto-dismiss info messages
   useAutoDismiss(info, () => setInfo(null), 3000);
 
+  // Cleanup language switch timer on unmount
+  useEffect(() => {
+    return () => {
+      if (languageSwitchTimerRef.current) {
+        clearTimeout(languageSwitchTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleTabChange = useCallback<TabSelectHandler>(
     (_, data) => {
       setActiveTab(data.value as 'general' | 'developer');
     },
     [setActiveTab]
+  );
+
+  const handleLanguageSwitch = useCallback(
+    async (targetLcid: number) => {
+      // Clear any existing timer
+      if (languageSwitchTimerRef.current) {
+        clearTimeout(languageSwitchTimerRef.current);
+        languageSwitchTimerRef.current = null;
+      }
+
+      setSwitchingLanguage(true);
+      const langName = getLanguageDisplayName(targetLcid);
+      setInfo(`Switching to ${langName}...`);
+
+      // Capture the current tab BEFORE the async operation
+      const currentTab = await getActiveTab();
+      if (!currentTab?.id) {
+        setInfo(null);
+        setSwitchingLanguage(false);
+        setInfo('Failed to switch language: No active tab found.');
+        return;
+      }
+
+      const targetTabId = currentTab.id; // Capture the tab ID
+
+      try {
+        await switchUserUiLanguage(targetLcid);
+        setCurrentUserLcid(targetLcid); // Update local state to reflect the change
+        setInfo(`Language changed to ${langName}. Reloading page...`);
+
+        // Hard reload the captured D365 tab after a short delay (bypass cache)
+        languageSwitchTimerRef.current = setTimeout(async () => {
+          try {
+            await chrome.tabs.reload(targetTabId, { bypassCache: true });
+            // Re-enable dropdown after reload is triggered
+            setSwitchingLanguage(false);
+          } catch (e) {
+            console.error('Failed to reload tab:', e);
+          } finally {
+            languageSwitchTimerRef.current = null;
+          }
+        }, 1500);
+      } catch (e) {
+        console.error('Failed to switch language:', e);
+        setInfo(null); // Clear "Switching..." message
+        setSwitchingLanguage(false);
+        // Show user-friendly error message
+        if (error) {
+          // If there's already an error showing, log to console only
+          console.error('Cannot display error - error banner already in use');
+        } else {
+          setInfo('Failed to switch language. Please try again.');
+        }
+      }
+    },
+    [switchUserUiLanguage, setInfo, error]
   );
 
   return (
@@ -164,11 +256,21 @@ export default function App(): JSX.Element {
 
             {activeTab === 'general' && (
               <GeneralTab
-                busy={busy}
-                active={active}
-                isValidContext={isValidContext}
-                isDynamicsEnv={isDynamicsEnv}
-                contextChecking={contextChecking}
+                appState={{
+                  busy,
+                  active,
+                  isValidContext,
+                  isDynamicsEnv,
+                  contextChecking,
+                }}
+                language={{
+                  switching: switchingLanguage,
+                  available: langs || [],
+                  currentLcid: currentUserLcid,
+                  loading: !langs && !languageError,
+                  error: languageError,
+                  onSwitch: handleLanguageSwitch,
+                }}
                 onShowAllFields={showAllFields}
                 onActivate={activate}
                 onDeactivate={deactivate}
