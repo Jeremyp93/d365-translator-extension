@@ -3,7 +3,7 @@
  * Orchestrates UI components and manages top-level state
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import {
   FluentProvider,
   makeStyles,
@@ -109,9 +109,10 @@ export default function App(): JSX.Element {
   const [clientUrl, setClientUrl] = useState<string>("");
   const [currentUserLcid, setCurrentUserLcid] = useState<number | null>(null);
   const [switchingLanguage, setSwitchingLanguage] = useState<boolean>(false);
+  const languageSwitchTimerRef = useRef<number | null>(null);
 
   // Initialize language hook
-  const { langs, readUserUiLanguage, switchUserUiLanguage } = useLanguages(clientUrl);
+  const { langs, readUserUiLanguage, switchUserUiLanguage, error: languageError } = useLanguages(clientUrl);
 
   // Get client URL from active tab
   useEffect(() => {
@@ -163,6 +164,15 @@ export default function App(): JSX.Element {
   // Auto-dismiss info messages
   useAutoDismiss(info, () => setInfo(null), 3000);
 
+  // Cleanup language switch timer on unmount
+  useEffect(() => {
+    return () => {
+      if (languageSwitchTimerRef.current) {
+        clearTimeout(languageSwitchTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleTabChange = useCallback<TabSelectHandler>(
     (_, data) => {
       setActiveTab(data.value as 'general' | 'developer');
@@ -172,35 +182,58 @@ export default function App(): JSX.Element {
 
   const handleLanguageSwitch = useCallback(
     async (targetLcid: number) => {
+      // Clear any existing timer
+      if (languageSwitchTimerRef.current) {
+        clearTimeout(languageSwitchTimerRef.current);
+        languageSwitchTimerRef.current = null;
+      }
+
       setSwitchingLanguage(true);
       const langName = getLanguageDisplayName(targetLcid);
       setInfo(`Switching to ${langName}...`);
+
+      // Capture the current tab BEFORE the async operation
+      const currentTab = await getActiveTab();
+      if (!currentTab?.id) {
+        setInfo(null);
+        setSwitchingLanguage(false);
+        setInfo('Failed to switch language: No active tab found.');
+        return;
+      }
+
+      const targetTabId = currentTab.id; // Capture the tab ID
 
       try {
         await switchUserUiLanguage(targetLcid);
         setCurrentUserLcid(targetLcid); // Update local state to reflect the change
         setInfo(`Language changed to ${langName}. Reloading page...`);
 
-        // Hard reload the active D365 tab after a short delay (bypass cache)
-        setTimeout(async () => {
+        // Hard reload the captured D365 tab after a short delay (bypass cache)
+        languageSwitchTimerRef.current = setTimeout(async () => {
           try {
-            const tab = await getActiveTab();
-            if (tab?.id) {
-              await chrome.tabs.reload(tab.id, { bypassCache: true });
-            }
+            await chrome.tabs.reload(targetTabId, { bypassCache: true });
+            // Re-enable dropdown after reload is triggered
+            setSwitchingLanguage(false);
           } catch (e) {
             console.error('Failed to reload tab:', e);
           } finally {
-            // Re-enable dropdown after reload is triggered
-            setSwitchingLanguage(false);
+            languageSwitchTimerRef.current = null;
           }
         }, 1500);
       } catch (e) {
         console.error('Failed to switch language:', e);
+        setInfo(null); // Clear "Switching..." message
         setSwitchingLanguage(false);
+        // Show user-friendly error message
+        if (error) {
+          // If there's already an error showing, log to console only
+          console.error('Cannot display error - error banner already in use');
+        } else {
+          setInfo('Failed to switch language. Please try again.');
+        }
       }
     },
-    [switchUserUiLanguage, setInfo]
+    [switchUserUiLanguage, setInfo, error]
   );
 
   return (
@@ -223,21 +256,27 @@ export default function App(): JSX.Element {
 
             {activeTab === 'general' && (
               <GeneralTab
-                busy={busy}
-                active={active}
-                isValidContext={isValidContext}
-                isDynamicsEnv={isDynamicsEnv}
-                contextChecking={contextChecking}
-                switchingLanguage={switchingLanguage}
-                availableLanguages={langs || []}
-                currentUserLcid={currentUserLcid}
+                appState={{
+                  busy,
+                  active,
+                  isValidContext,
+                  isDynamicsEnv,
+                  contextChecking,
+                }}
+                language={{
+                  switching: switchingLanguage,
+                  available: langs || [],
+                  currentLcid: currentUserLcid,
+                  loading: !langs && !languageError,
+                  error: languageError,
+                  onSwitch: handleLanguageSwitch,
+                }}
                 onShowAllFields={showAllFields}
                 onActivate={activate}
                 onDeactivate={deactivate}
                 onOpenFormReport={openFormReportPage}
                 onOpenGlobalOptionSets={openGlobalOptionSetsPage}
                 onOpenEntityBrowser={openEntityBrowserPage}
-                onLanguageSwitch={handleLanguageSwitch}
                 onHoverButton={setHoveredButton}
               />
             )}

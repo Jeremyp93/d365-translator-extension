@@ -10,6 +10,7 @@ import { CACHE_TTL } from '../config/constants';
 
 type LangCache = { when: number; langs: number[] };
 const TTL_MS_DEFAULT = CACHE_TTL.PROVISIONED_LANGUAGES;
+const USER_LANG_CACHE_KEY = 'userLang'
 
 /** Cached provisioned languages. Falls back to live if cache missing/stale. */
 export async function getProvisionedLanguagesCached(
@@ -18,15 +19,14 @@ export async function getProvisionedLanguagesCached(
   opts: { ttlMs?: number } = {}
 ): Promise<number[]> {
   const ttlMs = opts.ttlMs ?? TTL_MS_DEFAULT;
-  const key = 'provLangs';
 
-  const cached = await storageGet<LangCache>(baseUrl, key);
+  const cached = await storageGet<LangCache>(baseUrl, USER_LANG_CACHE_KEY);
   if (cached && Array.isArray(cached.langs) && Date.now() - cached.when < ttlMs) {
     return cached.langs.slice();
   }
 
   const live = await getProvisionedLanguagesLive(baseUrl, apiVersion);
-  await storageSet<LangCache>(baseUrl, key, { when: Date.now(), langs: live });
+  await storageSet<LangCache>(baseUrl, USER_LANG_CACHE_KEY, { when: Date.now(), langs: live });
   return live;
 }
 
@@ -63,9 +63,8 @@ export async function getUserLanguageCached(
   opts: { ttlMs?: number } = {}
 ): Promise<number> {
   const ttlMs = opts.ttlMs ?? USER_LANG_TTL_MS;
-  const key = 'userLang';
 
-  const cached = await storageGet<UserLangCache>(baseUrl, key);
+  const cached = await storageGet<UserLangCache>(baseUrl, USER_LANG_CACHE_KEY);
   if (cached && typeof cached.lcid === 'number' && Date.now() - cached.when < ttlMs) {
     return cached.lcid;
   }
@@ -75,7 +74,7 @@ export async function getUserLanguageCached(
   const userSettings = await getUserSettingsRow(baseUrl, userId, apiVersion);
   const lcid = userSettings.uilanguageid;
   
-  await storageSet<UserLangCache>(baseUrl, key, { when: Date.now(), lcid });
+  await storageSet<UserLangCache>(baseUrl, USER_LANG_CACHE_KEY, { when: Date.now(), lcid });
   return lcid;
 }
 
@@ -84,12 +83,10 @@ export async function updateUserLanguageCache(
   baseUrl: string,
   lcid: number
 ): Promise<void> {
-  const key = 'userLang';
-  await storageSet<UserLangCache>(baseUrl, key, { when: Date.now(), lcid });
+  await storageSet<UserLangCache>(baseUrl, USER_LANG_CACHE_KEY, { when: Date.now(), lcid });
 }
 
 /** Clear user language cache. */
 export async function clearUserLanguageCache(baseUrl: string): Promise<void> {
-  const key = 'userLang';
-  await storageRemove(baseUrl, key);
+  await storageRemove(baseUrl, USER_LANG_CACHE_KEY);
 }

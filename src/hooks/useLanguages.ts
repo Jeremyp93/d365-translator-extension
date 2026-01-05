@@ -15,17 +15,35 @@ export function useLanguages(clientUrl: string, apiVersion: string = 'v9.2') {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Don't fetch languages if we don't have a valid client URL
+    if (!clientUrl) {
+      setLangs(null);
+      setBaseLcid(null);
+      setError(null);
+      return;
+    }
+
+    let cancelled = false;
+
     (async () => {
       try {
         setError(null);
         const { langs: provisioned, baseLcid: base } = await getLanguagesBundle(clientUrl, apiVersion);
-        console.log('Provisioned languages:', provisioned, 'Base LCID:', base);
-        setLangs(provisioned);
-        setBaseLcid(base);
+        if (!cancelled) {
+          setLangs(provisioned);
+          setBaseLcid(base);
+        }
       } catch (e: any) {
-        setError(e?.message ?? String(e));
+        if (!cancelled) {
+          setError(e?.message ?? String(e));
+        }
       }
     })();
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      cancelled = true;
+    };
   }, [clientUrl, apiVersion]);
 
   // Optional utilities if the hook also manages user UI language switching

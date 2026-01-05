@@ -2,7 +2,7 @@
  * General tab content - Quick Actions and Translation Tools
  */
 
-import { Divider, makeStyles, tokens, Dropdown, Option, Label } from '@fluentui/react-components';
+import { Divider, makeStyles, tokens } from '@fluentui/react-components';
 import {
   Eye24Regular,
   PaintBrush24Regular,
@@ -10,13 +10,29 @@ import {
   DocumentTable24Regular,
   Database24Regular,
   Grid24Regular,
-  LocalLanguage24Regular,
 } from '@fluentui/react-icons';
 
 import { spacing } from '../../styles/theme';
-import { getLanguageDisplayName } from '../../utils/languageNames';
 import { ActionButton } from './ActionButton';
+import { LanguageSelector } from './LanguageSelector';
 import type { TooltipKey } from '../../types/popup';
+
+export interface LanguageSelectorConfig {
+  switching: boolean;
+  available: number[];
+  currentLcid: number | null;
+  loading: boolean;
+  error: string | null;
+  onSwitch: (lcid: number) => void;
+}
+
+export interface AppStateConfig {
+  busy: boolean;
+  active: boolean;
+  isValidContext: boolean;
+  isDynamicsEnv: boolean;
+  contextChecking: boolean;
+}
 
 const useStyles = makeStyles({
   section: {
@@ -42,74 +58,35 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: spacing.md,
   },
-  languageDropdownContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  languageIcon: {
-    color: tokens.colorBrandForeground1,
-    flexShrink: 0,
-  },
-  languageDropdown: {
-    flex: 1,
-    minHeight: '32px',
-  },
-  languageListbox: {
-    backgroundColor: tokens.colorBrandBackground,
-    boxShadow: tokens.shadow16,
-    '& .fui-Option': {
-      color: tokens.colorNeutralForegroundOnBrand,
-      ':hover': {
-        backgroundColor: tokens.colorNeutralForegroundInverted,
-        color: tokens.colorNeutralForegroundOnBrand,
-      },
-      ':focus': {
-        backgroundColor: tokens.colorNeutralForegroundInverted,
-        color: tokens.colorNeutralForegroundOnBrand,
-      },
-    },
-  },
 });
 
 interface GeneralTabProps {
-  busy: boolean;
-  active: boolean;
-  isValidContext: boolean;
-  isDynamicsEnv: boolean;
-  contextChecking: boolean;
-  switchingLanguage: boolean;
-  availableLanguages: number[];
-  currentUserLcid: number | null;
+  appState: AppStateConfig;
+  language: LanguageSelectorConfig;
   onShowAllFields: () => void;
   onActivate: () => void;
   onDeactivate: () => void;
   onOpenFormReport: () => void;
   onOpenGlobalOptionSets: () => void;
   onOpenEntityBrowser: () => void;
-  onLanguageSwitch: (lcid: number) => void;
   onHoverButton: (key: TooltipKey | null) => void;
 }
 
 export function GeneralTab({
-  busy,
-  active,
-  isValidContext,
-  isDynamicsEnv,
-  contextChecking,
-  switchingLanguage,
-  availableLanguages,
-  currentUserLcid,
+  appState,
+  language,
   onShowAllFields,
   onActivate,
   onDeactivate,
   onOpenFormReport,
   onOpenGlobalOptionSets,
   onOpenEntityBrowser,
-  onLanguageSwitch,
   onHoverButton,
 }: GeneralTabProps) {
   const styles = useStyles();
+
+  const { busy, active, isValidContext, isDynamicsEnv, contextChecking } = appState;
+  const { available, currentLcid, loading, error, switching, onSwitch } = language;
 
   return (
     <div className={styles.tabContent}>
@@ -117,36 +94,18 @@ export function GeneralTab({
       <div className={styles.section}>
         <div className={styles.sectionTitle}>Quick Actions</div>
         <div className={styles.buttonGroup}>
-          <div
-            className={styles.languageDropdownContainer}
-            onMouseEnter={() => {
-              if (!busy && isDynamicsEnv && !contextChecking && !switchingLanguage) {
-                onHoverButton('languageSelector');
-              }
-            }}
-            onMouseLeave={() => onHoverButton(null)}
-          >
-            <LocalLanguage24Regular className={styles.languageIcon} />
-            <Dropdown
-              className={styles.languageDropdown}
-              placeholder="Select language"
-              value={currentUserLcid ? getLanguageDisplayName(currentUserLcid) : 'Loading...'}
-              selectedOptions={currentUserLcid ? [String(currentUserLcid)] : []}
-              onOptionSelect={(_, data) => {
-                if (data.optionValue) {
-                  onLanguageSwitch(Number(data.optionValue));
-                }
-              }}
-              disabled={busy || !isDynamicsEnv || contextChecking || switchingLanguage}
-              listbox={{ className: styles.languageListbox }}
-            >
-              {availableLanguages.map(lcid => (
-                <Option key={lcid} value={String(lcid)}>
-                  {getLanguageDisplayName(lcid)}
-                </Option>
-              ))}
-            </Dropdown>
-          </div>
+          <LanguageSelector
+            availableLanguages={available}
+            currentUserLcid={currentLcid}
+            languagesLoading={loading}
+            languagesError={error}
+            switchingLanguage={switching}
+            busy={busy}
+            isDynamicsEnv={isDynamicsEnv}
+            contextChecking={contextChecking}
+            onLanguageSwitch={onSwitch}
+            onHoverButton={onHoverButton}
+          />
 
           <ActionButton
             icon={<Eye24Regular />}
