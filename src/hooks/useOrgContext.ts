@@ -53,5 +53,5 @@ export function useOrgContext(): OrgContext {
     const pageParam = (qs.get('page') || '').toLowerCase();
     const page = pageParam === 'field' || pageParam === 'form' ? (pageParam as 'field' | 'form') : undefined;
     return { clientUrl, entity, attribute, formId, labelId, tabId, sectionId, page, apiVersion };
-  }, [routerLoc.search, routerLoc.hash]);
+  }, [routerLoc.search]);
 }

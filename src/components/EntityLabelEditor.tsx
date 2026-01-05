@@ -90,6 +90,12 @@ export default function EntityLabelEditor({
     [langs]
   );
 
+  // Create stable reference for pendingChanges to avoid infinite loops
+  const pendingChangesKey = useMemo(
+    () => JSON.stringify(pendingChanges),
+    [pendingChanges]
+  );
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -141,7 +147,7 @@ export default function EntityLabelEditor({
     attribute,
     lcids.join(","),
     reloadTrigger,
-    pendingChanges,
+    pendingChangesKey,
   ]); // re-run if langs change, reload triggered, or pending changes updated
 
   const onChange = (lcid: number, v: string) => {
