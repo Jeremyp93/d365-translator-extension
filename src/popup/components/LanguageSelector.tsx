@@ -20,10 +20,12 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusMedium,
     backgroundColor: tokens.colorNeutralBackground1,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
-    transition: 'all 0.1s ease-in-out',
+    transitionProperty: 'background-color, border-color',
+    transitionDuration: '0.1s',
+    transitionTimingFunction: 'ease-in-out',
     '&:hover': {
       backgroundColor: tokens.colorNeutralBackground1Hover,
-      borderColor: tokens.colorNeutralStroke1Hover,
+      border: `1px solid ${tokens.colorNeutralStroke1Hover}`,
     },
   },
   languageIcon: {
