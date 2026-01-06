@@ -53,11 +53,9 @@ const useStyles = makeStyles({
       color: tokens.colorNeutralForegroundOnBrand,
       ':hover': {
         backgroundColor: tokens.colorNeutralForegroundInverted,
-        color: tokens.colorNeutralForegroundOnBrand,
       },
       ':focus': {
         backgroundColor: tokens.colorNeutralForegroundInverted,
-        color: tokens.colorNeutralForegroundOnBrand,
       },
     },
   },
