@@ -1,3 +1,5 @@
+import { __DEV__ } from "../types/global";
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const w = window as any;
 if (!w.__d365Ctl) {
@@ -52,7 +54,7 @@ if (!w.__d365Ctl) {
     async openEntityBrowserPage() {
       const X = (window as any).Xrm;
       if (!X) {
-        console.warn("[ctl] Xrm not found in this frame.");
+        if (__DEV__) console.warn("[ctl] Xrm not found in this frame.");
         return;
       }
 
@@ -75,7 +77,7 @@ if (!w.__d365Ctl) {
     async openGlobalOptionSetsPage() {
       const X = (window as any).Xrm;
       if (!X) {
-        console.warn("[ctl] Xrm not found in this frame.");
+        if (__DEV__) console.warn("[ctl] Xrm not found in this frame.");
         return;
       }
 
@@ -100,7 +102,7 @@ if (!w.__d365Ctl) {
 
       const X = (window as any).Xrm;
       if (!X) {
-        console.warn("[ctl] Xrm not found in this frame.");
+        if (__DEV__) console.warn("[ctl] Xrm not found in this frame.");
         return;
       }
         
@@ -126,7 +128,7 @@ if (!w.__d365Ctl) {
 
       const X = (window as any).Xrm;
       if (!X) {
-        console.warn("[ctl] Xrm not found in this frame.");
+        if (__DEV__) console.warn("[ctl] Xrm not found in this frame.");
         return;
       }
 
@@ -134,7 +136,7 @@ if (!w.__d365Ctl) {
       let entityLogicalName = "";
       let formId = "";
       if (!page) {
-        console.warn("[ctl] Form context not ready in this frame.");
+        if (__DEV__) console.warn("[ctl] Form context not ready in this frame.");
         //return;
       } else {
         entityLogicalName =
@@ -171,13 +173,13 @@ if (!w.__d365Ctl) {
 
       const X = (window as any).Xrm;
       if (!X) {
-        console.warn("[ctl] Xrm not found in this frame.");
+        if (__DEV__) console.warn("[ctl] Xrm not found in this frame.");
         return;
       }
 
       const page = await waitFormReady(6000);
       if (!page) {
-        console.warn("[ctl] Form context not ready in this frame.");
+        if (__DEV__) console.warn("[ctl] Form context not ready in this frame.");
         return;
       }
 
@@ -185,7 +187,7 @@ if (!w.__d365Ctl) {
         page.data.entity.getEntityName?.() ?? "";
       const fields = getFields(page);
       if (!fields.length) {
-        console.warn("[ctl] No fields discovered.");
+        if (__DEV__) console.warn("[ctl] No fields discovered.");
         return;
       }
 
@@ -204,26 +206,21 @@ if (!w.__d365Ctl) {
         try {
           await showTranslationsTooltip(el, entityLogicalName, attribute);
         } catch (err) {
-          console.warn(
-            "[ctl] getTranslations failed:",
-            (err as Error)?.message ?? err
-          );
+          if (__DEV__) {
+            console.warn(
+              "[ctl] getTranslations failed:",
+              (err as Error)?.message ?? err
+            );
+          }
         }
       };
       window.addEventListener("click", ctl.onClick, true);
 
       ctl.enabled = true;
-      console.log(
-        "[ctl] ENABLED (labels only). entity =",
-        entityLogicalName,
-        "fields =",
-        fields.length
-      );
     },
 
     disable() {
       if (!ctl.enabled) {
-        console.log("[ctl] disable: nothing to do.");
         return;
       }
       ctl.enabled = false;
@@ -234,15 +231,13 @@ if (!w.__d365Ctl) {
         .querySelectorAll(".d365-translate-tooltip")
         .forEach((n) => n.remove());
       if (ctl.onClick) window.removeEventListener("click", ctl.onClick, true);
-      console.log("[ctl] DISABLED.");
     },
     /* eslint-disable @typescript-eslint/no-explicit-any */
     async showAllFields() {
       const X = (window as any).Xrm;
       const page = await waitFormReady(6000);
       if (!X || !page) {
-        // eslint-disable-next-line no-console
-        console.warn("[ctl] Form context not ready for showAllFields().");
+        if (__DEV__) console.warn("[ctl] Form context not ready for showAllFields().");
         return;
       }
 
@@ -366,16 +361,6 @@ if (!w.__d365Ctl) {
         window.scrollTo(0, prevScrollY);
       }
 
-      // eslint-disable-next-line no-console
-      console.log(
-        "[ctl] showAllFields(): controls =",
-        shownControls,
-        "sections =",
-        shownSections,
-        "tabs =",
-        shownTabs
-      );
-
       function safeGet<T>(fn: () => T): T | undefined {
         try {
           return fn();
@@ -387,10 +372,6 @@ if (!w.__d365Ctl) {
   };
 
   (window as any).__d365Ctl = ctl;
-  console.log(
-    "[ctl] controller (labels-only) installed in frame:",
-    location.href
-  );
 
   // ---------- helpers ----------
 
@@ -492,13 +473,14 @@ if (!w.__d365Ctl) {
       );
       if (!wrappers.length) {
         // If no wrapper, don’t try to match labels globally (too risky)
-
-        console.warn(
-          "[ctl] wrapper not found for control",
-          f.controlName,
-          "selectors:",
-          wrapperSel
-        );
+        if (__DEV__) {
+          console.warn(
+            "[ctl] wrapper not found for control",
+            f.controlName,
+            "selectors:",
+            wrapperSel
+          );
+        }
         return;
       }
 
@@ -506,10 +488,12 @@ if (!w.__d365Ctl) {
       wrappers.forEach((wrap) => {
         const labelNode = findLabelInWrapper(wrap, f);
         if (!labelNode) {
-          console.warn(
-            "[ctl] label not found inside wrapper for",
-            f.controlName
-          );
+          if (__DEV__) {
+            console.warn(
+              "[ctl] label not found inside wrapper for",
+              f.controlName
+            );
+          }
           return;
         }
         labelNode.classList.add("d365-translate-target");
@@ -556,116 +540,11 @@ if (!w.__d365Ctl) {
     return s.replace(/["\\]/g, "\\$&");
   }
 
-  // /* eslint-disable @typescript-eslint/no-explicit-any */
-  // async function getTranslations(
-  //   X: any,
-  //   entityLogicalName: string,
-  //   attributeLogicalName: string
-  // ): Promise<{ labels: { languageCode: number; label: string }[] }> {
-  //   // Helper: normalize anything to an array
-  //   const asArray = (v: any): any[] => {
-  //     if (!v) return [];
-  //     if (Array.isArray(v)) return v;
-  //     if (typeof v.get === "function") {
-  //       try {
-  //         return v.get();
-  //       } catch {
-  //         /* ignore */
-  //       }
-  //     }
-  //     if (typeof v === "object") return Object.values(v);
-  //     return [];
-  //   };
-
-  //   // 1) Try the simple way first (works in many orgs)
-  //   try {
-  //     if (X?.Utility?.getEntityMetadata) {
-  //       const meta = await X.Utility.getEntityMetadata(entityLogicalName, [
-  //         attributeLogicalName,
-  //       ]);
-  //       const attrs = asArray(meta.Attributes);
-  //       const attr =
-  //         attrs.find(
-  //           (a: any) =>
-  //             (a?.LogicalName ?? "").toLowerCase() ===
-  //             attributeLogicalName.toLowerCase()
-  //         ) ?? attrs[0];
-
-  //       const labels = asArray(attr?.DisplayName?.LocalizedLabels).map(
-  //         (l: any) => ({
-  //           languageCode: l.LanguageCode,
-  //           label: l.Label,
-  //         })
-  //       );
-
-  //       if (labels.length) return { labels };
-  //     }
-  //   } catch {
-  //     // swallow and fall through to Web API
-  //   }
-
-  //   // 2) Robust fallback: call the metadata Web API route directly using alternate keys
-  //   //    GET /api/data/v9.2/EntityDefinitions(LogicalName='account')/Attributes(LogicalName='name')?$select=DisplayName
-  //   console.log("Robust way needed");
-  //   const clientUrl: string =
-  //     X?.Utility?.getGlobalContext?.().getClientUrl?.() ??
-  //     (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.();
-  //   if (!clientUrl) throw new Error("Cannot determine client URL");
-
-  //   const e = encodeURIComponent(entityLogicalName);
-  //   const a = encodeURIComponent(attributeLogicalName);
-  //   const url = `${clientUrl}/api/data/${getVersion()}/EntityDefinitions(LogicalName='${e}')/Attributes(LogicalName='${a}')?$select=DisplayName`;
-
-  //   const resp = await fetch(url, {
-  //     method: "GET",
-  //     headers: {
-  //       Accept: "application/json",
-  //       "OData-MaxVersion": "4.0",
-  //       "OData-Version": "4.0",
-  //       // If your org requires a bearer, the browser will include it automatically in same-origin.
-  //       // No auth header needed in normal D365 pages.
-  //     },
-  //     credentials: "same-origin",
-  //   });
-
-  //   if (!resp.ok) {
-  //     const text = await resp.text().catch(() => "");
-  //     throw new Error(`Metadata request failed (${resp.status}): ${text}`);
-  //   }
-
-  //   const json = await resp.json();
-
-  //   // json.DisplayName is a Label; pull LocalizedLabels if present
-  //   const labels = asArray(json?.DisplayName?.LocalizedLabels).map(
-  //     (l: any) => ({
-  //       languageCode: l.LanguageCode,
-  //       label: l.Label,
-  //     })
-  //   );
-  //   return { labels };
-  // }
-
   function removeExistingTooltips(): void {
     document
       .querySelectorAll(".d365-translate-tooltip")
       .forEach((n) => n.remove());
   }
-
-  // function buildEntityVsFormRows(
-  //   entityLabels: { languageCode: number; label: string }[],
-  //   formLabels: { languageCode: number; label: string }[]
-  // ): { lcid: number; entity: string; form: string }[] {
-  //   const eMap = new Map(entityLabels.map((l) => [l.languageCode, l.label]));
-  //   const fMap = new Map(formLabels.map((l) => [l.languageCode, l.label]));
-  //   const all = Array.from(
-  //     new Set<number>([...eMap.keys(), ...fMap.keys()])
-  //   ).sort((a, b) => a - b);
-  //   return all.map((lcid) => ({
-  //     lcid,
-  //     entity: eMap.get(lcid) || "",
-  //     form: fMap.get(lcid) || "",
-  //   }));
-  // }
 
   function getBaseUrl(): string {
     const raw =
@@ -921,15 +800,6 @@ if (!w.__d365Ctl) {
   ): Promise<number[]> {
     // Try the unbound Web API function first
     try {
-      console.log(
-        localStorage.getItem(
-          "d365x:provLangs:https://org77b6bb32.crm4.dynamics.com"
-        )
-      );
-    } catch (error) {
-      console.error("Error fetching provisioned languages from cache:", error);
-    }
-    try {
       const r = await fetch(
         `${clientUrl}/api/data/${getVersion()}/RetrieveProvisionedLanguages()`,
         {
@@ -1094,9 +964,6 @@ async function getCellLabelIdInHeader(
 
     // 2) Build rows for ALL languages (fill missing with empty)
     const rows = buildRowsAllLanguages(provisioned, entityLabels, formLabels);
-    console.log(rows);
-
-    //const rows = buildEntityVsFormRows(entityLabels, formLabels);
 
     // render tooltip (now returns the DOM node)
     showTooltip(targetEl, entityLogicalName, attributeLogicalName, rows);
@@ -1241,7 +1108,7 @@ async function getCellLabelIdInHeader(
         }
       }
     } catch (err) {
-      console.warn("Could not resolve labelId:", err);
+      if (__DEV__) console.warn("Could not resolve labelId:", err);
     }
         // Ask the relay (content world) → background to open a new tab
         window.postMessage(

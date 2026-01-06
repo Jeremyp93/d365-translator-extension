@@ -5,6 +5,9 @@ import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig(({ mode }) => ({
   base: '', // keep empty for extension paths
+  define: {
+    __DEV__: mode === 'development',
+  },
   plugins: [
     react(),
     // visualizer({

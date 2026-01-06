@@ -1,3 +1,6 @@
+// Build-time constant injected by Vite
+declare const __DEV__: boolean;
+
 // Minimal typing for messages shared via window.postMessage
 export type BridgeCommand =
   | { type: "BRIDGE_INIT" }
