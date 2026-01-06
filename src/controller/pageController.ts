@@ -1,5 +1,3 @@
-import { __DEV__ } from "../types/global";
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const w = window as any;
 if (!w.__d365Ctl) {
