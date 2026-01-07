@@ -393,45 +393,85 @@ if (!w.__d365Ctl) {
     return null;
   }
 
-  function buildWrapperSelectors(
-    controlName: string,
-    attribute: string
-  ): string[] {
-    return [
-      // exact common containers
-      `[data-id="${controlName}.fieldControl"]`,
-      `[data-id="${controlName}-field"]`,
-      `[data-id="${attribute}-FieldSectionItemContainer"]`, // <<< NEW (exact hit from your DOM)
-      `div[id*="${attribute}-FieldSectionItemContainer"]`, // For BPF
-      // data-lp-id tokenized/contains
-      `[data-lp-id*="|${attribute}|"]`, // e.g., MscrmControls.Containers.FieldSectionItem|elia_day|...
-      `[data-lp-id*="${attribute}.fieldControl"]`, // e.g., PowerApps.CoreControls.TextInput|elia_day.fieldControl|...
-      // relaxed fallbacks
-      `[id*="-${attribute}-FieldSectionItemContainer"]`,
-      `[data-id*="${attribute}"]`,
-    ];
+  function buildNameAliases(controlName: string, attribute: string): string[] {
+    const names = new Set<string>();
+
+    if (attribute) names.add(attribute);
+    if (controlName) names.add(controlName);
+
+    // If either side is header_*, add the other header variant too
+    if (!controlName.startsWith("header_") && attribute) names.add(`header_${attribute}`);
+    if (!attribute.startsWith("header_") && controlName.startsWith("header_")) {
+      // also allow non-header version of the controlName
+      names.add(controlName.replace(/^header_/, ""));
+    }
+
+    return [...names];
   }
 
-  function buildLabelSelectors(
-    controlName: string,
-    attribute: string,
-    labelText: string
-  ): string[] {
-    const safeText = cssEscape(labelText);
-    return [
-      // most reliable in your DOM:
-      `[data-attribute="${attribute}"]`, // <<< NEW (your label has this)
-      `label[id*="${attribute}-field-label"]`, // matches BPF
-      `label[id$="${attribute}-field-label"]`, // ends-with on id
-      `[id*="-${attribute}-field-label"]`,
-      // older guesses you had
-      `[data-lp-id="${controlName}.label"]`,
-      `[data-id="${controlName}-label"]`,
-      `label[for="${controlName}"]`,
-      `span[title="${safeText}"]`,
-      // very generic fallback inside wrapper
-      'label, [role="heading"] span, [data-element="label"]',
-    ];
+  function buildWrapperSelectors(controlName: string, attribute: string): string[] {
+    const aliases = buildNameAliases(controlName, attribute).map(cssEscape);
+
+    const sels: string[] = [];
+
+    for (const n of aliases) {
+      sels.push(
+        // tokenized lp-id (best)
+        `[data-lp-id*="|${n}|"]`,
+        `[data-lp-id*="|${n}.fieldControl|"]`,
+
+        // exact / delimited data-id (safe)
+        `[data-id="${n}"]`,
+        `[data-control-name="${n}"]`,
+        `[data-id="${n}-FieldSectionItemContainer"]`,
+        `[id$="-${n}-FieldSectionItemContainer"]`,
+        `[id*="-${n}-FieldSectionItemContainer"]`,
+
+        // delimited prefix matches (safe)
+        `[data-id^="${n}."]`,
+        `[data-id^="${n}-"]`
+      );
+    }
+
+    // Control host id (often present)
+    for (const n of aliases) {
+      sels.push(`[data-id="${n}.fieldControl-pcf-container-id"]`);
+    }
+
+    // de-dupe while preserving order
+    return [...new Set(sels)];
+  }
+
+  function buildLabelSelectors(controlName: string, attribute: string, labelText?: string): string[] {
+    const aliases = buildNameAliases(controlName, attribute).map(cssEscape);
+    const safeText = labelText ? cssEscape(labelText) : "";
+
+    const sels: string[] = [];
+
+    // Most reliable when present (you add it after first find)
+    sels.push(`label[data-attribute="${cssEscape(attribute)}"]`);
+
+    for (const n of aliases) {
+      sels.push(
+        // label id patterns in model-driven apps
+        `label[id$="-${n}-field-label"]`,
+        `label[id*="-${n}-field-label"]`,
+
+        // sometimes marker is on a wrapper
+        `[data-attribute="${n}"] label`,
+        `[data-attribute="${n}"]`
+      );
+    }
+
+    // Optional: text-based selectors (useful, but localization-sensitive)
+    if (labelText) {
+      sels.push(`label[title="${safeText}"]`, `span[title="${safeText}"]`);
+    }
+
+    // last resort
+    sels.push(`label`, `[role="heading"] span`, `[data-element="label"]`);
+
+    return [...new Set(sels)];
   }
 
   function getFields(page: any): Field[] {
@@ -485,38 +525,101 @@ if (!w.__d365Ctl) {
       // Within each wrapper, find the label element using selectors + text fallback
       wrappers.forEach((wrap) => {
         const labelNode = findLabelInWrapper(wrap, f);
+
         if (!labelNode) {
-          if (__DEV__) {
-            console.warn(
-              "[ctl] label not found inside wrapper for",
-              f.controlName
-            );
-          }
+          if (__DEV__) console.warn("[ctl] label not found inside wrapper for", f.controlName);
           return;
         }
+
         labelNode.classList.add("d365-translate-target");
-        labelNode.setAttribute("data-attribute", f.attribute);
+
+        // Only set if not set or mismatched (prevents accidental override)
+        const existing = labelNode.getAttribute("data-attribute");
+        if (!existing || existing !== f.attribute) {
+          labelNode.setAttribute("data-attribute", f.attribute);
+        }
       });
     });
   }
 
-  function findLabelInWrapper(
-    wrapper: HTMLElement,
-    f: Field
-  ): HTMLElement | null {
+  function findLabelInWrapper(wrapper: HTMLElement, f: Field): HTMLElement | null {
+    // 1) Try selector list in priority order, but validate matches.
     for (const sel of f.labelSelectors) {
-      const node = wrapper.querySelector<HTMLElement>(sel);
-      if (node) return node;
+      const nodes = Array.from(wrapper.querySelectorAll<HTMLElement>(sel));
+      if (!nodes.length) continue;
+
+      // Prefer a node that positively identifies the attribute
+      const validated = nodes.find((n) => isLabelForField(n, f.controlName, f.attribute, f.labelText));
+      if (validated) return validated;
+
+      // If the selector itself is already "attribute-exact", it's safe to return first hit.
+      // (E.g. label[data-attribute="x"] or label[id$="-x-field-label"])
+      if (isSelectorAttributeExact(sel, f.attribute)) return nodes[0];
     }
+
+    // 2) Text fallback: only return elements that "look like a label",
+    // and (if possible) still validate via nearby markers.
     if (f.labelText) {
       const want = normalizeText(f.labelText);
-      for (const el of Array.from(
-        wrapper.querySelectorAll<HTMLElement>("label, span, div")
-      )) {
-        if (normalizeText(el.textContent || "") === want) return el;
+
+      const candidates = Array.from(
+        wrapper.querySelectorAll<HTMLElement>("label, [role='heading'] span, [data-element='label'], span, div")
+      ).filter((el) => normalizeText(el.textContent || "") === want);
+
+      // Prefer real <label> tags first
+      const labelTag = candidates.find((el) => el.tagName.toLowerCase() === "label");
+      if (labelTag) return labelTag;
+
+      // Otherwise, if any candidate can be validated via id/data-attribute patterns, use it
+      const validated = candidates.find((el) => isLabelForField(el, f.controlName, f.attribute, f.labelText));
+      if (validated) return validated;
+
+      // Last resort: return first text match (kept for backwards compatibility)
+      if (candidates.length) return candidates[0];
+    }
+
+    return null;
+  }
+
+  function isLabelForField(el: Element, controlName: string, attribute: string, labelText?: string): boolean {
+    const aliases = buildNameAliases(controlName, attribute).map((s) => s.toLowerCase());
+
+    // direct marker
+    const da = (el.getAttribute("data-attribute") || "").toLowerCase();
+    if (da && aliases.includes(da)) return true;
+
+    // label id convention
+    if (el.tagName.toLowerCase() === "label") {
+      const id = (el.getAttribute("id") || "").toLowerCase();
+      for (const n of aliases) {
+        if (id.endsWith(`-${n}-field-label`) || id.includes(`-${n}-field-label`)) return true;
       }
     }
-    return null;
+
+    // optional text check
+    if (labelText) {
+      const t = (el.textContent || "").trim().toLowerCase();
+      if (t === labelText.trim().toLowerCase()) return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Returns true if selector is inherently "exact" for this attribute
+   * (meaning it can't collide with similar attribute names).
+   */
+  function isSelectorAttributeExact(sel: string, attribute: string): boolean {
+    const a = cssEscape(attribute);
+
+    // Exact data-attribute or ends-with id boundary are safe
+    if (sel.includes(`data-attribute="${a}"`)) return true;
+    if (sel.includes(`id$="-${a}-field-label"`)) return true;
+
+    // Contains with a hard boundary is generally safe (e.g., "-attr-field-label")
+    if (sel.includes(`-${a}-field-label`)) return true;
+
+    return false;
   }
 
   function normalizeText(s: string): string {
