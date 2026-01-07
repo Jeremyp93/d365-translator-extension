@@ -27,9 +27,9 @@ if (!w.__d365Ctl) {
     attribute: string;
     controlName: string;
     labelText: string;
-    wrapperSelectors: string[]; // to find the field container
-    labelSelectors: string[]; // to find the label INSIDE the wrapper
   }
+
+  type LabelIndex = Map<string, HTMLElement[]>;
 
   const getVersion = (): string => {
     const X = (window as any).Xrm;
@@ -393,45 +393,87 @@ if (!w.__d365Ctl) {
     return null;
   }
 
-  function buildWrapperSelectors(
-    controlName: string,
-    attribute: string
-  ): string[] {
-    return [
-      // exact common containers
-      `[data-id="${controlName}.fieldControl"]`,
-      `[data-id="${controlName}-field"]`,
-      `[data-id="${attribute}-FieldSectionItemContainer"]`, // <<< NEW (exact hit from your DOM)
-      `div[id*="${attribute}-FieldSectionItemContainer"]`, // For BPF
-      // data-lp-id tokenized/contains
-      `[data-lp-id*="|${attribute}|"]`, // e.g., MscrmControls.Containers.FieldSectionItem|elia_day|...
-      `[data-lp-id*="${attribute}.fieldControl"]`, // e.g., PowerApps.CoreControls.TextInput|elia_day.fieldControl|...
-      // relaxed fallbacks
-      `[id*="-${attribute}-FieldSectionItemContainer"]`,
-      `[data-id*="${attribute}"]`,
-    ];
+  const UI_PREFIXES = ["header_process_", "header_", "process_"] as const;
+
+  function stripAnyUiPrefix(name: string): string | null {
+    for (const p of UI_PREFIXES) {
+      if (name.startsWith(p)) return name.slice(p.length);
+    }
+    return null;
   }
 
-  function buildLabelSelectors(
-    controlName: string,
-    attribute: string,
-    labelText: string
-  ): string[] {
-    const safeText = cssEscape(labelText);
-    return [
-      // most reliable in your DOM:
-      `[data-attribute="${attribute}"]`, // <<< NEW (your label has this)
-      `label[id*="${attribute}-field-label"]`, // matches BPF
-      `label[id$="${attribute}-field-label"]`, // ends-with on id
-      `[id*="-${attribute}-field-label"]`,
-      // older guesses you had
-      `[data-lp-id="${controlName}.label"]`,
-      `[data-id="${controlName}-label"]`,
-      `label[for="${controlName}"]`,
-      `span[title="${safeText}"]`,
-      // very generic fallback inside wrapper
-      'label, [role="heading"] span, [data-element="label"]',
-    ];
+  function buildNameAliases(controlName: string, attribute: string, includeProcess: boolean): string[] {
+    const names = new Set<string>();
+    const add = (s?: string | null) => { if (s) names.add(s); };
+
+    add(attribute);
+    add(controlName);
+
+    add(stripAnyUiPrefix(attribute));
+    add(stripAnyUiPrefix(controlName));
+
+    // Always include header variants (common)
+    if (attribute) add(`header_${attribute}`);
+    if (controlName) add(`header_${controlName}`);
+
+    // Only include process variants when needed (BPF)
+    if (includeProcess) {
+      if (attribute) {
+        add(`process_${attribute}`);
+        add(`header_process_${attribute}`);
+      }
+      if (controlName) {
+        add(`process_${controlName}`);
+        add(`header_process_${controlName}`);
+      }
+    }
+
+    return [...names];
+  }
+
+  function addToIndex(
+    index: LabelIndex,
+    token: string,
+    el: HTMLElement
+  ): void {
+    const key = token.toLowerCase(); // case-insensitive lookup
+    const arr = index.get(key);
+    if (arr) {
+      arr.push(el);
+    } else {
+      index.set(key, [el]);
+    }
+  }
+
+  function buildLabelIndex(): LabelIndex {
+    const index: LabelIndex = new Map();
+
+    // Query all labels once (narrow query for performance)
+    const labels = document.querySelectorAll<HTMLElement>(
+      'label[id$="-field-label"], label[data-attribute]'
+    );
+
+    for (const label of Array.from(labels)) {
+      // Priority 1: data-attribute (most reliable)
+      const dataAttr = label.getAttribute("data-attribute");
+      if (dataAttr) {
+        addToIndex(index, dataAttr, label);
+      }
+
+      // Priority 2: Extract token from label ID
+      const id = label.getAttribute("id");
+      if (id) {
+        // Regex: /-([a-z0-9_]+)-field-label$/i
+        // Matches: "...-elia_worktypecode-field-label" -> "elia_worktypecode"
+        //          "...-header_process_foo-field-label" -> "header_process_foo"
+        const match = id.match(/-([a-z0-9_]+)-field-label$/i);
+        if (match) {
+          addToIndex(index, match[1], label);
+        }
+      }
+    }
+
+    return index;
   }
 
   function getFields(page: any): Field[] {
@@ -442,20 +484,10 @@ if (!w.__d365Ctl) {
       attr.controls.get().forEach((ctrl: any) => {
         const controlName = ctrl.getName();
         const labelText: string = ctrl.getLabel?.() ?? "";
-        // Wrapper selectors: narrow the search scope to the field container
-        const wrapperSelectors = buildWrapperSelectors(controlName, attribute);
-        // Label selectors: look for label nodes inside the wrapper
-        const labelSelectors = buildLabelSelectors(
-          controlName,
-          attribute,
-          labelText
-        );
         out.push({
           attribute,
           controlName,
           labelText,
-          wrapperSelectors,
-          labelSelectors,
         });
       });
     });
@@ -463,79 +495,100 @@ if (!w.__d365Ctl) {
   }
 
   function applyLabelHighlights(fields: Field[]): void {
+    // 1. Build the label index once (single DOM query)
+    const labelIndex = buildLabelIndex();
+
+    if (labelIndex.size === 0) {
+      if (__DEV__) console.warn("[ctl] No labels found in index");
+      return;
+    }
+
+    // 2. Global includeProcess heuristic (detect once for entire form)
+    const includeProcess =
+      document.querySelector('label[id*="process_"][id$="-field-label"]') != null;
+
+    // 3. Track which labels we've already processed (dedupe by element)
+    const processed = new WeakSet<HTMLElement>();
+
+    // 4. For each field, lookup and tag all matching labels
     fields.forEach((f) => {
-      // Find a wrapper first (avoids ribbons/toolbars)
-      const wrapperSel = f.wrapperSelectors.join(", ");
-      const wrappers = Array.from(
-        document.querySelectorAll<HTMLElement>(wrapperSel)
-      );
-      if (!wrappers.length) {
-        // If no wrapper, don’t try to match labels globally (too risky)
-        if (__DEV__) {
-          console.warn(
-            "[ctl] wrapper not found for control",
-            f.controlName,
-            "selectors:",
-            wrapperSel
-          );
+      // Generate aliases for this field (use GLOBAL includeProcess)
+      const aliases = buildNameAliases(f.controlName, f.attribute, includeProcess);
+
+      // Collect all candidate labels from index (map lookups, no DOM queries)
+      const candidates: HTMLElement[] = [];
+      for (const alias of aliases) {
+        const els = labelIndex.get(alias.toLowerCase());
+        if (els) {
+          candidates.push(...els);
         }
-        return;
       }
 
-      // Within each wrapper, find the label element using selectors + text fallback
-      wrappers.forEach((wrap) => {
-        const labelNode = findLabelInWrapper(wrap, f);
-        if (!labelNode) {
-          if (__DEV__) {
-            console.warn(
-              "[ctl] label not found inside wrapper for",
-              f.controlName
-            );
+      // Dedupe candidates within this field (same label from multiple alias keys)
+      const seenThisField = new WeakSet<HTMLElement>();
+      const uniqueCandidates: HTMLElement[] = [];
+      for (const el of candidates) {
+        if (!seenThisField.has(el)) {
+          seenThisField.add(el);
+          uniqueCandidates.push(el);
+        }
+      }
+
+      // Tag each validated candidate (apply to ALL: body + header + BPF)
+      for (const el of uniqueCandidates) {
+        // Check ownership first
+        const existing = el.getAttribute("data-attribute");
+
+        // If already tagged for THIS attribute, ensure class and skip
+        if (existing === f.attribute) {
+          el.classList.add("d365-translate-target");
+          processed.add(el);
+          continue;
+        }
+
+        // If owned by different attribute, skip
+        if (existing && existing !== f.attribute) {
+          continue;
+        }
+
+        // Validate: check if label ID matches any alias
+        let validated = false;
+        if (el.tagName.toLowerCase() === "label") {
+          const id = (el.getAttribute("id") || "").toLowerCase();
+          for (const alias of aliases) {
+            if (id.endsWith(`-${alias.toLowerCase()}-field-label`)) {
+              validated = true;
+              break;
+            }
           }
-          return;
         }
-        labelNode.classList.add("d365-translate-target");
-        labelNode.setAttribute("data-attribute", f.attribute);
-      });
+
+        // Also check data-attribute exact match
+        const da = (el.getAttribute("data-attribute") || "").toLowerCase();
+        for (const alias of aliases) {
+          if (da === alias.toLowerCase()) {
+            validated = true;
+            break;
+          }
+        }
+
+        if (!validated) continue;
+
+        // Tag the label
+        el.classList.add("d365-translate-target");
+        if (!existing) {
+          el.setAttribute("data-attribute", f.attribute);
+        }
+
+        // Mark as processed
+        processed.add(el);
+      }
+
+      // Optional: warn if no labels found for this field
+      if (__DEV__ && candidates.length === 0) {
+        console.warn("[ctl] No label candidates found for", f.controlName, f.attribute);
+      }
     });
-  }
-
-  function findLabelInWrapper(
-    wrapper: HTMLElement,
-    f: Field
-  ): HTMLElement | null {
-    for (const sel of f.labelSelectors) {
-      const node = wrapper.querySelector<HTMLElement>(sel);
-      if (node) return node;
-    }
-    if (f.labelText) {
-      const want = normalizeText(f.labelText);
-      for (const el of Array.from(
-        wrapper.querySelectorAll<HTMLElement>("label, span, div")
-      )) {
-        if (normalizeText(el.textContent || "") === want) return el;
-      }
-    }
-    return null;
-  }
-
-  function normalizeText(s: string): string {
-    return s.replace(/\s+/g, " ").trim().toLowerCase();
-  }
-
-  // CSS.escape polyfill-ish for attribute selectors
-  function cssEscape(s: string): string {
-    try {
-      if (
-        typeof (window as any).CSS !== "undefined" &&
-        typeof (window as any).CSS.escape === "function"
-      ) {
-        return (window as any).CSS.escape(s);
-      }
-    } catch {
-      /* ignore */
-    }
-    return s.replace(/["\\]/g, "\\$&");
   }
 
   function removeExistingTooltips(): void {

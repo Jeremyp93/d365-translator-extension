@@ -55,7 +55,6 @@ jobs:
           prompt: ${{ steps.prompt.outputs.text }}
           claude_args: |
             --max-turns 15
-            # Ensure Claude is allowed to create/submit a PR review (and read the PR diff/files)
             --allowedTools "Task,Bash,Glob,Grep,LS,Read,Edit,MultiEdit,Write,mcp__github__get_me,mcp__github__list_pull_requests,mcp__github__get_pull_request,mcp__github__get_pull_request_diff,mcp__github__get_pull_request_files,mcp__github__create_pending_pull_request_review,mcp__github__add_pull_request_review_comment_to_pending_review,mcp__github__submit_pending_pull_request_review,mcp__github__create_and_submit_pull_request_review"
 
       - name: Add link hint to the run summary
