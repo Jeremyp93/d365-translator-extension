@@ -46,6 +46,7 @@ if (!w.__d365Ctl) {
     openPluginTraceLogsPage: () => Promise<void>;
     openGlobalOptionSetsPage: () => Promise<void>;
     openEntityBrowserPage: () => Promise<void>;
+    openAuditHistory: () => Promise<void>;
   } = {
     enabled: false,
 
@@ -150,7 +151,7 @@ if (!w.__d365Ctl) {
       const clientUrl =
           (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.() ||
           "";
-        
+
       window.postMessage(
           {
             __d365x__: true,
@@ -164,6 +165,47 @@ if (!w.__d365Ctl) {
           },
           "*"
         );
+    },
+
+    async openAuditHistory() {
+      const X = (window as any).Xrm;
+      if (!X) {
+        if (__DEV__) console.warn("[ctl] Xrm not found in this frame.");
+        return;
+      }
+
+      const page = await waitFormReady(500);
+      if (!page) {
+        if (__DEV__) console.warn("[ctl] Form context not ready.");
+        return;
+      }
+
+      const entityLogicalName = page.data.entity.getEntityName?.() ?? "";
+      const recordId = page.data.entity.getId?.() ?? "";
+
+      if (!entityLogicalName || !recordId) {
+        if (__DEV__) console.warn("[ctl] Could not resolve entity/record.");
+        return;
+      }
+
+      // Clean GUID braces
+      const cleanRecordId = recordId.replace(/[{}]/g, '');
+
+      const clientUrl = X?.Utility?.getGlobalContext?.().getClientUrl?.() || "";
+
+      window.postMessage(
+        {
+          __d365x__: true,
+          type: "OPEN_AUDIT_HISTORY",
+          payload: {
+            clientUrl,
+            entityLogicalName,
+            recordId: cleanRecordId,
+            apiVersion: getVersion(),
+          },
+        },
+        "*"
+      );
     },
 
     async enable() {

@@ -24,7 +24,8 @@
         "activeTab",
         "tabs",
         "browsingData",
-        "storage"
+        "storage",
+        "sidePanel"
     ],
     "host_permissions": [
         "https://*.dynamics.com/*"

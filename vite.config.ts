@@ -38,6 +38,9 @@ export default defineConfig(({ mode }) => ({
         // popup UI (html entry)
         popup: resolve(__dirname, 'src/popup/index.html'),
 
+        // side panel UI (html entry)
+        sidepanel: resolve(__dirname, 'src/sidepanel/index.html'),
+
         // scripts that need to be emitted as standalone files
         pageController: resolve(__dirname, 'src/controller/pageController.ts'),
         relay: resolve(__dirname, 'src/relay/relay.ts'),

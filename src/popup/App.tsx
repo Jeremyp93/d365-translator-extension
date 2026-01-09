@@ -102,6 +102,7 @@ export default function App(): JSX.Element {
     openPluginTraceLogsPage,
     openGlobalOptionSetsPage,
     openEntityBrowserPage,
+    openAuditHistoryPage,
     setInfo,
   } = useD365Controller();
 
@@ -288,6 +289,7 @@ export default function App(): JSX.Element {
                 contextChecking={contextChecking}
                 onClearCache={clearCacheAndHardRefresh}
                 onOpenPluginTraceLogs={openPluginTraceLogsPage}
+                onOpenAuditHistory={openAuditHistoryPage}
                 onHoverButton={setHoveredButton}
               />
             )}

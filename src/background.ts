@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-chrome.runtime.onMessage.addListener((msg: any, _sender, _sendResponse) => {
+chrome.runtime.onMessage.addListener((msg: any, sender, _sendResponse) => {
   if (msg?.type === "OPEN_REPORT") {
     const { clientUrl, entity, attribute, labelId, formId, apiVersion } = msg.payload ?? {};
     if (!clientUrl || !entity || !attribute || !labelId || !formId || !apiVersion) return;
@@ -59,5 +59,21 @@ chrome.runtime.onMessage.addListener((msg: any, _sender, _sendResponse) => {
 
     const url = `${base}#/report/entity-browser${qs}`;
     chrome.tabs.create({ url }).catch(() => {});
+  } else if (msg?.type === "OPEN_AUDIT_HISTORY") {
+    const { clientUrl, entityLogicalName, recordId, apiVersion } = msg.payload ?? {};
+    const tabId = sender.tab?.id;
+    if (!tabId || !clientUrl || !entityLogicalName || !recordId || !apiVersion) return;
+
+    // Store context in session storage for the side panel to read
+    // Note: Side panel will be opened by popup (which has user gesture context)
+    chrome.storage.session.set({
+      [`auditContext_${tabId}`]: {
+        clientUrl,
+        entityLogicalName,
+        recordId,
+        apiVersion,
+        timestamp: Date.now()
+      }
+    }).catch(console.error);
   }
 });

@@ -16,6 +16,7 @@ export interface ButtonTooltip {
   pluginTraceLogs: string;
   entityBrowser: string;
   languageSelector: string;
+  auditHistory: string;
 }
 
 export type TooltipKey = keyof ButtonTooltip;

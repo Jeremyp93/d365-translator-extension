@@ -23,4 +23,6 @@ export const BUTTON_TOOLTIPS: ButtonTooltip = {
     'Browse all entities and attributes with translation capabilities',
   languageSelector:
     'Switch your Dynamics 365 UI language. The page will reload automatically to apply the new language.',
+  auditHistory:
+    'View audit history for the current record in a side panel',
 };
