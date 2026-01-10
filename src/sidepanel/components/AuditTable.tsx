@@ -1,10 +1,4 @@
 import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHeaderCell,
-  TableBody,
-  TableCell,
   Badge,
   Text,
   Skeleton,
@@ -15,11 +9,77 @@ import {
 import { ArchiveRegular } from '@fluentui/react-icons';
 import type { ParsedAuditRecord, DisplayNamesMap } from '../../types/audit';
 import { formatAuditValue } from '../../services/auditHistoryService';
-import { spacing } from '../../styles/theme';
+import { spacing, borderRadius } from '../../styles/theme';
 
 const useStyles = makeStyles({
-  table: {
-    width: '100%',
+  cardsContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing.md,
+    padding: spacing.md,
+  },
+  auditCard: {
+    padding: spacing.lg,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: borderRadius.md,
+    backgroundColor: tokens.colorNeutralBackground1,
+    transition: 'box-shadow 0.2s ease',
+    ':hover': {
+      boxShadow: tokens.shadow8,
+    },
+  },
+  cardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+    paddingBottom: spacing.sm,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    flexWrap: 'wrap',
+  },
+  cardBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing.md,
+  },
+  fieldChange: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing.xs,
+  },
+  fieldLabel: {
+    fontWeight: tokens.fontWeightSemibold,
+    fontSize: tokens.fontSizeBase300,
+    color: tokens.colorNeutralForeground2,
+  },
+  valueChange: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingLeft: spacing.md,
+  },
+  beforeValue: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing.xs,
+    padding: spacing.sm,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: borderRadius.sm,
+  },
+  afterValue: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing.xs,
+    padding: spacing.sm,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: borderRadius.sm,
+  },
+  arrow: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase400,
+    fontWeight: tokens.fontWeightSemibold,
   },
   emptyState: {
     textAlign: 'center',
@@ -40,17 +100,6 @@ const useStyles = makeStyles({
   emptyMessage: {
     fontSize: tokens.fontSizeBase300,
     color: tokens.colorNeutralForeground3,
-  },
-  changedField: {
-    display: 'block',
-    marginBottom: spacing.xs,
-  },
-  fieldName: {
-    fontWeight: tokens.fontWeightSemibold,
-  },
-  arrow: {
-    color: tokens.colorNeutralForeground3,
-    margin: `0 ${spacing.xs}`,
   },
 });
 
@@ -100,42 +149,31 @@ export function AuditTable({
 
   if (loading) {
     return (
-      <Table className={styles.table}>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Created On</TableHeaderCell>
-            <TableHeaderCell>User</TableHeaderCell>
-            <TableHeaderCell>Action</TableHeaderCell>
-            <TableHeaderCell>Changed Fields</TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {[1, 2, 3].map((i) => (
-            <TableRow key={i}>
-              <TableCell>
-                <Skeleton>
-                  <SkeletonItem />
-                </Skeleton>
-              </TableCell>
-              <TableCell>
-                <Skeleton>
-                  <SkeletonItem />
-                </Skeleton>
-              </TableCell>
-              <TableCell>
-                <Skeleton>
-                  <SkeletonItem />
-                </Skeleton>
-              </TableCell>
-              <TableCell>
-                <Skeleton>
-                  <SkeletonItem />
-                </Skeleton>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <div className={styles.cardsContainer}>
+        {[1, 2, 3].map((i) => (
+          <div key={i} className={styles.auditCard}>
+            <div className={styles.cardHeader}>
+              <Skeleton>
+                <SkeletonItem style={{ width: '80px' }} />
+              </Skeleton>
+              <Skeleton>
+                <SkeletonItem style={{ width: '200px' }} />
+              </Skeleton>
+              <Skeleton>
+                <SkeletonItem style={{ width: '150px' }} />
+              </Skeleton>
+            </div>
+            <div className={styles.cardBody}>
+              <Skeleton>
+                <SkeletonItem />
+              </Skeleton>
+              <Skeleton>
+                <SkeletonItem />
+              </Skeleton>
+            </div>
+          </div>
+        ))}
+      </div>
     );
   }
 
@@ -152,53 +190,61 @@ export function AuditTable({
   }
 
   return (
-    <Table className={styles.table}>
-      <TableHeader>
-        <TableRow>
-          <TableHeaderCell>Created On</TableHeaderCell>
-          <TableHeaderCell>User</TableHeaderCell>
-          <TableHeaderCell>Action</TableHeaderCell>
-          <TableHeaderCell>Changed Fields</TableHeaderCell>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {records.map((record) => (
-          <TableRow key={record.auditId}>
-            <TableCell>{formatDate(record.createdOn)}</TableCell>
-            <TableCell>
-              <Text size={200}>
-                {record.userName
-                  ? `${record.userName} (${record.userId})`
-                  : record.userId
-                }
+    <div className={styles.cardsContainer}>
+      {records.map((record) => (
+        <div key={record.auditId} className={styles.auditCard}>
+          {/* Card Header */}
+          <div className={styles.cardHeader}>
+            <Badge appearance={getBadgeAppearance(record.operation)}>
+              {record.operation}
+            </Badge>
+            <Text size={300} weight="semibold">
+              {record.userName
+                ? `${record.userName} (${record.userId})`
+                : record.userId}
+            </Text>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+              {formatDate(record.createdOn)}
+            </Text>
+          </div>
+
+          {/* Card Body - Changed Fields */}
+          <div className={styles.cardBody}>
+            {record.changedFields.length === 0 ? (
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                (No field changes recorded)
               </Text>
-            </TableCell>
-            <TableCell>
-              <Badge appearance={getBadgeAppearance(record.operation)}>
-                {record.operation}
-              </Badge>
-            </TableCell>
-            <TableCell>
-              {record.changedFields.length === 0 ? (
-                <Text size={200}>(No field changes recorded)</Text>
-              ) : (
-                record.changedFields.map((field, idx) => (
-                  <div key={idx} className={styles.changedField}>
-                    <Text className={styles.fieldName}>
-                      {getFieldLabel(field.fieldName)}:
-                    </Text>
-                    <Text size={200}>
-                      {formatAuditValue(field.oldValue)}
-                      <span className={styles.arrow}>→</span>
-                      {formatAuditValue(field.newValue)}
-                    </Text>
+            ) : (
+              record.changedFields.map((field, idx) => (
+                <div key={idx} className={styles.fieldChange}>
+                  <Text className={styles.fieldLabel}>
+                    {getFieldLabel(field.fieldName)}
+                  </Text>
+                  <div className={styles.valueChange}>
+                    <div className={styles.beforeValue}>
+                      <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                        Before:
+                      </Text>
+                      <Text size={200}>
+                        {formatAuditValue(field.oldValue)}
+                      </Text>
+                    </div>
+                    <div className={styles.arrow}>→</div>
+                    <div className={styles.afterValue}>
+                      <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                        After:
+                      </Text>
+                      <Text size={200}>
+                        {formatAuditValue(field.newValue)}
+                      </Text>
+                    </div>
                   </div>
-                ))
-              )}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
