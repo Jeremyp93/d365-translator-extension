@@ -145,9 +145,12 @@ export function AuditTable({
   // Get badge color based on operation type
   const getBadgeColor = (
     operation: string
-  ): 'success' | 'warning' | 'danger' => {
-    if (operation === 'Create') return 'success';
-    if (operation === 'Delete') return 'danger';
+  ): 'success' | 'warning' | 'danger' | 'important' => {
+    const op = operation.toLowerCase();
+    if (op.includes('create') || op.includes('activate')) return 'success';
+    if (op.includes('delete') || op.includes('deactivate')) return 'danger';
+    if (op.includes('associate') || op.includes('disassociate') || 
+        op.includes('add') || op.includes('remove')) return 'important';
     return 'warning';
   };
 
@@ -223,6 +226,11 @@ export function AuditTable({
                 <div key={idx} className={styles.fieldChange}>
                   <Text className={styles.fieldLabel}>
                     {getFieldLabel(field.fieldName)}
+                    {field.principalId && (
+                      <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginLeft: spacing.xs }}>
+                        {' '}({record.operation.toLowerCase().includes('unshare') ? 'Unshared with' : 'Shared with'}: {field.principalName ? `${field.principalName} (${field.principalId})` : field.principalId})
+                      </Text>
+                    )}
                   </Text>
                   <div className={styles.valueChange}>
                     <div className={styles.beforeValue}>

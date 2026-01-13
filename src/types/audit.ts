@@ -15,8 +15,34 @@ export interface AuditRecord {
   transactionid: string;
 }
 
-export interface AuditDetail {
+export interface TargetRecord {
   '@odata.type': string;
+  [key: string]: unknown; // Entity ID and other properties
+}
+
+export interface Principal {
+  '@odata.type': string;
+  ownerid: string; // User or Team ID
+  [key: string]: unknown;
+}
+
+export interface RelationshipAuditDetail {
+  '@odata.type': '#Microsoft.Dynamics.CRM.RelationshipAuditDetail';
+  RelationshipName: string;
+  AuditRecord: AuditRecord;
+  TargetRecords?: TargetRecord[];
+}
+
+export interface ShareAuditDetail {
+  '@odata.type': '#Microsoft.Dynamics.CRM.ShareAuditDetail';
+  OldPrivileges: string;
+  NewPrivileges: string;
+  AuditRecord: AuditRecord;
+  Principal: Principal;
+}
+
+export interface AttributeAuditDetail {
+  '@odata.type': '#Microsoft.Dynamics.CRM.AttributeAuditDetail';
   InvalidNewValueAttributes: string[];
   LocLabelLanguageCode: number;
   DeletedAttributes?: {
@@ -29,6 +55,8 @@ export interface AuditDetail {
   NewValue?: Record<string, unknown>;
 }
 
+export type AuditDetail = AttributeAuditDetail | RelationshipAuditDetail | ShareAuditDetail;
+
 export interface AuditHistoryResponse {
   '@odata.context': string;
   AuditDetailCollection: {
@@ -40,16 +68,20 @@ export interface AuditHistoryResponse {
 }
 
 export interface ChangedField {
-  fieldName: string; // Schema name
+  fieldName: string; // Schema name or 'Relationship' for relationship changes
   displayName?: string; // Optional display name
   oldValue: unknown;
   newValue: unknown;
+  relationshipName?: string; // For relationship audit details
+  targetRecords?: TargetRecord[]; // For associate/disassociate actions
+  principalId?: string; // For share audit details
+  principalName?: string; // For share audit details (fetched separately)
 }
 
 export interface ParsedAuditRecord {
   auditId: string;
   createdOn: Date;
-  operation: 'Create' | 'Update' | 'Delete';
+  operation: string; // Mapped from action field (preferred) or operation field
   userId: string;
   userName?: string; // Full name of the user (optional, fetched separately)
   changedFields: ChangedField[];

@@ -4,6 +4,7 @@ import {
   parseAuditHistory,
   getAttributeDisplayNames,
   getUserNames,
+  getPrincipalNames,
 } from '../services/auditHistoryService';
 import type { ParsedAuditRecord, DisplayNamesMap } from '../types/audit';
 
@@ -68,10 +69,24 @@ export function useAuditHistory(
         const uniqueUserIds = [...new Set(parsedRecords.map(r => r.userId))];
         const userNamesMap = await getUserNames(clientUrl, uniqueUserIds, apiVersion);
 
-        // Enrich records with user names
+        // Fetch principal names for all unique principal IDs (from share audit details)
+        const uniquePrincipalIds = [...new Set(
+          parsedRecords.flatMap(r => 
+            r.changedFields
+              .filter(f => f.principalId)
+              .map(f => f.principalId!)
+          )
+        )];
+        const principalNamesMap = await getPrincipalNames(clientUrl, uniquePrincipalIds, apiVersion);
+
+        // Enrich records with user names and principal names
         const enrichedRecords = parsedRecords.map(record => ({
           ...record,
           userName: userNamesMap[record.userId] || record.userId,
+          changedFields: record.changedFields.map(field => ({
+            ...field,
+            principalName: field.principalId ? principalNamesMap[field.principalId] : undefined,
+          })),
         }));
 
         setRecords(enrichedRecords);

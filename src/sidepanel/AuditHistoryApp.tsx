@@ -98,7 +98,8 @@ export function AuditHistoryApp(): JSX.Element {
     context?.clientUrl || '',
     context?.entityLogicalName || '',
     context?.recordId || '',
-    context?.apiVersion || 'v9.2'
+    context?.apiVersion || 'v9.2',
+    20
   );
 
   return (

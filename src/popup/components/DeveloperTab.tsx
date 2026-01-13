@@ -3,7 +3,7 @@
  */
 
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { ArrowClockwise24Regular, Sparkle24Regular, History24Regular } from '@fluentui/react-icons';
+import { ArrowClockwise24Regular, Sparkle24Regular } from '@fluentui/react-icons';
 
 import { spacing } from '../../styles/theme';
 import { ActionButton } from './ActionButton';
@@ -41,7 +41,6 @@ interface DeveloperTabProps {
   contextChecking: boolean;
   onClearCache: () => void;
   onOpenPluginTraceLogs: () => void;
-  onOpenAuditHistory: () => void;
   onHoverButton: (key: TooltipKey | null) => void;
 }
 
@@ -51,7 +50,6 @@ export function DeveloperTab({
   contextChecking,
   onClearCache,
   onOpenPluginTraceLogs,
-  onOpenAuditHistory,
   onHoverButton,
 }: DeveloperTabProps) {
   const styles = useStyles();
@@ -82,17 +80,6 @@ export function DeveloperTab({
             tooltipKey="pluginTraceLogs"
           >
             Plugin Trace Logs
-          </ActionButton>
-
-          <ActionButton
-            icon={<History24Regular />}
-            onClick={onOpenAuditHistory}
-            disabled={busy || !isDynamicsEnv || contextChecking}
-            onMouseEnter={() => onHoverButton('auditHistory')}
-            onMouseLeave={() => onHoverButton(null)}
-            tooltipKey="auditHistory"
-          >
-            Audit History
           </ActionButton>
         </div>
       </div>

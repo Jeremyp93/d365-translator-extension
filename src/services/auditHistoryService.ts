@@ -6,6 +6,7 @@
 import { fetchJson } from './d365Api';
 import { buildApiUrl, buildAttributeUrl } from '../utils/urlBuilders';
 import { pluralizeEntityName } from '../utils/entityNameUtils';
+import { AUDIT_ACTION, AUDIT_OPERATION } from '../types/auditEnums';
 import type {
   AuditHistoryResponse,
   AuditDetail,
@@ -63,8 +64,42 @@ export async function getAuditHistory(
 export function parseAuditDetail(auditDetail: AuditDetail): ChangedField[] {
   const changedFields: ChangedField[] = [];
 
-  const oldValue = auditDetail.OldValue || {};
-  const newValue = auditDetail.NewValue || {};
+  // Handle ShareAuditDetail (actions 14, 48, 49: Share, Modify Share, Unshare)
+  if (auditDetail['@odata.type'] === '#Microsoft.Dynamics.CRM.ShareAuditDetail') {
+    const shareDetail = auditDetail as any;
+    const principalId = shareDetail.Principal?.ownerid;
+    
+    changedFields.push({
+      fieldName: 'Access Privileges',
+      displayName: 'Access Privileges',
+      oldValue: shareDetail.OldPrivileges || 'None',
+      newValue: shareDetail.NewPrivileges || 'None',
+      principalId,
+    });
+    return changedFields;
+  }
+
+  // Handle RelationshipAuditDetail (actions 33 & 34: Associate/Disassociate)
+  if (auditDetail['@odata.type'] === '#Microsoft.Dynamics.CRM.RelationshipAuditDetail') {
+    const relDetail = auditDetail as any;
+    const action = relDetail.AuditRecord.action;
+    const isAssociate = action === 33 || action === 35; // Associate Entities or Add Members
+    
+    changedFields.push({
+      fieldName: 'Relationship',
+      displayName: relDetail.RelationshipName || 'Relationship',
+      oldValue: isAssociate ? null : (relDetail.TargetRecords || []),
+      newValue: isAssociate ? (relDetail.TargetRecords || []) : null,
+      relationshipName: relDetail.RelationshipName,
+      targetRecords: relDetail.TargetRecords || [],
+    });
+    return changedFields;
+  }
+
+  // Handle AttributeAuditDetail (standard field changes)
+  const attrDetail = auditDetail as any;
+  const oldValue = attrDetail.OldValue || {};
+  const newValue = attrDetail.NewValue || {};
 
   // Get all unique field names from both old and new values
   const fieldNames = new Set([
@@ -95,10 +130,17 @@ export function parseAuditHistory(response: AuditHistoryResponse): ParsedAuditRe
   return auditDetails.map((detail) => {
     const { AuditRecord } = detail;
 
-    // Map operation code to string
-    let operation: 'Create' | 'Update' | 'Delete' = 'Update';
-    if (AuditRecord.operation === 1) operation = 'Create';
-    else if (AuditRecord.operation === 3) operation = 'Delete';
+    // Prefer action field over operation for display (action is more specific)
+    // Fallback to operation if action is not available or unknown
+    let operation: string;
+    if (AuditRecord.action !== undefined && AuditRecord.action in AUDIT_ACTION) {
+      operation = AUDIT_ACTION[AuditRecord.action];
+    } else if (AuditRecord.operation in AUDIT_OPERATION) {
+      operation = AUDIT_OPERATION[AuditRecord.operation];
+    } else {
+      // Final fallback
+      operation = `Unknown (Action: ${AuditRecord.action}, Operation: ${AuditRecord.operation})`;
+    }
 
     return {
       auditId: AuditRecord.auditid,
@@ -231,6 +273,63 @@ export async function getUserNames(
 }
 
 /**
+ * Fetch principal names (users or teams) for a list of principal IDs
+ * Used to display principal names in share audit details
+ */
+export async function getPrincipalNames(
+  baseUrl: string,
+  principalIds: string[],
+  apiVersion: string = 'v9.2'
+): Promise<UserNamesMap> {
+  if (principalIds.length === 0) {
+    return {};
+  }
+
+  const principalNamesMap: UserNamesMap = {};
+  const api = buildApiUrl(baseUrl, apiVersion);
+
+  // Fetch principals in batches to avoid too many concurrent requests
+  const batchSize = 10;
+  for (let i = 0; i < principalIds.length; i += batchSize) {
+    const batch = principalIds.slice(i, i + batchSize);
+
+    await Promise.all(
+      batch.map(async (principalId) => {
+        try {
+          // Try fetching as systemuser first
+          let url = `${api}/systemusers(${principalId})?$select=fullname`;
+          let result = await fetchJson(url);
+
+          if (result.fullname) {
+            principalNamesMap[principalId] = result.fullname;
+          } else {
+            principalNamesMap[principalId] = principalId;
+          }
+        } catch (userError) {
+          // If not a user, try fetching as team
+          try {
+            const url = `${api}/teams(${principalId})?$select=name`;
+            const result = await fetchJson(url);
+
+            if (result.name) {
+              principalNamesMap[principalId] = `${result.name} (Team)`;
+            } else {
+              principalNamesMap[principalId] = principalId;
+            }
+          } catch (teamError) {
+            // If both fail, use principal ID
+            console.warn(`Failed to fetch principal name for ${principalId}:`, userError);
+            principalNamesMap[principalId] = principalId;
+          }
+        }
+      })
+    );
+  }
+
+  return principalNamesMap;
+}
+
+/**
  * Format a value for display in the audit table
  */
 export function formatAuditValue(value: unknown): string {
@@ -246,6 +345,33 @@ export function formatAuditValue(value: unknown): string {
     // Handle dates
     if (value instanceof Date) {
       return value.toLocaleString();
+    }
+
+    // Handle target records array (for relationship changes)
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return '(empty)';
+      }
+      
+      // Format each record, extracting the ID
+      const formattedRecords = value.map((record) => {
+        if (typeof record === 'object' && record !== null) {
+          // Extract entity type from @odata.type
+          const odataType = (record as any)['@odata.type'];
+          const entityType = odataType ? odataType.replace('#Microsoft.Dynamics.CRM.', '') : 'record';
+          
+          // Find the ID field (usually ends with 'id')
+          const idField = Object.keys(record).find(key => 
+            key.endsWith('id') && key !== '@odata.type'
+          );
+          const id = idField ? (record as any)[idField] : 'unknown';
+          
+          return `${entityType} (${id})`;
+        }
+        return String(record);
+      });
+      
+      return formattedRecords.join(', ');
     }
 
     // Handle formatted values (e.g., @OData.Community.Display.V1.FormattedValue)

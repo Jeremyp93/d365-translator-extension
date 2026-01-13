@@ -278,6 +278,7 @@ export default function App(): JSX.Element {
                 onOpenFormReport={openFormReportPage}
                 onOpenGlobalOptionSets={openGlobalOptionSetsPage}
                 onOpenEntityBrowser={openEntityBrowserPage}
+                onOpenAuditHistory={openAuditHistoryPage}
                 onHoverButton={setHoveredButton}
               />
             )}
@@ -289,7 +290,6 @@ export default function App(): JSX.Element {
                 contextChecking={contextChecking}
                 onClearCache={clearCacheAndHardRefresh}
                 onOpenPluginTraceLogs={openPluginTraceLogsPage}
-                onOpenAuditHistory={openAuditHistoryPage}
                 onHoverButton={setHoveredButton}
               />
             )}
