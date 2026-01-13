@@ -44,11 +44,6 @@ export function DisplayNamesToggle({
         />
         {loading && <Spinner size="tiny" />}
       </div>
-      <Text className={styles.helperText}>
-        {checked
-          ? 'Showing friendly field names (requires API call)'
-          : 'Showing schema/logical names (faster)'}
-      </Text>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import {
   Badge,
+  Card,
   Text,
   Skeleton,
   SkeletonItem,
@@ -8,7 +9,7 @@ import {
 } from '@fluentui/react-components';
 import { ArchiveRegular } from '@fluentui/react-icons';
 import type { ParsedAuditRecord, DisplayNamesMap } from '../../types/audit';
-import { formatAuditValue } from '../../services/auditHistoryService';
+import { formatAuditValue, normalizeLookupFieldName } from '../../services/auditHistoryService';
 import { spacing, borderRadius } from '../../styles/theme';
 
 const useStyles = makeStyles({
@@ -20,12 +21,12 @@ const useStyles = makeStyles({
   },
   auditCard: {
     padding: spacing.lg,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: borderRadius.md,
-    backgroundColor: tokens.colorNeutralBackground1,
-    transition: 'box-shadow 0.2s ease',
+    boxShadow: tokens.shadow4,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: tokens.colorNeutralBackground4,
     ':hover': {
       boxShadow: tokens.shadow8,
+      backgroundColor: tokens.colorNeutralBackground5,
     },
   },
   cardHeader: {
@@ -50,7 +51,7 @@ const useStyles = makeStyles({
   fieldLabel: {
     fontWeight: tokens.fontWeightSemibold,
     fontSize: tokens.fontSizeBase300,
-    color: tokens.colorNeutralForeground2,
+    color: tokens.colorNeutralForeground1,
   },
   valueChange: {
     display: 'flex',
@@ -66,6 +67,7 @@ const useStyles = makeStyles({
     padding: spacing.sm,
     backgroundColor: tokens.colorNeutralBackground2,
     borderRadius: borderRadius.sm,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   afterValue: {
     flex: 1,
@@ -75,6 +77,7 @@ const useStyles = makeStyles({
     padding: spacing.sm,
     backgroundColor: tokens.colorNeutralBackground2,
     borderRadius: borderRadius.sm,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   arrow: {
     color: tokens.colorNeutralForeground3,
@@ -135,11 +138,12 @@ export function AuditTable({
     if (showDisplayNames && displayNamesMap[fieldName]) {
       return displayNamesMap[fieldName];
     }
-    return fieldName;
+    // Normalize lookup field names (remove _ prefix and _value suffix)
+    return normalizeLookupFieldName(fieldName);
   };
 
-  // Get badge appearance based on operation type
-  const getBadgeAppearance = (
+  // Get badge color based on operation type
+  const getBadgeColor = (
     operation: string
   ): 'success' | 'warning' | 'danger' => {
     if (operation === 'Create') return 'success';
@@ -151,7 +155,7 @@ export function AuditTable({
     return (
       <div className={styles.cardsContainer}>
         {[1, 2, 3].map((i) => (
-          <div key={i} className={styles.auditCard}>
+          <Card key={i} className={styles.auditCard}>
             <div className={styles.cardHeader}>
               <Skeleton>
                 <SkeletonItem style={{ width: '80px' }} />
@@ -171,7 +175,7 @@ export function AuditTable({
                 <SkeletonItem />
               </Skeleton>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
     );
@@ -192,10 +196,10 @@ export function AuditTable({
   return (
     <div className={styles.cardsContainer}>
       {records.map((record) => (
-        <div key={record.auditId} className={styles.auditCard}>
+        <Card key={record.auditId} className={styles.auditCard}>
           {/* Card Header */}
           <div className={styles.cardHeader}>
-            <Badge appearance={getBadgeAppearance(record.operation)}>
+            <Badge color={getBadgeColor(record.operation)}>
               {record.operation}
             </Badge>
             <Text size={300} weight="semibold">
@@ -243,7 +247,7 @@ export function AuditTable({
               ))
             )}
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );

@@ -111,6 +111,24 @@ export function parseAuditHistory(response: AuditHistoryResponse): ParsedAuditRe
 }
 
 /**
+ * Normalize lookup field names from OData format
+ * Example: _msdyn_resourcerequirement_value -> msdyn_resourcerequirement
+ */
+export function normalizeLookupFieldName(fieldName: string): string {
+  if (fieldName.startsWith('_') && fieldName.endsWith('_value')) {
+    return fieldName.slice(1, -6);
+  }
+  return fieldName;
+}
+
+/**
+ * Check if a field name is a lookup field based on OData naming convention
+ */
+export function isLookupField(fieldName: string): boolean {
+  return fieldName.startsWith('_') && fieldName.endsWith('_value');
+}
+
+/**
  * Fetch display names for a list of attributes
  * Used when the "Show Display Names" toggle is enabled
  */
@@ -134,11 +152,14 @@ export async function getAttributeDisplayNames(
     await Promise.all(
       batch.map(async (attrName) => {
         try {
+          // Normalize lookup field names before fetching metadata
+          const normalizedName = normalizeLookupFieldName(attrName);
+
           const url = buildAttributeUrl({
             baseUrl,
             apiVersion,
             entityLogicalName,
-            attributeLogicalName: attrName,
+            attributeLogicalName: normalizedName,
             select: ['LogicalName', 'DisplayName'],
           });
 
@@ -146,15 +167,16 @@ export async function getAttributeDisplayNames(
 
           // Extract display name from localized labels
           if (result.DisplayName?.LocalizedLabels?.[0]?.Label) {
+            // Store with original field name as key
             displayNamesMap[attrName] = result.DisplayName.LocalizedLabels[0].Label;
           } else {
-            // Fallback to schema name if no display name
-            displayNamesMap[attrName] = attrName;
+            // Fallback to normalized name if no display name
+            displayNamesMap[attrName] = normalizedName;
           }
         } catch (error) {
-          // If fetching fails for a specific attribute, use schema name
+          // If fetching fails for a specific attribute, use normalized name
           console.warn(`Failed to fetch display name for ${attrName}:`, error);
-          displayNamesMap[attrName] = attrName;
+          displayNamesMap[attrName] = normalizeLookupFieldName(attrName);
         }
       })
     );
