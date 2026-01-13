@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import type { SwitchOnChangeData } from '@fluentui/react-components';
 import {
   getAuditHistory,
   parseAuditHistory,
@@ -21,11 +22,18 @@ interface UseAuditHistoryResult {
   nextPage: () => void;
   prevPage: () => void;
   refresh: () => void;
-  toggleDisplayNames: () => void;
+  toggleDisplayNames: (ev: React.ChangeEvent<HTMLInputElement>, data: SwitchOnChangeData) => void;
 }
 
 /**
  * Hook to manage audit history fetching, pagination, and display names toggle
+ *
+ * Note on Pagination:
+ * - D365 RetrieveRecordChangeHistory supports bidirectional paging with cookies
+ * - Cookies are stored per page to enable both forward and backward navigation
+ * - nextPage() uses the cookie from the current page's response
+ * - prevPage() uses the cookie from the page before the previous page
+ * - Each page's cookie is the key to fetch the NEXT page
  */
 export function useAuditHistory(
   clientUrl: string,
@@ -39,13 +47,17 @@ export function useAuditHistory(
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
+
+  // Store paging cookies and hasMore per page for bidirectional navigation
+  const [cookiesByPage, setCookiesByPage] = useState<Record<number, string | undefined>>({});
+  const [hasMoreByPage, setHasMoreByPage] = useState<Record<number, boolean>>({});
+
   const [showDisplayNames, setShowDisplayNames] = useState(false);
   const [displayNamesMap, setDisplayNamesMap] = useState<DisplayNamesMap>({});
   const [displayNamesLoading, setDisplayNamesLoading] = useState(false);
 
   const fetchPage = useCallback(
-    async (page: number) => {
+    async (page: number, cookie?: string) => {
       if (!clientUrl || !entityLogicalName || !recordId) {
         return;
       }
@@ -60,7 +72,8 @@ export function useAuditHistory(
           recordId,
           page,
           pageSize,
-          apiVersion
+          apiVersion,
+          cookie
         );
 
         const parsedRecords = parseAuditHistory(response);
@@ -71,7 +84,7 @@ export function useAuditHistory(
 
         // Fetch principal names for all unique principal IDs (from share audit details)
         const uniquePrincipalIds = [...new Set(
-          parsedRecords.flatMap(r => 
+          parsedRecords.flatMap(r =>
             r.changedFields
               .filter(f => f.principalId)
               .map(f => f.principalId!)
@@ -91,7 +104,17 @@ export function useAuditHistory(
 
         setRecords(enrichedRecords);
         setTotalCount(response.AuditDetailCollection.TotalRecordCount);
-        setHasMore(response.AuditDetailCollection.MoreRecords);
+
+        // Store cookie and hasMore for THIS page (used when navigating to next page)
+        setCookiesByPage(prev => ({
+          ...prev,
+          [page]: response.AuditDetailCollection.PagingCookie
+        }));
+        setHasMoreByPage(prev => ({
+          ...prev,
+          [page]: response.AuditDetailCollection.MoreRecords
+        }));
+
         setCurrentPage(page);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -134,39 +157,73 @@ export function useAuditHistory(
     } finally {
       setDisplayNamesLoading(false);
     }
-  }, [clientUrl, entityLogicalName, records]);
+  }, [clientUrl, entityLogicalName, records, apiVersion]);
 
   // Initial fetch
   useEffect(() => {
     fetchPage(1);
   }, [fetchPage]);
 
-  // Fetch display names when toggle is enabled
+  // Fetch display names when toggle is enabled or when page changes
   useEffect(() => {
-    if (showDisplayNames && Object.keys(displayNamesMap).length === 0) {
+    if (!showDisplayNames) {
+      return;
+    }
+
+    // Extract current page's field names
+    const currentFieldNames = new Set<string>();
+    records.forEach((record) => {
+      record.changedFields.forEach((field) => {
+        currentFieldNames.add(field.fieldName);
+      });
+    });
+
+    // Find fields that don't have display names yet
+    const missingFields = Array.from(currentFieldNames).filter(
+      (fieldName) => !(fieldName in displayNamesMap)
+    );
+
+    // Fetch display names only for missing fields
+    if (missingFields.length > 0) {
       fetchDisplayNames();
     }
-  }, [showDisplayNames, displayNamesMap, fetchDisplayNames]);
+  }, [showDisplayNames, records, displayNamesMap, fetchDisplayNames]);
 
   const nextPage = useCallback(() => {
-    if (hasMore) {
-      fetchPage(currentPage + 1);
+    const hasMore = hasMoreByPage[currentPage];
+    const cookie = cookiesByPage[currentPage];
+
+    if (hasMore && cookie) {
+      fetchPage(currentPage + 1, cookie);
     }
-  }, [hasMore, currentPage, fetchPage]);
+  }, [currentPage, cookiesByPage, hasMoreByPage, fetchPage]);
 
   const prevPage = useCallback(() => {
     if (currentPage > 1) {
-      fetchPage(currentPage - 1);
+      // Use cookie from page N-2 to fetch page N-1
+      // (Page 1's cookie fetches Page 2, so to get Page 2 we need Page 1's cookie)
+      const prevPageCookie = cookiesByPage[currentPage - 2];
+      fetchPage(currentPage - 1, prevPageCookie);
     }
-  }, [currentPage, fetchPage]);
+  }, [currentPage, cookiesByPage, fetchPage]);
 
   const refresh = useCallback(() => {
-    fetchPage(currentPage);
-  }, [currentPage, fetchPage]);
+    if (currentPage === 1) {
+      // Page 1: no cookie needed
+      fetchPage(1);
+    } else {
+      // Other pages: use cookie from previous page
+      const prevPageCookie = cookiesByPage[currentPage - 1];
+      fetchPage(currentPage, prevPageCookie);
+    }
+  }, [currentPage, cookiesByPage, fetchPage]);
 
-  const toggleDisplayNames = useCallback(() => {
-    setShowDisplayNames((prev) => !prev);
-  }, []);
+  const toggleDisplayNames = useCallback(
+    (_ev: React.ChangeEvent<HTMLInputElement>, data: SwitchOnChangeData) => {
+      setShowDisplayNames(data.checked);
+    },
+    []
+  );
 
   return {
     records,
@@ -174,7 +231,7 @@ export function useAuditHistory(
     error,
     currentPage,
     totalCount,
-    hasMore,
+    hasMore: hasMoreByPage[currentPage] || false,
     showDisplayNames,
     displayNamesMap,
     displayNamesLoading,

@@ -10,6 +10,9 @@ import { AUDIT_ACTION, AUDIT_OPERATION } from '../types/auditEnums';
 import type {
   AuditHistoryResponse,
   AuditDetail,
+  ShareAuditDetail,
+  RelationshipAuditDetail,
+  AttributeAuditDetail,
   ChangedField,
   ParsedAuditRecord,
   DisplayNamesMap,
@@ -25,7 +28,8 @@ export async function getAuditHistory(
   recordId: string,
   pageNumber: number = 1,
   pageSize: number = 50,
-  apiVersion: string = 'v9.2'
+  apiVersion: string = 'v9.2',
+  pagingCookie?: string
 ): Promise<AuditHistoryResponse> {
   const api = buildApiUrl(baseUrl, apiVersion);
 
@@ -36,13 +40,23 @@ export async function getAuditHistory(
     JSON.stringify({ '@odata.id': `${entitySetName}(${recordId})` })
   );
 
-  const pagingInfo = encodeURIComponent(
-    JSON.stringify({
-      PageNumber: pageNumber,
-      Count: pageSize,
-      ReturnTotalRecordCount: true,
-    })
-  );
+  const pagingInfoObj: {
+    PageNumber: number;
+    Count: number;
+    ReturnTotalRecordCount: boolean;
+    PagingCookie?: string;
+  } = {
+    PageNumber: pageNumber,
+    Count: pageSize,
+    ReturnTotalRecordCount: true,
+  };
+
+  // Include paging cookie for subsequent pages
+  if (pagingCookie) {
+    pagingInfoObj.PagingCookie = pagingCookie;
+  }
+
+  const pagingInfo = encodeURIComponent(JSON.stringify(pagingInfoObj));
 
   const url = `${api}/RetrieveRecordChangeHistory(Target=@target,PagingInfo=@paginginfo)?@target=${target}&@paginginfo=${pagingInfo}`;
 
@@ -59,16 +73,37 @@ export async function getAuditHistory(
 }
 
 /**
+ * Type guard to check if audit detail is ShareAuditDetail
+ */
+function isShareAuditDetail(detail: AuditDetail): detail is ShareAuditDetail {
+  return detail['@odata.type'] === '#Microsoft.Dynamics.CRM.ShareAuditDetail';
+}
+
+/**
+ * Type guard to check if audit detail is RelationshipAuditDetail
+ */
+function isRelationshipAuditDetail(detail: AuditDetail): detail is RelationshipAuditDetail {
+  return detail['@odata.type'] === '#Microsoft.Dynamics.CRM.RelationshipAuditDetail';
+}
+
+/**
+ * Type guard to check if audit detail is AttributeAuditDetail
+ */
+function isAttributeAuditDetail(detail: AuditDetail): detail is AttributeAuditDetail {
+  return detail['@odata.type'] === '#Microsoft.Dynamics.CRM.AttributeAuditDetail';
+}
+
+/**
  * Parse an AuditDetail object to extract changed fields with old/new values
  */
 export function parseAuditDetail(auditDetail: AuditDetail): ChangedField[] {
   const changedFields: ChangedField[] = [];
 
   // Handle ShareAuditDetail (actions 14, 48, 49: Share, Modify Share, Unshare)
-  if (auditDetail['@odata.type'] === '#Microsoft.Dynamics.CRM.ShareAuditDetail') {
-    const shareDetail = auditDetail as any;
+  if (isShareAuditDetail(auditDetail)) {
+    const shareDetail: ShareAuditDetail = auditDetail;
     const principalId = shareDetail.Principal?.ownerid;
-    
+
     changedFields.push({
       fieldName: 'Access Privileges',
       displayName: 'Access Privileges',
@@ -80,11 +115,11 @@ export function parseAuditDetail(auditDetail: AuditDetail): ChangedField[] {
   }
 
   // Handle RelationshipAuditDetail (actions 33 & 34: Associate/Disassociate)
-  if (auditDetail['@odata.type'] === '#Microsoft.Dynamics.CRM.RelationshipAuditDetail') {
-    const relDetail = auditDetail as any;
+  if (isRelationshipAuditDetail(auditDetail)) {
+    const relDetail: RelationshipAuditDetail = auditDetail;
     const action = relDetail.AuditRecord.action;
     const isAssociate = action === 33 || action === 35; // Associate Entities or Add Members
-    
+
     changedFields.push({
       fieldName: 'Relationship',
       displayName: relDetail.RelationshipName || 'Relationship',
@@ -97,27 +132,32 @@ export function parseAuditDetail(auditDetail: AuditDetail): ChangedField[] {
   }
 
   // Handle AttributeAuditDetail (standard field changes)
-  const attrDetail = auditDetail as any;
-  const oldValue = attrDetail.OldValue || {};
-  const newValue = attrDetail.NewValue || {};
+  if (isAttributeAuditDetail(auditDetail)) {
+    const attrDetail: AttributeAuditDetail = auditDetail;
+    const oldValue = attrDetail.OldValue || {};
+    const newValue = attrDetail.NewValue || {};
 
-  // Get all unique field names from both old and new values
-  const fieldNames = new Set([
-    ...Object.keys(oldValue),
-    ...Object.keys(newValue),
-  ]);
+    // Get all unique field names from both old and new values
+    const fieldNames = new Set([
+      ...Object.keys(oldValue),
+      ...Object.keys(newValue),
+    ]);
 
-  // Exclude @odata.type field
-  fieldNames.delete('@odata.type');
+    // Exclude @odata.type field
+    fieldNames.delete('@odata.type');
 
-  for (const fieldName of fieldNames) {
-    changedFields.push({
-      fieldName,
-      oldValue: oldValue[fieldName],
-      newValue: newValue[fieldName],
-    });
+    for (const fieldName of fieldNames) {
+      changedFields.push({
+        fieldName,
+        oldValue: oldValue[fieldName],
+        newValue: newValue[fieldName],
+      });
+    }
+
+    return changedFields;
   }
 
+  // This should never happen if all AuditDetail types are handled
   return changedFields;
 }
 
@@ -318,7 +358,7 @@ export async function getPrincipalNames(
             }
           } catch (teamError) {
             // If both fail, use principal ID
-            console.warn(`Failed to fetch principal name for ${principalId}:`, userError);
+            console.warn(`Failed to fetch principal name for ${principalId}. User error:`, userError, 'Team error:', teamError);
             principalNamesMap[principalId] = principalId;
           }
         }

@@ -22,12 +22,13 @@ export function useAuditContext(): UseAuditContextResult {
         setLoading(true);
         setError(null);
 
-        // Get current tab ID
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        const tabId = tabs[0]?.id;
+        // Get tab ID from URL parameter (set by popup when opening side panel)
+        const params = new URLSearchParams(window.location.search);
+        const tabIdStr = params.get('tabId');
+        const tabId = tabIdStr ? parseInt(tabIdStr, 10) : null;
 
-        if (!tabId) {
-          throw new Error('Could not determine tab ID');
+        if (!tabId || isNaN(tabId)) {
+          throw new Error('Tab ID not provided in URL. Please reopen the side panel.');
         }
 
         // Load context from session storage
@@ -55,6 +56,20 @@ export function useAuditContext(): UseAuditContextResult {
     };
 
     loadContext();
+
+    // Cleanup: Remove audit context when side panel unmounts
+    return () => {
+      const params = new URLSearchParams(window.location.search);
+      const tabIdStr = params.get('tabId');
+      const tabId = tabIdStr ? parseInt(tabIdStr, 10) : null;
+
+      if (tabId && !isNaN(tabId)) {
+        const key = `auditContext_${tabId}`;
+        chrome.storage.session.remove(key).catch(err => {
+          console.warn('Failed to clean up audit context:', err);
+        });
+      }
+    };
   }, []);
 
   return { context, loading, error };

@@ -164,9 +164,10 @@ export function useD365Controller() {
       await callController(tabId, frameId, 'openAuditHistory');
 
       // Open side panel directly (must be in user gesture context)
+      // Pass tabId as URL parameter so side panel knows which context to load
       await chrome.sidePanel.setOptions({
         tabId,
-        path: 'src/sidepanel/index.html',
+        path: `src/sidepanel/index.html?tabId=${tabId}`,
         enabled: true
       });
       await chrome.sidePanel.open({ tabId });

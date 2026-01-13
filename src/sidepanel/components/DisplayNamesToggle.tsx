@@ -1,4 +1,4 @@
-import { Switch, Text, makeStyles, Spinner, tokens } from '@fluentui/react-components';
+import { Switch, makeStyles, Spinner, tokens, type SwitchOnChangeData } from '@fluentui/react-components';
 import { spacing } from '../../styles/theme';
 
 const useStyles = makeStyles({
@@ -21,7 +21,7 @@ const useStyles = makeStyles({
 interface DisplayNamesToggleProps {
   checked: boolean;
   loading: boolean;
-  onChange: () => void;
+  onChange: (ev: React.ChangeEvent<HTMLInputElement>, data: SwitchOnChangeData) => void;
   disabled?: boolean;
 }
 
