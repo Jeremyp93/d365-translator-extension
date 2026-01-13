@@ -102,6 +102,7 @@ export default function App(): JSX.Element {
     openPluginTraceLogsPage,
     openGlobalOptionSetsPage,
     openEntityBrowserPage,
+    openAuditHistoryPage,
     setInfo,
   } = useD365Controller();
 
@@ -277,6 +278,7 @@ export default function App(): JSX.Element {
                 onOpenFormReport={openFormReportPage}
                 onOpenGlobalOptionSets={openGlobalOptionSetsPage}
                 onOpenEntityBrowser={openEntityBrowserPage}
+                onOpenAuditHistory={openAuditHistoryPage}
                 onHoverButton={setHoveredButton}
               />
             )}

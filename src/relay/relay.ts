@@ -39,5 +39,11 @@
         payload: d.payload
       });
     }
+    if (d.type === 'OPEN_AUDIT_HISTORY') {
+      chrome.runtime.sendMessage({
+        type: 'OPEN_AUDIT_HISTORY',
+        payload: d.payload
+      });
+    }
   });
 })();

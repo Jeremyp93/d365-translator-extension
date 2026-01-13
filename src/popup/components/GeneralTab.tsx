@@ -10,6 +10,7 @@ import {
   DocumentTable24Regular,
   Database24Regular,
   Grid24Regular,
+  History24Regular,
 } from '@fluentui/react-icons';
 
 import { spacing } from '../../styles/theme';
@@ -69,6 +70,7 @@ interface GeneralTabProps {
   onOpenFormReport: () => void;
   onOpenGlobalOptionSets: () => void;
   onOpenEntityBrowser: () => void;
+  onOpenAuditHistory: () => void;
   onHoverButton: (key: TooltipKey | null) => void;
 }
 
@@ -81,6 +83,7 @@ export function GeneralTab({
   onOpenFormReport,
   onOpenGlobalOptionSets,
   onOpenEntityBrowser,
+  onOpenAuditHistory,
   onHoverButton,
 }: GeneralTabProps) {
   const styles = useStyles();
@@ -181,6 +184,25 @@ export function GeneralTab({
             tooltipKey="entityBrowser"
           >
             Entity Browser
+          </ActionButton>
+        </div>
+      </div>
+
+      <Divider />
+
+      {/* Monitoring Section */}
+      <div className={styles.section}>
+        <div className={styles.sectionTitle}>Monitoring</div>
+        <div className={styles.buttonGroup}>
+          <ActionButton
+            icon={<History24Regular />}
+            onClick={onOpenAuditHistory}
+            disabled={busy || !isValidContext || contextChecking}
+            onMouseEnter={() => onHoverButton('auditHistory')}
+            onMouseLeave={() => onHoverButton(null)}
+            tooltipKey="auditHistory"
+          >
+            Audit History
           </ActionButton>
         </div>
       </div>

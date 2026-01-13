@@ -156,6 +156,30 @@ export function useD365Controller() {
     setBusy(false);
   };
 
+  const openAuditHistoryPage = async (): Promise<void> => {
+    setBusy(true);
+    setInfo('Opening audit history…');
+    await withGuard(async (tabId, frameId) => {
+      // Call controller to get entity and recordId
+      await callController(tabId, frameId, 'openAuditHistory');
+
+      // Open side panel directly (must be in user gesture context)
+      // Pass tabId as URL parameter so side panel knows which context to load
+      await chrome.sidePanel.setOptions({
+        tabId,
+        path: `src/sidepanel/index.html?tabId=${tabId}`,
+        enabled: true
+      });
+      await chrome.sidePanel.open({ tabId });
+
+      setInfo('Audit history opened.');
+
+      // Close the popup after successfully opening the side panel
+      window.close();
+    });
+    setBusy(false);
+  };
+
   const handleClearCacheAndHardRefresh = async (): Promise<void> => {
     setBusy(true);
     setInfo('Clearing cache and refreshing…');
@@ -182,6 +206,7 @@ export function useD365Controller() {
     openPluginTraceLogsPage,
     openGlobalOptionSetsPage,
     openEntityBrowserPage,
+    openAuditHistoryPage,
     setInfo,
   };
 }
