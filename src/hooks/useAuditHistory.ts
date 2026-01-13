@@ -127,37 +127,33 @@ export function useAuditHistory(
     [clientUrl, entityLogicalName, recordId, pageSize, apiVersion]
   );
 
-  const fetchDisplayNames = useCallback(async () => {
-    if (!clientUrl || !entityLogicalName || records.length === 0) {
-      return;
-    }
+  const fetchDisplayNames = useCallback(
+    async (fieldNamesToFetch: string[]) => {
+      if (!clientUrl || !entityLogicalName || fieldNamesToFetch.length === 0) {
+        return;
+      }
 
-    try {
-      setDisplayNamesLoading(true);
+      try {
+        setDisplayNamesLoading(true);
 
-      // Extract all unique field names from current page
-      const fieldNames = new Set<string>();
-      records.forEach((record) => {
-        record.changedFields.forEach((field) => {
-          fieldNames.add(field.fieldName);
-        });
-      });
+        const names = await getAttributeDisplayNames(
+          clientUrl,
+          entityLogicalName,
+          fieldNamesToFetch,
+          apiVersion
+        );
 
-      const names = await getAttributeDisplayNames(
-        clientUrl,
-        entityLogicalName,
-        Array.from(fieldNames),
-        apiVersion
-      );
-
-      setDisplayNamesMap(names);
-    } catch (err) {
-      console.error('Failed to fetch display names:', err);
-      // Don't set error state, just use schema names
-    } finally {
-      setDisplayNamesLoading(false);
-    }
-  }, [clientUrl, entityLogicalName, records, apiVersion]);
+        // Merge with existing display names map
+        setDisplayNamesMap(prev => ({ ...prev, ...names }));
+      } catch (err) {
+        console.error('Failed to fetch display names:', err);
+        // Don't set error state, just use schema names
+      } finally {
+        setDisplayNamesLoading(false);
+      }
+    },
+    [clientUrl, entityLogicalName, apiVersion]
+  );
 
   // Initial fetch
   useEffect(() => {
@@ -185,7 +181,7 @@ export function useAuditHistory(
 
     // Fetch display names only for missing fields
     if (missingFields.length > 0) {
-      fetchDisplayNames();
+      fetchDisplayNames(missingFields);
     }
   }, [showDisplayNames, records, displayNamesMap, fetchDisplayNames]);
 

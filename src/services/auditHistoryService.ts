@@ -392,31 +392,36 @@ export function formatAuditValue(value: unknown): string {
       if (value.length === 0) {
         return '(empty)';
       }
-      
+
       // Format each record, extracting the ID
       const formattedRecords = value.map((record) => {
         if (typeof record === 'object' && record !== null) {
+          const recordObj = record as Record<string, unknown>;
+
           // Extract entity type from @odata.type
-          const odataType = (record as any)['@odata.type'];
-          const entityType = odataType ? odataType.replace('#Microsoft.Dynamics.CRM.', '') : 'record';
-          
+          const odataType = recordObj['@odata.type'];
+          const entityType = typeof odataType === 'string'
+            ? odataType.replace('#Microsoft.Dynamics.CRM.', '')
+            : 'record';
+
           // Find the ID field (usually ends with 'id')
-          const idField = Object.keys(record).find(key => 
+          const idField = Object.keys(recordObj).find(key =>
             key.endsWith('id') && key !== '@odata.type'
           );
-          const id = idField ? (record as any)[idField] : 'unknown';
-          
+          const id = idField ? String(recordObj[idField] ?? 'unknown') : 'unknown';
+
           return `${entityType} (${id})`;
         }
         return String(record);
       });
-      
+
       return formattedRecords.join(', ');
     }
 
     // Handle formatted values (e.g., @OData.Community.Display.V1.FormattedValue)
     if (typeof value === 'object' && value !== null && '@OData.Community.Display.V1.FormattedValue' in value) {
-      return String((value as any)['@OData.Community.Display.V1.FormattedValue']);
+      const formattedObj = value as Record<string, unknown>;
+      return String(formattedObj['@OData.Community.Display.V1.FormattedValue'] ?? '');
     }
 
     // For complex objects, show JSON
