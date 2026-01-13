@@ -101,14 +101,13 @@ export function parseAuditDetail(auditDetail: AuditDetail): ChangedField[] {
 
   // Handle ShareAuditDetail (actions 14, 48, 49: Share, Modify Share, Unshare)
   if (isShareAuditDetail(auditDetail)) {
-    const shareDetail: ShareAuditDetail = auditDetail;
-    const principalId = shareDetail.Principal?.ownerid;
+    const principalId = auditDetail.Principal?.ownerid;
 
     changedFields.push({
       fieldName: 'Access Privileges',
       displayName: 'Access Privileges',
-      oldValue: shareDetail.OldPrivileges || 'None',
-      newValue: shareDetail.NewPrivileges || 'None',
+      oldValue: auditDetail.OldPrivileges || 'None',
+      newValue: auditDetail.NewPrivileges || 'None',
       principalId,
     });
     return changedFields;
@@ -116,26 +115,24 @@ export function parseAuditDetail(auditDetail: AuditDetail): ChangedField[] {
 
   // Handle RelationshipAuditDetail (actions 33 & 34: Associate/Disassociate)
   if (isRelationshipAuditDetail(auditDetail)) {
-    const relDetail: RelationshipAuditDetail = auditDetail;
-    const action = relDetail.AuditRecord.action;
+    const action = auditDetail.AuditRecord.action;
     const isAssociate = action === 33 || action === 35; // Associate Entities or Add Members
 
     changedFields.push({
       fieldName: 'Relationship',
-      displayName: relDetail.RelationshipName || 'Relationship',
-      oldValue: isAssociate ? null : (relDetail.TargetRecords || []),
-      newValue: isAssociate ? (relDetail.TargetRecords || []) : null,
-      relationshipName: relDetail.RelationshipName,
-      targetRecords: relDetail.TargetRecords || [],
+      displayName: auditDetail.RelationshipName || 'Relationship',
+      oldValue: isAssociate ? null : (auditDetail.TargetRecords || []),
+      newValue: isAssociate ? (auditDetail.TargetRecords || []) : null,
+      relationshipName: auditDetail.RelationshipName,
+      targetRecords: auditDetail.TargetRecords || [],
     });
     return changedFields;
   }
 
   // Handle AttributeAuditDetail (standard field changes)
   if (isAttributeAuditDetail(auditDetail)) {
-    const attrDetail: AttributeAuditDetail = auditDetail;
-    const oldValue = attrDetail.OldValue || {};
-    const newValue = attrDetail.NewValue || {};
+    const oldValue = auditDetail.OldValue || {};
+    const newValue = auditDetail.NewValue || {};
 
     // Get all unique field names from both old and new values
     const fieldNames = new Set([
@@ -419,7 +416,7 @@ export function formatAuditValue(value: unknown): string {
     }
 
     // Handle formatted values (e.g., @OData.Community.Display.V1.FormattedValue)
-    if (typeof value === 'object' && value !== null && '@OData.Community.Display.V1.FormattedValue' in value) {
+    if ('@OData.Community.Display.V1.FormattedValue' in value) {
       const formattedObj = value as Record<string, unknown>;
       return String(formattedObj['@OData.Community.Display.V1.FormattedValue'] ?? '');
     }
