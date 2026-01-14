@@ -924,7 +924,6 @@ if (!w.__d365Ctl) {
   interface LabelRow {
     lcid: number;
     entity?: string;
-    form?: string;
   }
 
   function toLabelMap(labels: { languageCode: number; label: string }[]) {
@@ -1017,23 +1016,19 @@ async function getCellLabelIdInHeader(
 
   function buildRowsAllLanguages(
     allLcids: number[],
-    entityLabels: { languageCode: number; label: string }[],
-    formLabels: { languageCode: number; label: string }[]
+    entityLabels: { languageCode: number; label: string }[]
   ): LabelRow[] {
     const ent = toLabelMap(entityLabels);
-    const frm = toLabelMap(formLabels);
 
     // If RetrieveProvisionedLanguages() failed, ensure we still show every LCID we observed
     const lcidSet = new Set<number>(allLcids);
     for (const k of ent.keys()) lcidSet.add(k);
-    for (const k of frm.keys()) lcidSet.add(k);
 
     return Array.from(lcidSet)
       .sort((a, b) => a - b)
       .map((lcid) => ({
         lcid,
         entity: ent.get(lcid) ?? "", // empty means show "—"
-        form: frm.get(lcid) ?? "",
       }));
   }
 
@@ -1056,17 +1051,18 @@ async function getCellLabelIdInHeader(
     const provisioned = await getProvisionedLanguagesCached(clientUrl);
 
     // 2) Build rows for ALL languages (fill missing with empty)
-    const rows = buildRowsAllLanguages(provisioned, entityLabels, formLabels);
+    const rows = buildRowsAllLanguages(provisioned, entityLabels);
 
     // render tooltip (now returns the DOM node)
-    showTooltip(targetEl, entityLogicalName, attributeLogicalName, rows);
+    showTooltip(targetEl, entityLogicalName, attributeLogicalName, rows, formLabels);
   }
 
   async function showTooltip(
     targetEl: HTMLElement,
     entityLogicalName: string,
     attribute: string,
-    rows: LabelRow[]
+    rows: LabelRow[],
+    formLabels: { languageCode: number; label: string }[]
   ): Promise<void> {
     // document
     //   .querySelectorAll(".d365-translate-tooltip")
@@ -1078,22 +1074,21 @@ async function getCellLabelIdInHeader(
       attribute
     );
 
+    // Get the currently displayed label text
+    const displayInfo = await getDisplayedLabelInfo(entityLogicalName, attribute);
+    const currentLabel = displayInfo.shown || "(No label)";
+    const sourceText = source === "form" ? "Form override" : "Entity";
+
     const htmlRows = rows
       .map((r) => {
         const isCurrent = r.lcid === userLcid;
-        // apply column highlight only on the current LCID row
-        const entityClass = isCurrent && source === "entity" ? " hl-col" : "";
-        const formClass = isCurrent && source === "form" ? " hl-col" : "";
         const rowClass = isCurrent ? " is-current-row" : "";
 
         return `
         <tr class="${rowClass}">
           <td class="lcid-cell">${lcidToName(r.lcid)} (${r.lcid})</td>
-          <td class="entity-cell${entityClass}">${
+          <td class="entity-cell">${
           r.entity ? escapeHtml(r.entity) : "<em>—</em>"
-        }</td>
-          <td class="form-cell${formClass}">${
-          r.form ? escapeHtml(r.form) : "<em>—</em>"
         }</td>
         </tr>`;
       })
@@ -1119,11 +1114,14 @@ async function getCellLabelIdInHeader(
       >×</button>
       <h4 style="margin-right:8px">${attribute} — translations</h4>
       <table class="d365-tip-table">
-      <thead><tr><th>LCID</th><th>Entity</th><th>Form</th></tr></thead>
+      <thead><tr><th>LCID</th><th>Entity</th></tr></thead>
       <tbody>
         ${htmlRows}
       </tbody>
     </table>
+    <div style="margin-top:12px;padding:8px;background:rgba(255,255,255,0.05);border-radius:4px;border-left:3px solid ${source === 'form' ? '#ffa500' : '#1f6feb'}">
+        <strong>Current <span style="color:#888;font-size:0.9em">(${sourceText})</span>:</strong> ${escapeHtml(currentLabel)}
+      </div>
       <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
         <button id="d365x-open-report" style="padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:#1f6feb;color:#fff;cursor:pointer">
           View full translations
