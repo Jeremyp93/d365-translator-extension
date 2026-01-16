@@ -1203,15 +1203,30 @@ async function getCellLabelIdInHeader(
     } catch (err) {
       if (__DEV__) console.warn("Could not resolve labelId:", err);
     }
-        // Ask the relay (content world) → background to open a new tab
+        
+        // Register one-time listener for iframe URL response
+        const onModalUrl = (ev: MessageEvent) => {
+          const d = ev.data;
+          if (!d || d.__d365x__ !== true || d.type !== 'FIELD_MODAL_URL') return;
+          
+          window.removeEventListener('message', onModalUrl);
+          
+          // Close tooltip and inject modal
+          cleanup();
+          injectFieldModal(d.payload.url);
+        };
+        
+        window.addEventListener('message', onModalUrl);
+
+        // Request iframe URL from relay (content script world)
         window.postMessage(
           {
             __d365x__: true,
-            type: "OPEN_REPORT",
+            type: "OPEN_FIELD_MODAL",
             payload: {
               clientUrl,
-              entity: entityLogicalName, // you already have this in scope
-              attribute, // existing param
+              entity: entityLogicalName,
+              attribute,
               formId,
               labelId,
               apiVersion: getVersion(),
@@ -1290,5 +1305,167 @@ function isInHeader(el: HTMLElement): boolean {
     tip.style.left = `${Math.round(x)}px`;
     tip.style.top = `${Math.round(y + window.scrollY)}px`;
     tip.style.visibility = "visible";
+  }
+
+  // ---------- Field Modal Injection ----------
+
+  let currentModal: { backdrop: HTMLElement; iframe: HTMLIFrameElement; cleanup: () => void } | null = null;
+
+  function removeFieldModal(): void {
+    if (!currentModal) return;
+    currentModal.cleanup();
+    currentModal.backdrop.remove();
+    currentModal.iframe.remove();
+    currentModal = null;
+  }
+
+  function injectFieldModal(iframeUrl: string): void {
+    // Remove any existing modal
+    removeFieldModal();
+
+    // Create backdrop
+    const backdrop = document.createElement('div');
+    backdrop.className = 'd365x-field-modal-backdrop';
+    backdrop.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 999998;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      opacity: 0;
+      transition: opacity 0.2s ease-out;
+    `;
+
+    // Create iframe container - centered modal style
+    const iframe = document.createElement('iframe');
+    iframe.className = 'd365x-field-modal-iframe';
+    iframe.src = iframeUrl;
+    iframe.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 100%;
+      height: 100%;
+      max-width: 100vw;
+      max-height: 100vh;
+      border: none;
+      background: transparent;
+      z-index: 999999;
+      transform: translate(-50%, -50%) scale(0.95);
+      opacity: 0;
+      transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+    `;
+
+    // Append to body
+    document.body.appendChild(backdrop);
+    document.body.appendChild(iframe);
+
+    // Trigger fade-in and scale animation
+    requestAnimationFrame(() => {
+      backdrop.style.opacity = '1';
+      iframe.style.transform = 'translate(-50%, -50%) scale(1)';
+      iframe.style.opacity = '1';
+    });
+
+    // Close handlers
+    const closeModal = () => {
+      backdrop.style.opacity = '0';
+      iframe.style.transform = 'translate(-50%, -50%) scale(0.95)';
+      iframe.style.opacity = '0';
+      setTimeout(() => removeFieldModal(), 200);
+    };
+
+    const requestClose = () => {
+      // Request close from iframe (allows pending changes check)
+      iframe.contentWindow?.postMessage({
+        __d365x__: true,
+        type: 'REQUEST_CLOSE_FIELD_MODAL'
+      }, '*');
+    };
+
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        requestClose();
+      }
+    };
+
+    const onBackdropClick = (e: MouseEvent) => {
+      if (e.target === backdrop) {
+        requestClose();
+      }
+    };
+
+    const onMessage = (e: MessageEvent) => {
+      const d = e.data;
+      if (!d || d.__d365x__ !== true) return;
+
+      if (d.type === 'CLOSE_FIELD_MODAL') {
+        closeModal();
+      }
+      if (d.type === 'CANCEL_CLOSE_FIELD_MODAL') {
+        // User declined to close, do nothing
+        return;
+      }
+      if (d.type === 'OPEN_NEW_TAB') {
+        // Fallback: open in new tab
+        closeModal();
+        window.postMessage({
+          __d365x__: true,
+          type: 'OPEN_REPORT',
+          payload: d.payload
+        }, '*');
+      }
+    };
+
+    // Iframe error handler (CSP fallback)
+    const onIframeError = () => {
+      if (__DEV__) console.warn('[ctl] Iframe failed to load. Falling back to new tab.');
+      removeFieldModal();
+      // Trigger OPEN_REPORT fallback
+      const url = new URL(iframeUrl);
+      const params = new URLSearchParams(url.search);
+      window.postMessage({
+        __d365x__: true,
+        type: 'OPEN_REPORT',
+        payload: {
+          clientUrl: params.get('clientUrl') || '',
+          entity: params.get('entity') || '',
+          attribute: params.get('attribute') || '',
+          formId: params.get('formId') || '',
+          labelId: params.get('labelId') || '',
+          apiVersion: params.get('apiVersion') || 'v9.1'
+        }
+      }, '*');
+    };
+
+    backdrop.addEventListener('click', onBackdropClick);
+    window.addEventListener('keydown', onEscape);
+    window.addEventListener('message', onMessage);
+    iframe.addEventListener('error', onIframeError);
+
+    // Timeout fallback (if iframe doesn't load within 3s)
+    const timeoutId = setTimeout(() => {
+      if (currentModal && currentModal.iframe === iframe) {
+        onIframeError();
+      }
+    }, 3000);
+
+    iframe.addEventListener('load', () => {
+      clearTimeout(timeoutId);
+    });
+
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      backdrop.removeEventListener('click', onBackdropClick);
+      window.removeEventListener('keydown', onEscape);
+      window.removeEventListener('message', onMessage);
+      iframe.removeEventListener('error', onIframeError);
+    };
+
+    currentModal = { backdrop, iframe, cleanup };
   }
 }

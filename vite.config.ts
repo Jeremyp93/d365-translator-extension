@@ -50,6 +50,9 @@ export default defineConfig(({ mode }) => ({
         // If you renamed it, update the path below accordingly:
         report: resolve(__dirname, 'src/report/report.html'),
 
+        // modal SPA (dedicated entry for field modal iframe)
+        modal: resolve(__dirname, 'src/modal/modal.html'),
+
         // emit CSS with a stable name so manifest can reference it
         highlight: resolve(__dirname, 'src/styles/highlight.css'),
         flow: resolve(__dirname, 'src/styles/flow.css'),

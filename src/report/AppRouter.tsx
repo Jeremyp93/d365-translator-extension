@@ -5,8 +5,8 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { lazy } from "react";
-import { FluentProvider } from "@fluentui/react-components";
+import { lazy, Suspense } from "react";
+import { FluentProvider, Spinner } from "@fluentui/react-components";
 
 import { useTheme } from "../context/ThemeContext";
 
@@ -21,26 +21,40 @@ function KeepSearchNavigate({ to }: { to: string }) {
   return <Navigate to={`${to}${search}`} replace />;
 }
 
+function LoadingFallback() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <Spinner size="large" label="Loading..." />
+    </div>
+  );
+}
+
 export default function AppRouter(): JSX.Element {
   const { theme } = useTheme();
-  
+
   return (
     <HashRouter basename="/report">
       <FluentProvider
         theme={theme}
-        style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh"
+        }}
       >
-        <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <Routes>
-            <Route path="/field" element={<FieldReportPage />} />
-            <Route path="/form" element={<FormReportPage />} />
-            <Route path="/plugin-trace-logs" element={<PluginTraceLogPage />} />
-            <Route path="/global-optionsets" element={<GlobalOptionSetPage />} />
-            <Route path="/entity-browser" element={<EntityAttributeBrowserPage />} />
-            {/* default → field, but keep query params */}
-            <Route path="*" element={<KeepSearchNavigate to="/field" />} />
-          </Routes>
-        </main>
+        <Suspense fallback={<LoadingFallback />}>
+          <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <Routes>
+              <Route path="/field" element={<FieldReportPage />} />
+              <Route path="/form" element={<FormReportPage />} />
+              <Route path="/plugin-trace-logs" element={<PluginTraceLogPage />} />
+              <Route path="/global-optionsets" element={<GlobalOptionSetPage />} />
+              <Route path="/entity-browser" element={<EntityAttributeBrowserPage />} />
+              {/* default → field, but keep query params */}
+              <Route path="*" element={<KeepSearchNavigate to="/field" />} />
+            </Routes>
+          </main>
+        </Suspense>
       </FluentProvider>
     </HashRouter>
   );

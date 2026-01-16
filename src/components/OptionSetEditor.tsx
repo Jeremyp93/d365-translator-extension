@@ -5,6 +5,7 @@ import {
   Card,
   CardHeader,
   makeStyles,
+  tokens,
   Badge,
   Link,
 } from "@fluentui/react-components";
@@ -18,53 +19,54 @@ import {
   saveOptionSetLabels,
 } from "../services/optionSetService";
 import type { OptionSetMetadata, OptionValue } from "../types";
+import { spacing } from "../styles/theme";
 
 const useStyles = makeStyles({
   root: {
-    padding: "12px",
-    marginTop: "12px",
+    padding: spacing.md,
+    marginTop: spacing.md,
   },
   header: {
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    gap: spacing.sm,
   },
   badge: {
-    marginLeft: "8px",
+    marginLeft: spacing.sm,
   },
   meta: {
-    color: "#6a737d",
-    marginBottom: "8px",
-    fontSize: "12px",
+    color: tokens.colorNeutralForeground3,
+    marginBottom: spacing.sm,
+    fontSize: tokens.fontSizeBase200,
   },
   actions: {
     display: "flex",
-    gap: "8px",
-    marginTop: "12px",
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
   sectionGap: {
-    marginTop: "12px",
+    marginTop: spacing.md,
   },
   optionRow: {
-    marginBottom: "16px",
+    marginBottom: spacing.lg,
   },
   optionHeader: {
     display: "flex",
     alignItems: "center",
-    gap: "8px",
-    marginBottom: "8px",
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   optionValue: {
-    fontFamily: "monospace",
-    fontSize: "12px",
-    color: "#6a737d",
+    fontFamily: tokens.fontFamilyMonospace,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
   },
   tableWrapper: {
     maxHeight: "400px",
     overflowY: "auto",
   },
   noticeContainer: {
-    marginTop: "10px",
+    marginTop: spacing.sm,
   },
 });
 
