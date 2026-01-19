@@ -1332,7 +1332,7 @@ function isInHeader(el: HTMLElement): boolean {
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0, 0, 0, 0.35);
       z-index: 999998;
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);

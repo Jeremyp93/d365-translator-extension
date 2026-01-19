@@ -8,7 +8,7 @@ import { FluentProvider } from "@fluentui/react-components";
 
 import { useTheme } from "../context/ThemeContext";
 import { usePendingChanges } from "../hooks/usePendingChanges";
-import FieldInfoModal from "../components/FieldInfoModal";
+import { TranslationModal } from "./components/TranslationModal";
 
 /**
  * Parse URL parameters from window.location.search
@@ -121,7 +121,7 @@ export default function ModalApp(): JSX.Element {
         height: "100%"
       }}
     >
-      <FieldInfoModal
+      <TranslationModal
         open={open}
         onClose={handleClose}
         clientUrl={clientUrl || ''}
