@@ -345,15 +345,6 @@ export const useOptionSetCardStyles = makeStyles({
     flexShrink: 0,
   },
 
-  baseBadge: {
-    fontSize: tokens.fontSizeBase200,
-    fontWeight: tokens.fontWeightSemibold,
-    color: tokens.colorBrandForeground1,
-    backgroundColor: tokens.colorBrandBackground2,
-    ...shorthands.padding("2px", "8px"),
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
-  },
-
   modifiedDot: {
     width: "6px",
     height: "6px",

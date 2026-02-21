@@ -21,6 +21,7 @@ interface UseOptionSetTranslationsResult {
   onChange: (optionValue: number, lcid: number, value: string) => void;
   save: () => Promise<void>;
   discard: () => void;
+  reset: () => void;
 }
 
 export function useOptionSetTranslations(
@@ -65,7 +66,7 @@ export function useOptionSetTranslations(
 
       setMetadata(meta);
       setValues(valuesMap);
-      setOriginalValues(JSON.parse(JSON.stringify(valuesMap)));
+      setOriginalValues(structuredClone(valuesMap));
       setLoaded(true);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
@@ -111,19 +112,30 @@ export function useOptionSetTranslations(
         metadata.isGlobal,
         metadata.name ?? undefined
       );
-      setOriginalValues(JSON.parse(JSON.stringify(values)));
+      setOriginalValues(structuredClone(values));
     } catch (e: unknown) {
       setSaveError(e instanceof Error ? e.message : String(e));
       throw e;
     } finally {
       setSaving(false);
     }
-  }, [clientUrl, entity, attribute, metadata, values, changes.length]);
+  }, [clientUrl, entity, attribute, metadata, values, changes]);
 
   const discard = useCallback(() => {
-    setValues(JSON.parse(JSON.stringify(originalValues)));
+    setValues(structuredClone(originalValues));
     setSaveError(null);
   }, [originalValues]);
+
+  const reset = useCallback(() => {
+    setMetadata(null);
+    setValues({});
+    setOriginalValues({});
+    setLoading(false);
+    setError(null);
+    setLoaded(false);
+    setSaving(false);
+    setSaveError(null);
+  }, []);
 
   return {
     metadata,
@@ -139,5 +151,6 @@ export function useOptionSetTranslations(
     onChange,
     save,
     discard,
+    reset,
   };
 }

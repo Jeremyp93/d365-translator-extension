@@ -26,7 +26,7 @@ export function OptionSetCard({
   const styles = useOptionSetCardStyles();
 
   return (
-    <div className={styles.card}>
+    <div className={styles.card} role="group" aria-label={`Option ${optionValue}: ${baseLabel || "(no label)"}`}>
       <div className={styles.cardHeader}>
         <Badge appearance="tint" size="large">
           {optionValue}
@@ -56,8 +56,8 @@ export function OptionSetCard({
                 appearance="outline"
               />
               <div className={styles.rowBadges}>
-                {isModified && <span className={styles.modifiedDot} />}
-                {isBase && <span className={styles.baseBadge}>BASE</span>}
+                {isModified && <span className={styles.modifiedDot} role="status" aria-label="Modified" />}
+                {isBase && <Badge appearance="filled" color="brand" size="small">BASE</Badge>}
               </div>
             </div>
           );

@@ -10,8 +10,7 @@ import {
   Text,
   Badge,
 } from "@fluentui/react-components";
-import { Database24Regular, Form24Regular } from "@fluentui/react-icons";
-import { Options24Regular } from "@fluentui/react-icons";
+import { Database24Regular, Form24Regular, Options24Regular } from "@fluentui/react-icons";
 import { useLanguages } from "../../hooks/useLanguages";
 import { useEditingPermission } from "../../hooks/useEditingPermission";
 import { useAttributeType } from "../../hooks/useAttributeType";
@@ -20,7 +19,6 @@ import { useOptionSetTranslations } from "../../hooks/useOptionSetTranslations";
 import {
   getAttributeLabelTranslations,
   updateAttributeLabelsViaWebApi,
-  type Label,
 } from "../../services/entityLabelService";
 import {
   readFormFieldLabelsAllLcids,
@@ -29,8 +27,9 @@ import {
 import { publishEntityViaWebApi } from "../../services/d365Api";
 import { TranslationModalHeader } from "./TranslationModalHeader";
 import { TranslationModalFooter } from "./TranslationModalFooter";
-import { LanguageCard } from "./LanguageCard";
-import { OptionSetCard } from "./OptionSetCard";
+import { EntityTabContent } from "./EntityTabContent";
+import { FormTabContent } from "./FormTabContent";
+import { OptionSetTabContent } from "./OptionSetTabContent";
 import { useTranslationModalStyles } from "./translationModalStyles";
 
 export interface TranslationModalProps {
@@ -122,9 +121,9 @@ export function TranslationModal({
 
         setEntityValues(valuesMap);
         setEntityOriginalValues({ ...valuesMap });
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!cancelled) {
-          setEntityError(e?.message ?? String(e));
+          setEntityError(e instanceof Error ? e.message : String(e));
         }
       } finally {
         if (!cancelled) {
@@ -171,8 +170,8 @@ export function TranslationModal({
       setFormValues(valuesMap);
       setFormOriginalValues({ ...valuesMap });
       setFormLoaded(true);
-    } catch (e: any) {
-      setFormError(e?.message ?? String(e));
+    } catch (e: unknown) {
+      setFormError(e instanceof Error ? e.message : String(e));
     } finally {
       setFormLoading(false);
     }
@@ -263,14 +262,14 @@ export function TranslationModal({
       if (activeTab === "optionset" && optionSet.changes.length > 0) {
         await optionSet.save();
       }
-    } catch (e: any) {
-      setSaveError(e?.message ?? String(e));
+    } catch (e: unknown) {
+      setSaveError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
   };
 
-  // Render helpers
+  // Render tab content
   const renderContent = () => {
     if (!langs || langs.length === 0) {
       return (
@@ -282,143 +281,49 @@ export function TranslationModal({
     }
 
     if (activeTab === "entity") {
-      if (entityLoading) {
-        return (
-          <div className={styles.loadingContainer}>
-            <Spinner size="large" />
-            <Text>Loading entity labels...</Text>
-          </div>
-        );
-      }
-
-      if (entityError) {
-        return (
-          <div className={styles.errorContainer}>
-            <MessageBar intent="error">
-              <MessageBarBody>{entityError}</MessageBarBody>
-            </MessageBar>
-          </div>
-        );
-      }
-
       return (
-        <div className={styles.cardsContainer}>
-          {langs.map((lcid) => (
-            <LanguageCard
-              key={lcid}
-              lcid={lcid}
-              value={entityValues[lcid] || ""}
-              originalValue={entityOriginalValues[lcid] || ""}
-              isBase={lcid === baseLcid}
-              disabled={isDisabled}
-              onChange={(value) => handleEntityValueChange(lcid, value)}
-            />
-          ))}
-        </div>
+        <EntityTabContent
+          langs={langs}
+          baseLcid={baseLcid}
+          entityLoading={entityLoading}
+          entityError={entityError}
+          entityValues={entityValues}
+          entityOriginalValues={entityOriginalValues}
+          isDisabled={isDisabled}
+          onValueChange={handleEntityValueChange}
+        />
       );
     }
 
     if (activeTab === "optionset") {
-      if (optionSet.loading) {
-        return (
-          <div className={styles.loadingContainer}>
-            <Spinner size="large" />
-            <Text>Loading option set values...</Text>
-          </div>
-        );
-      }
-
-      if (optionSet.error) {
-        return (
-          <div className={styles.errorContainer}>
-            <MessageBar intent="error">
-              <MessageBarBody>{optionSet.error}</MessageBarBody>
-            </MessageBar>
-          </div>
-        );
-      }
-
-      if (!optionSet.loaded) {
-        return (
-          <div className={styles.emptyState}>
-            <Text>Click the OptionSet Values tab to load option translations</Text>
-          </div>
-        );
-      }
-
-      if (!optionSet.metadata || optionSet.metadata.options.length === 0) {
-        return (
-          <div className={styles.emptyState}>
-            <Text>No options defined for this option set.</Text>
-          </div>
-        );
-      }
-
       return (
-        <div className={styles.cardsContainer}>
-          {optionSet.metadata.options.map((opt) => (
-            <OptionSetCard
-              key={opt.value}
-              optionValue={opt.value}
-              baseLabel={
-                opt.labels.find((l) => l.languageCode === baseLcid)?.label ||
-                opt.labels[0]?.label ||
-                ""
-              }
-              langs={langs!}
-              baseLcid={baseLcid ?? undefined}
-              values={optionSet.values[opt.value] || {}}
-              originalValues={optionSet.originalValues[opt.value] || {}}
-              disabled={isDisabled}
-              onChange={(lcid, value) => optionSet.onChange(opt.value, lcid, value)}
-            />
-          ))}
-        </div>
-      );
-    }
-
-    // Form tab
-    if (formLoading) {
-      return (
-        <div className={styles.loadingContainer}>
-          <Spinner size="large" />
-          <Text>Loading form labels...</Text>
-        </div>
-      );
-    }
-
-    if (formError) {
-      return (
-        <div className={styles.errorContainer}>
-          <MessageBar intent="error">
-            <MessageBarBody>{formError}</MessageBarBody>
-          </MessageBar>
-        </div>
-      );
-    }
-
-    if (!formLoaded) {
-      return (
-        <div className={styles.emptyState}>
-          <Text>Click the Form Labels tab to load form translations</Text>
-        </div>
+        <OptionSetTabContent
+          langs={langs}
+          baseLcid={baseLcid}
+          isDisabled={isDisabled}
+          loading={optionSet.loading}
+          error={optionSet.error}
+          loaded={optionSet.loaded}
+          metadata={optionSet.metadata}
+          values={optionSet.values}
+          originalValues={optionSet.originalValues}
+          onChange={optionSet.onChange}
+        />
       );
     }
 
     return (
-      <div className={styles.cardsContainer}>
-        {langs.map((lcid) => (
-          <LanguageCard
-            key={lcid}
-            lcid={lcid}
-            value={formValues[lcid] || ""}
-            originalValue={formOriginalValues[lcid] || ""}
-            isBase={lcid === baseLcid}
-            disabled={isDisabled}
-            onChange={(value) => handleFormValueChange(lcid, value)}
-          />
-        ))}
-      </div>
+      <FormTabContent
+        langs={langs}
+        baseLcid={baseLcid}
+        formLoading={formLoading}
+        formError={formError}
+        formLoaded={formLoaded}
+        formValues={formValues}
+        formOriginalValues={formOriginalValues}
+        isDisabled={isDisabled}
+        onValueChange={handleFormValueChange}
+      />
     );
   };
 
