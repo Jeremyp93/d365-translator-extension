@@ -8,10 +8,15 @@ import {
   MessageBar,
   MessageBarBody,
   Text,
+  Badge,
 } from "@fluentui/react-components";
 import { Database24Regular, Form24Regular } from "@fluentui/react-icons";
+import { Options24Regular } from "@fluentui/react-icons";
 import { useLanguages } from "../../hooks/useLanguages";
 import { useEditingPermission } from "../../hooks/useEditingPermission";
+import { useAttributeType } from "../../hooks/useAttributeType";
+import { isOptionSetType } from "../../services/optionSetService";
+import { useOptionSetTranslations } from "../../hooks/useOptionSetTranslations";
 import {
   getAttributeLabelTranslations,
   updateAttributeLabelsViaWebApi,
@@ -25,6 +30,7 @@ import { publishEntityViaWebApi } from "../../services/d365Api";
 import { TranslationModalHeader } from "./TranslationModalHeader";
 import { TranslationModalFooter } from "./TranslationModalFooter";
 import { LanguageCard } from "./LanguageCard";
+import { OptionSetCard } from "./OptionSetCard";
 import { useTranslationModalStyles } from "./translationModalStyles";
 
 export interface TranslationModalProps {
@@ -39,7 +45,7 @@ export interface TranslationModalProps {
   onOpenNewTab?: () => void;
 }
 
-type TabValue = "entity" | "form";
+type TabValue = "entity" | "form" | "optionset";
 
 export function TranslationModal({
   open,
@@ -58,6 +64,13 @@ export function TranslationModal({
   // Language data
   const { langs, baseLcid, error: langsError } = useLanguages(clientUrl, apiVersion);
   const { isEditingBlocked, loading: permissionLoading } = useEditingPermission(clientUrl, apiVersion);
+
+  // Attribute type detection
+  const { attributeType } = useAttributeType(clientUrl, entity, attribute, apiVersion);
+  const hasOptionSetTab = isOptionSetType(attributeType);
+
+  // OptionSet translations
+  const optionSet = useOptionSetTranslations(clientUrl, entity, attribute, langs ?? undefined, apiVersion);
 
   // Entity translations
   const [entityValues, setEntityValues] = useState<Record<number, string>>({});
@@ -172,6 +185,13 @@ export function TranslationModal({
     }
   }, [activeTab, hasFormTab, formLoaded, loadFormLabels]);
 
+  // Load optionset data when switching to optionset tab
+  useEffect(() => {
+    if (activeTab === "optionset" && hasOptionSetTab && !optionSet.loaded) {
+      optionSet.load();
+    }
+  }, [activeTab, hasOptionSetTab, optionSet.loaded, optionSet.load]);
+
   // Change detection
   const entityChanges = useMemo(() => {
     return Object.entries(entityValues).filter(
@@ -185,7 +205,7 @@ export function TranslationModal({
     );
   }, [formValues, formOriginalValues]);
 
-  const totalChangeCount = entityChanges.length + formChanges.length;
+  const totalChangeCount = entityChanges.length + formChanges.length + optionSet.changes.length;
 
   // Handlers
   const handleEntityValueChange = (lcid: number, value: string) => {
@@ -199,8 +219,10 @@ export function TranslationModal({
   const handleDiscard = () => {
     if (activeTab === "entity") {
       setEntityValues({ ...entityOriginalValues });
-    } else {
+    } else if (activeTab === "form") {
       setFormValues({ ...formOriginalValues });
+    } else if (activeTab === "optionset") {
+      optionSet.discard();
     }
     setSaveError(null);
   };
@@ -235,6 +257,11 @@ export function TranslationModal({
 
         // Update original values
         setFormOriginalValues({ ...formValues });
+      }
+
+      // Save optionset changes if on optionset tab and has changes
+      if (activeTab === "optionset" && optionSet.changes.length > 0) {
+        await optionSet.save();
       }
     } catch (e: any) {
       setSaveError(e?.message ?? String(e));
@@ -285,6 +312,65 @@ export function TranslationModal({
               isBase={lcid === baseLcid}
               disabled={isDisabled}
               onChange={(value) => handleEntityValueChange(lcid, value)}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    if (activeTab === "optionset") {
+      if (optionSet.loading) {
+        return (
+          <div className={styles.loadingContainer}>
+            <Spinner size="large" />
+            <Text>Loading option set values...</Text>
+          </div>
+        );
+      }
+
+      if (optionSet.error) {
+        return (
+          <div className={styles.errorContainer}>
+            <MessageBar intent="error">
+              <MessageBarBody>{optionSet.error}</MessageBarBody>
+            </MessageBar>
+          </div>
+        );
+      }
+
+      if (!optionSet.loaded) {
+        return (
+          <div className={styles.emptyState}>
+            <Text>Click the OptionSet Values tab to load option translations</Text>
+          </div>
+        );
+      }
+
+      if (!optionSet.metadata || optionSet.metadata.options.length === 0) {
+        return (
+          <div className={styles.emptyState}>
+            <Text>No options defined for this option set.</Text>
+          </div>
+        );
+      }
+
+      return (
+        <div className={styles.cardsContainer}>
+          {optionSet.metadata.options.map((opt) => (
+            <OptionSetCard
+              key={opt.value}
+              optionValue={opt.value}
+              baseLabel={
+                opt.labels.find((l) => l.languageCode === baseLcid)?.label ||
+                opt.labels[0]?.label ||
+                ""
+              }
+              langs={langs!}
+              baseLcid={baseLcid ?? undefined}
+              values={optionSet.values[opt.value] || {}}
+              originalValues={optionSet.originalValues[opt.value] || {}}
+              disabled={isDisabled}
+              onChange={(lcid, value) => optionSet.onChange(opt.value, lcid, value)}
             />
           ))}
         </div>
@@ -377,6 +463,19 @@ export function TranslationModal({
                 Form Labels
               </Tab>
             )}
+            {hasOptionSetTab && (
+              <Tab value="optionset" icon={<Options24Regular />}>
+                OptionSet Values
+                {optionSet.metadata?.isGlobal && (
+                  <>
+                    {" "}
+                    <Badge color="informative" appearance="filled" size="small">
+                      Global
+                    </Badge>
+                  </>
+                )}
+              </Tab>
+            )}
           </TabList>
         </div>
 
@@ -390,8 +489,22 @@ export function TranslationModal({
           </div>
         )}
 
+        {optionSet.saveError && (
+          <div className={styles.errorContainer}>
+            <MessageBar intent="error">
+              <MessageBarBody>{optionSet.saveError}</MessageBarBody>
+            </MessageBar>
+          </div>
+        )}
+
         <TranslationModalFooter
-          changeCount={activeTab === "entity" ? entityChanges.length : formChanges.length}
+          changeCount={
+            activeTab === "entity"
+              ? entityChanges.length
+              : activeTab === "form"
+                ? formChanges.length
+                : optionSet.changes.length
+          }
           saving={saving}
           onSave={handleSave}
           onDiscard={handleDiscard}
