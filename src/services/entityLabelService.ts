@@ -8,11 +8,20 @@ import {
 } from './d365Api';
 import type { PendingChange, BatchUpdateResult } from '../types';
 import { mergeLabels } from '../utils/labelMerger';
-import { buildAttributeUrl, buildBatchUrl, buildRelativeAttributeUrl } from '../utils/urlBuilders';
+import { buildAttributeUrl, buildBatchUrl, buildEntityDefinitionUrl, buildRelativeAttributeUrl } from '../utils/urlBuilders';
 
 export interface Label {
   languageCode: number;
   label: string;
+}
+
+export type EntityLabelField = 'DisplayName' | 'Description' | 'DisplayCollectionName';
+
+export interface EntityLabelsResult {
+  displayName: Label[];
+  description: Label[];
+  collectionName: Label[];
+  metadataId: string;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -491,4 +500,79 @@ export async function batchUpdateAttributeLabels(
       failures,
     };
   }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Entity-level label reads & writes
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/** Fetch all 3 translatable label sets for an entity */
+export async function getEntityLabelTranslations(
+  baseUrl: string,
+  entityLogicalName: string
+): Promise<EntityLabelsResult> {
+  const url = buildEntityDefinitionUrl({
+    baseUrl,
+    apiVersion: 'v9.2',
+    entityLogicalName,
+    select: ['DisplayName', 'Description', 'DisplayCollectionName', 'MetadataId'],
+  });
+  const j = await fetchJson(url);
+
+  const mapLabels = (field: any): Label[] => {
+    const arr = toArray(field?.LocalizedLabels);
+    return arr.map((l: any) => ({
+      languageCode: Number(l.LanguageCode),
+      label: String(l.Label ?? ''),
+    }));
+  };
+
+  return {
+    displayName: mapLabels(j?.DisplayName),
+    description: mapLabels(j?.Description),
+    collectionName: mapLabels(j?.DisplayCollectionName),
+    metadataId: String(j?.MetadataId ?? ''),
+  };
+}
+
+/**
+ * Update entity-level labels using Web API PUT.
+ * Only sends the specified label field.
+ */
+export async function updateEntityLabelsViaWebApi(
+  baseUrl: string,
+  entityLogicalName: string,
+  metadataId: string,
+  field: EntityLabelField,
+  labels: { LanguageCode: number; Label: string }[]
+): Promise<void> {
+  const localizedLabels = labels.map((l) => ({
+    '@odata.type': 'Microsoft.Dynamics.CRM.LocalizedLabel',
+    Label: l.Label,
+    LanguageCode: l.LanguageCode,
+  }));
+
+  const requestBody: Record<string, unknown> = {
+    '@odata.type': 'Microsoft.Dynamics.CRM.EntityMetadata',
+    MetadataId: metadataId,
+    [field]: {
+      '@odata.type': 'Microsoft.Dynamics.CRM.Label',
+      LocalizedLabels: localizedLabels,
+    },
+  };
+
+  const url = buildEntityDefinitionUrl({
+    baseUrl,
+    apiVersion: 'v9.2',
+    entityLogicalName,
+  });
+
+  await fetchJson(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'MSCRM.MergeLabels': 'true',
+    },
+    body: JSON.stringify(requestBody),
+  });
 }
