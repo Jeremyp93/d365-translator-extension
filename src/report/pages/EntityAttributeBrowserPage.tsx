@@ -17,6 +17,8 @@ import {
   WeatherMoon20Regular,
   WeatherSunny20Regular,
   Cart24Regular,
+  ChevronDown20Regular,
+  ChevronRight20Regular,
 } from "@fluentui/react-icons";
 
 import { ErrorBox, Info } from "../../components/ui/Notice";
@@ -146,7 +148,7 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
     attributesReloadTrigger
   );
 
-  const { labels: entityLabels, loading: entityLabelsLoading, error: entityLabelsError, reload: reloadEntityLabels } = useEntityLabels(clientUrl, selectedEntity);
+  const { labels: entityLabels, error: entityLabelsError, reload: reloadEntityLabels } = useEntityLabels(clientUrl, selectedEntity);
 
   const [selectedAttribute, setSelectedAttribute] = useState<string | null>(null);
 
@@ -168,6 +170,7 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
   const [editorReloadTrigger, setEditorReloadTrigger] = useState(0);
   const [info, setInfo] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [entityTranslationOpen, setEntityTranslationOpen] = useState(false);
 
   // Set document title
   useEffect(() => {
@@ -330,14 +333,26 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
               <>
                 {/* Entity Translation Editor */}
                 {entityLabels && (
-                  <Section title="Entity Translation">
-                    <EntityTranslationEditor
-                      clientUrl={clientUrl}
-                      entityLogicalName={selectedEntity}
-                      labels={entityLabels}
-                      readOnly={isSaving || isEditingBlocked}
-                      onSaved={reloadEntityLabels}
-                    />
+                  <Section
+                    title="Entity Translation"
+                    icon={
+                      <Button
+                        appearance="subtle"
+                        size="small"
+                        icon={entityTranslationOpen ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
+                        onClick={() => setEntityTranslationOpen((prev) => !prev)}
+                      />
+                    }
+                  >
+                    {entityTranslationOpen && (
+                      <EntityTranslationEditor
+                        clientUrl={clientUrl}
+                        entityLogicalName={selectedEntity}
+                        labels={entityLabels}
+                        readOnly={isSaving || isEditingBlocked}
+                        onSaved={reloadEntityLabels}
+                      />
+                    )}
                   </Section>
                 )}
 

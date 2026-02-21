@@ -7,7 +7,6 @@ import {
   Text,
   Divider,
   makeStyles,
-  tokens,
 } from '@fluentui/react-components';
 import type { SelectTabData, SelectTabEvent } from '@fluentui/react-components';
 import TranslationsTable from './TranslationsTable';
@@ -43,14 +42,12 @@ const useStyles = makeStyles({
 const TAB_CONFIG: { key: EntityLabelField; label: string }[] = [
   { key: 'DisplayName', label: 'Display Name' },
   { key: 'Description', label: 'Description' },
-  { key: 'DisplayCollectionName', label: 'Collection Name' },
 ];
 
 function getLabelsForField(labels: EntityLabelsResult, field: EntityLabelField): Label[] {
   switch (field) {
     case 'DisplayName': return labels.displayName;
     case 'Description': return labels.description;
-    case 'DisplayCollectionName': return labels.collectionName;
   }
 }
 
@@ -73,19 +70,17 @@ export function EntityTranslationEditor({
   onSaved,
 }: EntityTranslationEditorProps): JSX.Element {
   const styles = useStyles();
-  const { langs, error: langsError } = useLanguages(clientUrl);
+  const { langs, baseLcid, error: langsError } = useLanguages(clientUrl);
   const langsLoading = !langs && !langsError;
 
   const [activeTab, setActiveTab] = useState<EntityLabelField>('DisplayName');
   const [editedValues, setEditedValues] = useState<EditablePerTab>({
     DisplayName: {},
     Description: {},
-    DisplayCollectionName: {},
   });
   const [originalValues, setOriginalValues] = useState<EditablePerTab>({
     DisplayName: {},
     Description: {},
-    DisplayCollectionName: {},
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,12 +110,10 @@ export function EntityTranslationEditor({
     const newEdited: EditablePerTab = {
       DisplayName: buildMap('DisplayName'),
       Description: buildMap('Description'),
-      DisplayCollectionName: buildMap('DisplayCollectionName'),
     };
     const newOriginal: EditablePerTab = {
       DisplayName: { ...newEdited.DisplayName },
       Description: { ...newEdited.Description },
-      DisplayCollectionName: { ...newEdited.DisplayCollectionName },
     };
 
     setEditedValues(newEdited);
@@ -163,6 +156,25 @@ export function EntityTranslationEditor({
         setInfo('No changes to save');
         setSaving(false);
         return;
+      }
+
+      // Always include base language in entity-level updates.
+      // Unlike attribute PUTs, entity PUTs without the base language label
+      // cause D365 to overwrite it with the first provided label.
+      if (baseLcid) {
+        const baseLabel = changedLabels.find((l) => l.LanguageCode === baseLcid);
+        if (baseLabel) {
+          // Base language is being changed — ensure it's not empty
+          if (!baseLabel.Label.trim()) {
+            baseLabel.Label = original[baseLcid] || entityLogicalName;
+          }
+        } else {
+          // Base language not changed — include current value to prevent overwrite
+          const currentBaseValue = edited[baseLcid] ?? original[baseLcid] ?? '';
+          if (currentBaseValue) {
+            changedLabels.push({ LanguageCode: baseLcid, Label: currentBaseValue });
+          }
+        }
       }
 
       await updateEntityLabelsViaWebApi(

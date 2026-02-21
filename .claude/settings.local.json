@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /c/SRC/Personal/d365-translator-extension && npm run build 2>&1)",
+      "Bash(cd /c/SRC/Personal/d365-translator-extension && npx tsc --noEmit 2>&1)",
+      "Bash(cd /c/SRC/Personal/d365-translator-extension && npm run lint 2>&1)"
+    ]
+  }
+}

@@ -15,12 +15,11 @@ export interface Label {
   label: string;
 }
 
-export type EntityLabelField = 'DisplayName' | 'Description' | 'DisplayCollectionName';
+export type EntityLabelField = 'DisplayName' | 'Description';
 
 export interface EntityLabelsResult {
   displayName: Label[];
   description: Label[];
-  collectionName: Label[];
   metadataId: string;
 }
 
@@ -515,7 +514,7 @@ export async function getEntityLabelTranslations(
     baseUrl,
     apiVersion: 'v9.2',
     entityLogicalName,
-    select: ['DisplayName', 'Description', 'DisplayCollectionName', 'MetadataId'],
+    select: ['DisplayName', 'Description', 'MetadataId'],
   });
   const j = await fetchJson(url);
 
@@ -530,7 +529,6 @@ export async function getEntityLabelTranslations(
   return {
     displayName: mapLabels(j?.DisplayName),
     description: mapLabels(j?.Description),
-    collectionName: mapLabels(j?.DisplayCollectionName),
     metadataId: String(j?.MetadataId ?? ''),
   };
 }
