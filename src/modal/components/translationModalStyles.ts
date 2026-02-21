@@ -315,7 +315,7 @@ export const useOptionSetCardStyles = makeStyles({
     display: "flex",
     alignItems: "center",
     ...shorthands.gap("6px"),
-    minWidth: "160px",
+    width: "160px",
     flexShrink: 0,
   },
 
