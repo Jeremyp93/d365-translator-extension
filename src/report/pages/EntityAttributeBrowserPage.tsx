@@ -23,6 +23,7 @@ import { ErrorBox, Info } from "../../components/ui/Notice";
 import PageHeader from "../../components/ui/PageHeader";
 import Section from "../../components/ui/Section";
 import EntityLabelEditor from "../../components/EntityLabelEditor";
+import { EntityTranslationEditor } from '../../components/EntityTranslationEditor';
 import { EditingBlockedBanner } from "../../components/ui/EditingBlockedBanner";
 import PendingChangesCartModal from "../../components/PendingChangesCartModal";
 import FlexBadge from "../../components/ui/FlexBadge";
@@ -39,6 +40,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { spacing } from "../../styles/theme";
 import { useEntityBrowser } from "../../hooks/useEntityBrowser";
 import { useEntityAttributes } from "../../hooks/useEntityAttributes";
+import { useEntityLabels } from '../../hooks/useEntityLabels';
 import { useAttributeDependencies } from "../../hooks/useAttributeDependencies";
 import { getErrorMessage } from "../../utils/errorHandling";
 
@@ -143,6 +145,8 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
     apiVersion,
     attributesReloadTrigger
   );
+
+  const { labels: entityLabels, loading: entityLabelsLoading, error: entityLabelsError, reload: reloadEntityLabels } = useEntityLabels(clientUrl, selectedEntity);
 
   const [selectedAttribute, setSelectedAttribute] = useState<string | null>(null);
 
@@ -293,6 +297,7 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
         {/* Error and Info Messages */}
         {entitiesError && <ErrorBox>{entitiesError}</ErrorBox>}
         {attributesError && <ErrorBox>{attributesError}</ErrorBox>}
+        {entityLabelsError && <ErrorBox>{entityLabelsError}</ErrorBox>}
         {info && <Info>{info}</Info>}
 
         <div className={styles.splitLayout}>
@@ -323,6 +328,19 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
               </div>
             ) : (
               <>
+                {/* Entity Translation Editor */}
+                {entityLabels && (
+                  <Section title="Entity Translation">
+                    <EntityTranslationEditor
+                      clientUrl={clientUrl}
+                      entityLogicalName={selectedEntity}
+                      labels={entityLabels}
+                      readOnly={isSaving || isEditingBlocked}
+                      onSaved={reloadEntityLabels}
+                    />
+                  </Section>
+                )}
+
                 <AttributeDataGrid
                   attributes={attributes}
                   onSelectAttribute={handleAttributeSelect}
