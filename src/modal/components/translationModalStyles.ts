@@ -255,3 +255,109 @@ export const useLanguageCardStyles = makeStyles({
     boxSizing: "border-box",
   },
 });
+
+/**
+ * Styles for OptionSet value cards
+ */
+export const useOptionSetCardStyles = makeStyles({
+  card: {
+    display: "flex",
+    flexDirection: "column",
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+    ...shorthands.padding("16px", "20px"),
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.borderRadius(tokens.borderRadiusLarge),
+    boxShadow: tokens.shadow4,
+    ...shorthands.border("1px", "solid", "transparent"),
+    transitionProperty: "all",
+    transitionDuration: "200ms",
+    transitionTimingFunction: "ease-out",
+
+    ":hover": {
+      boxShadow: tokens.shadow8,
+      transform: "translateY(-1px)",
+    },
+
+    ":focus-within": {
+      ...shorthands.borderColor(tokens.colorBrandStroke1),
+      boxShadow: `0 0 0 2px ${tokens.colorBrandBackground2}`,
+    },
+  },
+
+  cardHeader: {
+    display: "flex",
+    alignItems: "center",
+    ...shorthands.gap("10px"),
+    marginBottom: "12px",
+  },
+
+  optionLabel: {
+    fontSize: tokens.fontSizeBase400,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+  },
+
+  rows: {
+    display: "flex",
+    flexDirection: "column",
+    ...shorthands.gap("8px"),
+  },
+
+  row: {
+    display: "flex",
+    alignItems: "center",
+    ...shorthands.gap("8px"),
+  },
+
+  rowLangInfo: {
+    display: "flex",
+    alignItems: "center",
+    ...shorthands.gap("6px"),
+    minWidth: "160px",
+    flexShrink: 0,
+  },
+
+  rowLangName: {
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightMedium,
+    color: tokens.colorNeutralForeground1,
+  },
+
+  rowLcidBadge: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    backgroundColor: tokens.colorNeutralBackground3,
+    ...shorthands.padding("1px", "6px"),
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+  },
+
+  rowInput: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  rowBadges: {
+    display: "flex",
+    alignItems: "center",
+    ...shorthands.gap("6px"),
+    flexShrink: 0,
+  },
+
+  baseBadge: {
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorBrandForeground1,
+    backgroundColor: tokens.colorBrandBackground2,
+    ...shorthands.padding("2px", "8px"),
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+  },
+
+  modifiedDot: {
+    width: "6px",
+    height: "6px",
+    ...shorthands.borderRadius("50%"),
+    backgroundColor: tokens.colorPalettePurpleBorderActive,
+  },
+});
