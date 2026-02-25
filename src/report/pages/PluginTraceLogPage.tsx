@@ -6,6 +6,7 @@ import {
   Checkbox,
   Spinner,
   TableColumnId,
+  ToggleButton,
 } from "@fluentui/react-components";
 import {
   WeatherMoon20Regular,
@@ -13,6 +14,7 @@ import {
   Search20Regular,
   Dismiss20Regular,
   DocumentText24Regular,
+  GroupListRegular,
 } from "@fluentui/react-icons";
 
 import { useOrgContext } from "../../hooks/useOrgContext";
@@ -48,6 +50,9 @@ export default function PluginTraceLogPage(): JSX.Element {
     filteredLogs,
     loading,
     error,
+    groupByCorrelation,
+    toggleGroupByCorrelation,
+    displayLogs,
   } = usePluginTraceLogs(clientUrl, apiVersion);
   const { mode, toggleTheme } = useTheme();
 
@@ -271,19 +276,30 @@ export default function PluginTraceLogPage(): JSX.Element {
           <div className={styles.resultsHeader}>
             <Text weight="semibold" size={500}>
               {searchQuery
-                ? `Results (${filteredLogs.length} of ${serverLogs.length})`
-                : `Results (Loaded ${filteredLogs.length}${
+                ? `Results (${displayLogs.length} of ${serverLogs.length})`
+                : `Results (Loaded ${displayLogs.length}${
                     hasMore ? "+" : ""
                   } ${hasMore ? "" : "(all)"})`}
             </Text>
-            <Checkbox
-              label="Infinite scroll"
-              checked={infiniteScrollEnabled}
-              onChange={(_, data) =>
-                setInfiniteScrollEnabled(data.checked === true)
-              }
-              disabled={!isDefaultSort || !!searchQuery}
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <ToggleButton
+                appearance="subtle"
+                icon={<GroupListRegular />}
+                checked={groupByCorrelation}
+                onClick={toggleGroupByCorrelation}
+                size="small"
+              >
+                Group by correlation
+              </ToggleButton>
+              <Checkbox
+                label="Infinite scroll"
+                checked={infiniteScrollEnabled}
+                onChange={(_, data) =>
+                  setInfiniteScrollEnabled(data.checked === true)
+                }
+                disabled={!isDefaultSort || !!searchQuery || groupByCorrelation}
+              />
+            </div>
           </div>
 
           {loading && (
@@ -301,7 +317,7 @@ export default function PluginTraceLogPage(): JSX.Element {
 
           {!loading &&
             !error &&
-            filteredLogs.length === 0 &&
+            displayLogs.length === 0 &&
             serverLogs.length === 0 && (
               <Text>
                 No plugin trace logs found matching the current server filters.
@@ -310,7 +326,7 @@ export default function PluginTraceLogPage(): JSX.Element {
 
           {!loading &&
             !error &&
-            filteredLogs.length === 0 &&
+            displayLogs.length === 0 &&
             serverLogs.length > 0 &&
             searchQuery && (
               <Text>
@@ -321,8 +337,9 @@ export default function PluginTraceLogPage(): JSX.Element {
 
           {!loading &&
             !error &&
-            filteredLogs.length > 0 &&
+            displayLogs.length > 0 &&
             !isDefaultSort &&
+            !groupByCorrelation &&
             hasMore && (
               <div className={styles.sortNotice}>
                 <Text>
@@ -339,19 +356,28 @@ export default function PluginTraceLogPage(): JSX.Element {
               </div>
             )}
 
-          {!loading && !error && filteredLogs.length > 0 && (
+          {!loading && !error && displayLogs.length > 0 && groupByCorrelation && hasMore && (
+              <div className={styles.sortNotice}>
+                <Text>
+                  Infinite scroll is disabled when grouping by correlation.
+                </Text>
+              </div>
+            )}
+
+          {!loading && !error && displayLogs.length > 0 && (
             <ResultsTable
               ref={resultsTableRef}
-              logs={filteredLogs}
+              logs={displayLogs}
               onSortChange={handleTableSortChange}
               onViewFlow={handleViewFlow}
               expandedRows={expandedRows}
               onToggleRow={handleToggleRow}
+              isGrouped={groupByCorrelation}
             />
           )}
 
           {/* Infinite scroll sentinel */}
-          {!loading && !error && filteredLogs.length > 0 && hasMore && (
+          {!loading && !error && displayLogs.length > 0 && hasMore && (
             <div ref={sentinelRef} className={styles.scrollSentinel} />
           )}
 
