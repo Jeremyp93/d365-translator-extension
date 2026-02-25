@@ -122,6 +122,7 @@ export interface ResultsTableProps {
   onViewFlow?: (correlationId: string, rowId: string) => void;
   expandedRows: Set<string>;
   onToggleRow: (rowId: string) => void;
+  isGrouped?: boolean;
 }
 
 export interface ResultsTableHandle {
@@ -129,7 +130,7 @@ export interface ResultsTableHandle {
 }
 
 const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
-  ({ logs, onSortChange, onViewFlow, expandedRows, onToggleRow }, ref) => {
+  ({ logs, onSortChange, onViewFlow, expandedRows, onToggleRow, isGrouped }, ref) => {
     const styles = useStyles();
     const [typeNameWidth, setTypeNameWidth] = useState<number>(350);
     const [isResizing, setIsResizing] = useState<boolean>(false);
@@ -173,6 +174,7 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
     });
 
     const sortedLogs = useMemo(() => {
+      if (isGrouped) return logs;
       if (!sortState.sortColumn) return logs;
 
       const column = columns.find(
@@ -184,7 +186,7 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
       return sortState.sortDirection === "descending"
         ? sorted.reverse()
         : sorted;
-    }, [logs, sortState, columns]);
+    }, [logs, sortState, columns, isGrouped]);
 
     const handleSortChange = useCallback(
       (data: { sortColumn: TableColumnId | undefined; sortDirection: 'ascending' | 'descending' }) => {
@@ -228,9 +230,9 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
                   padding: "8px",
                   textAlign: "left",
                   fontWeight: tokens.fontWeightSemibold,
-                  cursor: "pointer",
+                  cursor: isGrouped ? "default" : "pointer",
                 }}
-                onClick={() =>
+                onClick={isGrouped ? undefined : () =>
                   handleSortChange({
                     sortColumn: "typename",
                     sortDirection:
@@ -254,7 +256,7 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
               </th>
               <th
                 className={`${styles.tableHeaderCellSortable} ${styles.headerMessageName}`}
-                onClick={() =>
+                onClick={isGrouped ? undefined : () =>
                   handleSortChange({
                     sortColumn: "messagename",
                     sortDirection:
@@ -264,6 +266,7 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
                         : "ascending",
                   })
                 }
+                style={isGrouped ? { cursor: "default" } : undefined}
               >
                 Message{" "}
                 {sortState.sortColumn === "messagename" &&
@@ -286,7 +289,7 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
               </th>
               <th
                 className={`${styles.tableHeaderCellSortable} ${styles.headerDuration}`}
-                onClick={() =>
+                onClick={isGrouped ? undefined : () =>
                   handleSortChange({
                     sortColumn: "duration",
                     sortDirection:
@@ -296,6 +299,7 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
                         : "ascending",
                   })
                 }
+                style={isGrouped ? { cursor: "default" } : undefined}
               >
                 Duration{" "}
                 {sortState.sortColumn === "duration" &&
@@ -308,7 +312,7 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
               </th>
               <th
                 className={`${styles.tableHeaderCellSortable} ${styles.headerCreatedOn}`}
-                onClick={() =>
+                onClick={isGrouped ? undefined : () =>
                   handleSortChange({
                     sortColumn: "createdon",
                     sortDirection:
@@ -318,6 +322,7 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
                         : "ascending",
                   })
                 }
+                style={isGrouped ? { cursor: "default" } : undefined}
               >
                 Created On{" "}
                 {sortState.sortColumn === "createdon" &&
@@ -326,8 +331,13 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
             </tr>
           </thead>
           <tbody>
-            {sortedLogs.map((log) => {
+            {sortedLogs.map((log, index) => {
               const isExpanded = expandedRows.has(log.plugintracelogid);
+              const nextLog = sortedLogs[index + 1];
+              const isLastInGroup = isGrouped &&
+                !!log.correlationid &&
+                (!nextLog || nextLog.correlationid !== log.correlationid);
+
               return (
                 <ResultsTableRow
                   key={log.plugintracelogid}
@@ -336,6 +346,7 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
                   typeNameWidth={typeNameWidth}
                   onToggleRow={toggleRow}
                   onViewFlow={onViewFlow}
+                  isLastInGroup={isLastInGroup}
                 />
               );
             })}
