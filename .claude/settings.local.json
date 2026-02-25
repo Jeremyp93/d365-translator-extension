@@ -5,7 +5,8 @@
       "Bash(cd /c/SRC/Personal/d365-translator-extension && npx tsc --noEmit 2>&1)",
       "Bash(cd /c/SRC/Personal/d365-translator-extension && npm run lint 2>&1)",
       "Bash(cd \"C:/SRC/Personal/d365-translator-extension\" && npx tsc --noEmit 2>&1)",
-      "Bash(cd C:/SRC/Personal/d365-translator-extension && npx eslint src/hooks/useOptionSetTranslations.ts src/modal/components/OptionSetCard.tsx src/modal/components/TranslationModal.tsx src/modal/components/EntityTabContent.tsx src/modal/components/FormTabContent.tsx src/modal/components/OptionSetTabContent.tsx src/modal/components/translationModalStyles.ts 2>&1)"
+      "Bash(cd C:/SRC/Personal/d365-translator-extension && npx eslint src/hooks/useOptionSetTranslations.ts src/modal/components/OptionSetCard.tsx src/modal/components/TranslationModal.tsx src/modal/components/EntityTabContent.tsx src/modal/components/FormTabContent.tsx src/modal/components/OptionSetTabContent.tsx src/modal/components/translationModalStyles.ts 2>&1)",
+      "Bash(cd C:/SRC/Personal/d365-translator-extension && npx tsc --noEmit 2>&1)"
     ]
   }
 }
