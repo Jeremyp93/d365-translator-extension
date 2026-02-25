@@ -14,6 +14,7 @@ import {
   getDurationColor,
 } from "../../services/pluginTraceLogService";
 import ResultsTableExpandedRow from "./ResultsTableExpandedRow";
+import { getCorrelationColor } from "../../utils/correlationColors";
 import { spacing } from "../../styles/theme";
 
 const useStyles = makeStyles({
@@ -58,11 +59,15 @@ const useStyles = makeStyles({
     flexDirection: "column",
     gap: spacing.xs,
   },
+  groupSeparator: {
+    borderBottom: `3px solid ${tokens.colorNeutralStroke1}`,
+  },
 });
 
 interface ResultsTableRowProps {
   log: PluginTraceLog;
   isExpanded: boolean;
+  isLastInGroup?: boolean;
   typeNameWidth: number;
   onToggleRow: (rowId: string) => void;
   onViewFlow?: (correlationId: string, rowId: string) => void;
@@ -71,6 +76,7 @@ interface ResultsTableRowProps {
 function ResultsTableRow({
   log,
   isExpanded,
+  isLastInGroup,
   typeNameWidth,
   onToggleRow,
   onViewFlow,
@@ -83,9 +89,17 @@ function ResultsTableRow({
     log.correlationid
   );
 
+  const borderColor = log.correlationid
+    ? getCorrelationColor(log.correlationid)
+    : "transparent";
+
   return (
     <Fragment>
-      <tr data-row-id={log.plugintracelogid} className={styles.tableRow}>
+      <tr
+        data-row-id={log.plugintracelogid}
+        className={`${styles.tableRow}${isLastInGroup ? ` ${styles.groupSeparator}` : ''}`}
+        style={{ borderLeft: `4px solid ${borderColor}` }}
+      >
         <td className={styles.tableCellCenter}>
           {hasDetails && (
             <div
