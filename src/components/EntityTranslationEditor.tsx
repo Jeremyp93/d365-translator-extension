@@ -42,12 +42,14 @@ const useStyles = makeStyles({
 const TAB_CONFIG: { key: EntityLabelField; label: string }[] = [
   { key: 'DisplayName', label: 'Display Name' },
   { key: 'Description', label: 'Description' },
+  { key: 'DisplayCollectionName', label: 'Collection Name' },
 ];
 
 function getLabelsForField(labels: EntityLabelsResult, field: EntityLabelField): Label[] {
   switch (field) {
     case 'DisplayName': return labels.displayName;
     case 'Description': return labels.description;
+    case 'DisplayCollectionName': return labels.displayCollectionName;
   }
 }
 
@@ -77,10 +79,12 @@ export function EntityTranslationEditor({
   const [editedValues, setEditedValues] = useState<EditablePerTab>({
     DisplayName: {},
     Description: {},
+    DisplayCollectionName: {},
   });
   const [originalValues, setOriginalValues] = useState<EditablePerTab>({
     DisplayName: {},
     Description: {},
+    DisplayCollectionName: {},
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,10 +114,12 @@ export function EntityTranslationEditor({
     const newEdited: EditablePerTab = {
       DisplayName: buildMap('DisplayName'),
       Description: buildMap('Description'),
+      DisplayCollectionName: buildMap('DisplayCollectionName'),
     };
     const newOriginal: EditablePerTab = {
       DisplayName: { ...newEdited.DisplayName },
       Description: { ...newEdited.Description },
+      DisplayCollectionName: { ...newEdited.DisplayCollectionName },
     };
 
     setEditedValues(newEdited);

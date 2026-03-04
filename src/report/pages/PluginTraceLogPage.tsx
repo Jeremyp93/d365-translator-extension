@@ -121,7 +121,7 @@ export default function PluginTraceLogPage(): JSX.Element {
     }, []);
 
   useEffect(() => {
-    if (!hasMore || isLoadingMore || !isDefaultSort || !infiniteScrollEnabled)
+    if (!hasMore || isLoadingMore || !isDefaultSort || !infiniteScrollEnabled || groupByCorrelation)
       return;
     if (!sentinelRef.current) return;
 
@@ -132,7 +132,8 @@ export default function PluginTraceLogPage(): JSX.Element {
           hasMore &&
           !isLoadingMore &&
           isDefaultSort &&
-          infiniteScrollEnabled
+          infiniteScrollEnabled &&
+          !groupByCorrelation
         ) {
           loadMoreLogs();
         }
@@ -154,6 +155,7 @@ export default function PluginTraceLogPage(): JSX.Element {
     filteredLogs.length,
     isDefaultSort,
     infiniteScrollEnabled,
+    groupByCorrelation,
   ]); // Re-run when filteredLogs or sort changes
 
   const handlePageSizeChange = useCallback(

@@ -7,7 +7,7 @@ import { spacing } from "../../styles/theme";
 export const editorThemes = {
   entity: {
     borderColor: tokens.colorPaletteBlueBackground2,
-    iconWrapperBg: tokens.colorPaletteBlueBackground1,
+    iconWrapperBg: tokens.colorPaletteBlueBackground2,
     iconColor: tokens.colorPaletteBlueForeground2,
   },
   form: {
@@ -17,7 +17,7 @@ export const editorThemes = {
   },
   optionSet: {
     borderColor: tokens.colorPalettePurpleBackground2,
-    iconWrapperBg: tokens.colorPalettePurpleBackground1,
+    iconWrapperBg: tokens.colorPalettePurpleBackground2,
     iconColor: tokens.colorPalettePurpleForeground2,
   },
 } as const;

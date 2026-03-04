@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, type SetStateAction } from "react";
 import {
   Card,
   CardHeader,
@@ -52,7 +52,7 @@ export interface FormLabelEditorProps {
   /** Form values state (controlled from parent for session caching) */
   formValues?: Record<number, string>;
   /** Form values state setter */
-  setFormValues?: (values: Record<number, string>) => void;
+  setFormValues?: (values: SetStateAction<Record<number, string>>) => void;
   /** Has loaded table state (controlled from parent for session caching) */
   hasLoadedTable?: boolean;
   /** Has loaded table state setter */
