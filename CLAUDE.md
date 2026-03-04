@@ -1,85 +1,81 @@
-<!-- OPENSPEC:START -->
-# OpenSpec Instructions
+# CLAUDE.md
 
-These instructions are for AI assistants working in this project.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Always open `@/openspec/AGENTS.md` when the request:
-- Mentions planning or proposals (words like proposal, spec, change, plan)
-- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
-- Sounds ambiguous and you need the authoritative spec before coding
+## Project Overview
 
-Use `@/openspec/AGENTS.md` to learn:
-- How to create and apply change proposals
-- Spec format and conventions
-- Project structure and guidelines
+Chrome Extension (Manifest V3) for managing multilingual translations in Microsoft Dynamics 365. Built with React 18, TypeScript (strict), Vite, and Fluent UI. Targets `*.dynamics.com` hosts.
 
-Keep this managed block so 'openspec update' can refresh the instructions.
+## Build & Development Commands
 
-<!-- OPENSPEC:END -->
+| Command | Purpose |
+|-|-|
+| `npm run build` | Production build to `dist/` |
+| `npm run build-dev` | Dev build (sourcemaps, no minification) |
+| `npm run dev` | Dev server with hot reload |
+| `npm run lint` | ESLint |
+| `npx tsc --noEmit` | TypeScript type check |
 
-# Claude Instructions — D365 Toolkit PR Review
+No test framework is configured. Manual testing is done by loading `dist/` as an unpacked extension in Chrome and testing against a D365 environment.
 
-You are reviewing pull requests for **D365 Toolkit**, a Chrome Extension (Manifest V3) for Microsoft Dynamics 365 translation management and developer tooling.
+## Architecture
 
-## Sources of truth (read in this order)
-1) CODE_REVIEW.md (required checklist + required ❌/✅ format)
-2) openspec/project.md (architecture, constraints, conventions)
-3) PULL_REQUEST_TEMPLATE.md (what the author claims they tested / changed)
+### Multi-Entry Build (vite.config.ts)
 
-If they conflict: prefer CODE_REVIEW.md → openspec/project.md → existing code patterns.
+The extension has multiple isolated entry points that communicate via Chrome messaging APIs:
 
-## Project context (high signal)
-- React 18 + TypeScript (strict) + Vite
-- Fluent UI v9 (@fluentui/react-components)
-- Service layer pattern: business logic in src/services/
-- Custom hooks in src/hooks/
-- Chrome Extension Manifest V3 constraints (CSP, service worker lifecycle)
-- D365 Web API (OData v4) constraints (paging, batching, throttling)
+- **`src/background.ts`** — MV3 service worker. No persistent memory; uses `chrome.storage`.
+- **`src/popup/`** — Toolbar popup UI (quick actions).
+- **`src/sidepanel/`** — Chrome side panel UI.
+- **`src/controller/pageController.ts`** — Content script injected into D365 pages (field highlighting). Has NO access to Chrome Extension APIs; communicates via the relay.
+- **`src/relay/relay.ts`** — Message relay between page context and extension.
+- **`src/report/report.html`** — Full-screen React SPA with React Router. Contains 5 pages: Entity Browser, Field Report, Form Structure, Global OptionSets, Plugin Trace Logs.
+- **`src/modal/modal.html`** — Field modal rendered as an iframe SPA.
 
-## Review priorities (in order)
-1) Security and data safety (XSS/injection, unsafe DOM, extension CSP/permissions)
-2) Correctness and edge cases (async flows, retries, partial failures, pagination)
-3) Architecture boundaries (services/hooks/components separation)
-4) TypeScript strictness (no any/ts-ignore, correct types)
-5) React best practices (deps, keys, state updates, rerenders)
-6) Maintainability (reuse, file size ~150 LOC, naming consistency)
+### Layer Separation (Enforced)
 
-If the PR is large, review only the top 5–10 highest-impact items and explicitly say you’re prioritizing.
-
-## Non-negotiable rules
-- Functional components only (no class components).
-- No React code (hooks/JSX) in src/services/**.
-- Move fetching and information processing to hooks; components render and handle events.
-- Avoid inline styles except truly dynamic; prefer Fluent UI patterns.
-- Avoid TS escape hatches: no `any`, no `// @ts-ignore`, no `as any` unless clearly justified.
-- Use semantic HTML and accessibility best practices.
-- Responsive behavior via CSS/media queries (don’t do JS screen-size checks).
-
-## D365 & MV3 constraints to watch
-- MV3 service worker lifecycle: avoid relying on persistent in-memory state; use chrome.storage when needed.
-- Permissions: least privilege; scrutinize manifest changes.
-- D365 Web API throttling: avoid unbounded calls; batch/paginate safely and handle partial failures.
-- Pagination: follow @odata.nextLink where applicable.
-
-## Required output format (MANDATORY)
-Start with:
-- **Summary**
-- **Key risks**
-- **Most important fixes** (bullets)
-
-Then for each issue, use exactly the CODE_REVIEW.md format:
-
-### ❌ You did this:
-```tsx
-// problematic code
+```
+src/services/   → Framework-agnostic. NO React imports. D365 Web API calls + business logic.
+src/hooks/      → React hooks. Fetching, state transitions, expose data + actions to components.
+src/components/ → View + event wiring only. Use Fluent UI components, not custom styling.
 ```
 
-### ✅ After review, this is correct:
-```tsx
-// improved code
-```
+### Path Aliases (tsconfig/vite)
 
-**Explanation:** short, beginner-friendly, concrete.
+`@` → `src/`, `@services`, `@hooks`, `@ui`, `@pages`, `@components`, `@report`
 
-## Tone
-Direct, constructive, and specific. Prefer actionable diffs over generic advice.
+### Key Utilities
+
+- **`src/utils/urlBuilders.ts`** — All D365 Web API URLs must use these builders (never construct URLs manually). See CONTRIBUTING.md for full API.
+- **`src/config/constants.ts`** — API version (`D365_API_VERSION = 'v9.2'`), cache TTLs, batch settings, form types.
+
+## Code Conventions
+
+- **Functional components only** (no class components).
+- **No `any`, `as any`, `@ts-ignore`** without documented justification.
+- **Naming**: PascalCase for components/types, camelCase for functions/variables/hooks, kebab-case for filenames.
+- **File size target**: ~150 LOC. Split when responsibilities grow.
+- **Named exports** preferred.
+- Prefer Fluent UI components and tokens over custom/inline styles.
+- Use semantic HTML (`<button>` not clickable `<div>`).
+
+## D365 Web API Rules
+
+- Paginate using `@odata.nextLink`; default page size 100.
+- Batch operations: max ~50 ops/batch, handle partial failures.
+- Use `credentials: 'include'` for D365 session auth.
+- Publish each entity once per bulk save cycle.
+
+## Chrome Extension (MV3) Rules
+
+- Service worker: no persistent in-memory state, use `chrome.storage`.
+- Validate message sender + payload shape for all cross-context messages.
+- No `eval`, no unsafe inline scripts (CSP compliance).
+- Principle of least privilege for permissions.
+
+## Workflow
+
+- Protected `main` branch; all changes via PRs from `feature/` branches.
+- PRs get automated reviews from CodeRabbit and Claude Code (configured in `.github/workflows/`).
+- Review checklist: CODE_REVIEW.md. Agent review instructions: AGENTS.md.
+- Version is in `public/manifest.json`.

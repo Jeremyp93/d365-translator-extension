@@ -17,12 +17,15 @@ import {
   WeatherMoon20Regular,
   WeatherSunny20Regular,
   Cart24Regular,
+  ChevronDown20Regular,
+  ChevronRight20Regular,
 } from "@fluentui/react-icons";
 
 import { ErrorBox, Info } from "../../components/ui/Notice";
 import PageHeader from "../../components/ui/PageHeader";
 import Section from "../../components/ui/Section";
 import EntityLabelEditor from "../../components/EntityLabelEditor";
+import { EntityTranslationEditor } from '../../components/EntityTranslationEditor';
 import { EditingBlockedBanner } from "../../components/ui/EditingBlockedBanner";
 import PendingChangesCartModal from "../../components/PendingChangesCartModal";
 import FlexBadge from "../../components/ui/FlexBadge";
@@ -39,6 +42,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { spacing } from "../../styles/theme";
 import { useEntityBrowser } from "../../hooks/useEntityBrowser";
 import { useEntityAttributes } from "../../hooks/useEntityAttributes";
+import { useEntityLabels } from '../../hooks/useEntityLabels';
 import { useAttributeDependencies } from "../../hooks/useAttributeDependencies";
 import { getErrorMessage } from "../../utils/errorHandling";
 
@@ -144,6 +148,8 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
     attributesReloadTrigger
   );
 
+  const { labels: entityLabels, error: entityLabelsError, reload: reloadEntityLabels } = useEntityLabels(clientUrl, selectedEntity);
+
   const [selectedAttribute, setSelectedAttribute] = useState<string | null>(null);
 
   // Get metadata ID for selected attribute
@@ -164,6 +170,7 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
   const [editorReloadTrigger, setEditorReloadTrigger] = useState(0);
   const [info, setInfo] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [entityTranslationOpen, setEntityTranslationOpen] = useState(false);
 
   // Set document title
   useEffect(() => {
@@ -293,6 +300,7 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
         {/* Error and Info Messages */}
         {entitiesError && <ErrorBox>{entitiesError}</ErrorBox>}
         {attributesError && <ErrorBox>{attributesError}</ErrorBox>}
+        {entityLabelsError && <ErrorBox>{entityLabelsError}</ErrorBox>}
         {info && <Info>{info}</Info>}
 
         <div className={styles.splitLayout}>
@@ -323,6 +331,36 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
               </div>
             ) : (
               <>
+                {/* Entity Translation Editor */}
+                {entityLabels && (
+                  <Section
+                    title="Entity Translation"
+                    icon={
+                      <Button
+                        appearance="subtle"
+                        size="small"
+                        icon={entityTranslationOpen ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
+                        onClick={() => setEntityTranslationOpen((prev) => !prev)}
+                        aria-label="Toggle entity translations"
+                        aria-expanded={entityTranslationOpen}
+                        aria-controls="entity-translation-panel"
+                      />
+                    }
+                  >
+                    {entityTranslationOpen && (
+                      <div id="entity-translation-panel">
+                        <EntityTranslationEditor
+                          clientUrl={clientUrl}
+                          entityLogicalName={selectedEntity}
+                          labels={entityLabels}
+                          readOnly={isSaving || isEditingBlocked}
+                          onSaved={reloadEntityLabels}
+                        />
+                      </div>
+                    )}
+                  </Section>
+                )}
+
                 <AttributeDataGrid
                   attributes={attributes}
                   onSelectAttribute={handleAttributeSelect}

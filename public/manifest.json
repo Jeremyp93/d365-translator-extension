@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "D365 Translation Manager",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "description": "Streamline Dynamics 365 multilingual translations. Edit entity labels, form structures, and option sets across all languages.",
     "action": {
         "default_title": "D365 Translation Manager",
@@ -33,5 +33,11 @@
     "background": { "service_worker": "background.js" },
     "side_panel": {
         "default_path": "src/sidepanel/index.html"
-    }
+    },
+    "web_accessible_resources": [
+        {
+            "resources": ["src/report/report.html", "src/report/*", "src/modal/modal.html", "src/modal/*", "assets/*"],
+            "matches": ["https://*.dynamics.com/*"]
+        }
+    ]
 }

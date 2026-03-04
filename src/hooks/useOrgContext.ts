@@ -29,10 +29,17 @@ export function useOrgContext(): OrgContext {
   const routerLoc = useLocation();
 
   return useMemo(() => {
-    // Prefer React Router's location.search (works in BrowserRouter and HashRouter)
+    // Priority 1: React Router's location.search (works in BrowserRouter and HashRouter)
     let search = routerLoc.search;
 
-    // If empty (common with HashRouter when query sits after the #), derive from hash
+    // Priority 2: Check window.location.search for params before the hash (iframe modal case)
+    // e.g., report.html?clientUrl=...&entity=...#/report/field-modal
+    if (!search && typeof window !== 'undefined' && window.location.search) {
+      search = window.location.search;
+    }
+
+    // Priority 3: Check inside the hash for query params (legacy HashRouter format)
+    // e.g., #/report/field?clientUrl=...&formId=...
     if (!search && typeof window !== 'undefined') {
       search = getSearchFromHashRouter(window.location.hash);
     }

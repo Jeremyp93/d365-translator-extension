@@ -27,7 +27,12 @@ interface UsePluginTraceLogsResult {
   
   // Combined result
   filteredLogs: PluginTraceLog[];
-  
+
+  // Grouping
+  groupByCorrelation: boolean;
+  toggleGroupByCorrelation: () => void;
+  displayLogs: PluginTraceLog[];
+
   // Status
   loading: boolean;
   error: string | null;
@@ -120,6 +125,61 @@ export function usePluginTraceLogs(baseUrl: string, apiVersion: string = 'v9.2')
     );
   }, [serverLogs, searchQuery]);
 
+  // Correlation grouping
+  const [groupByCorrelation, setGroupByCorrelation] = useState(false);
+
+  const toggleGroupByCorrelation = useCallback(() => {
+    setGroupByCorrelation(prev => !prev);
+  }, []);
+
+  /**
+   * When grouping is active, reorder logs:
+   * 1. Group by correlationId
+   * 2. Within each group: sort by createdon ascending
+   * 3. Groups ordered by earliest createdon descending
+   * 4. Logs without correlationId go to the end
+   */
+  const displayLogs = useMemo(() => {
+    if (!groupByCorrelation) return filteredLogs;
+
+    const grouped = new Map<string, PluginTraceLog[]>();
+    const ungrouped: PluginTraceLog[] = [];
+
+    for (const log of filteredLogs) {
+      if (log.correlationid) {
+        const group = grouped.get(log.correlationid);
+        if (group) {
+          group.push(log);
+        } else {
+          grouped.set(log.correlationid, [log]);
+        }
+      } else {
+        ungrouped.push(log);
+      }
+    }
+
+    // Sort within each group by createdon ascending
+    for (const group of grouped.values()) {
+      group.sort((a, b) => new Date(a.createdon).getTime() - new Date(b.createdon).getTime());
+    }
+
+    // Sort groups by earliest createdon descending
+    const sortedGroups = [...grouped.entries()].sort((a, b) => {
+      const aEarliest = new Date(a[1][0].createdon).getTime();
+      const bEarliest = new Date(b[1][0].createdon).getTime();
+      return bEarliest - aEarliest;
+    });
+
+    // Flatten: grouped logs first, then ungrouped
+    const result: PluginTraceLog[] = [];
+    for (const [, group] of sortedGroups) {
+      result.push(...group);
+    }
+    result.push(...ungrouped);
+
+    return result;
+  }, [filteredLogs, groupByCorrelation]);
+
   const applyServerFilters = useCallback(async () => {
     setAppliedFilters(serverFilters);
     // Force refetch after setting applied filters
@@ -190,6 +250,9 @@ export function usePluginTraceLogs(baseUrl: string, apiVersion: string = 'v9.2')
     searchQuery,
     setSearchQuery,
     filteredLogs,
+    groupByCorrelation,
+    toggleGroupByCorrelation,
+    displayLogs,
     loading,
     error,
     refetch: fetchLogs,

@@ -60,3 +60,13 @@ export function getLanguageDisplayName(lcid: number): string {
   const name = languageNames[lcid];
   return name ? `${name} (${lcid})` : `(${lcid})`;
 }
+
+/**
+ * Get display name for a language code
+ * @param lcid - The language code identifier
+ * @returns Formatted string like "French (France)" or just "1036" if unknown
+ */
+export function getLanguageDisplayNameWithoutLcid(lcid: number): string {
+  const name = languageNames[lcid];
+  return name ? `${name}` : `${lcid}`;
+}

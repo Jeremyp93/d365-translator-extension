@@ -1,16 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Text,
-  Divider,
-  Card,
-  CardHeader,
-  makeStyles,
-  tokens,
-} from "@fluentui/react-components";
+import { Text, Divider } from "@fluentui/react-components";
+import { Database24Regular } from "@fluentui/react-icons";
 
-import TranslationsTable from "../components/TranslationsTable";
+import TranslationsTableV2 from "./TranslationsTableV2";
 import Button from "./ui/Button";
-import { ErrorBox, Info } from "./ui/Notice";
+import InlineNotice from "./ui/InlineNotice";
 import { useLanguages } from "../hooks/useLanguages";
 import {
   getAttributeLabelTranslations,
@@ -18,29 +12,7 @@ import {
 } from "../services/entityLabelService";
 import { publishEntityViaWebApi } from "../services/d365Api";
 import type { PendingChange } from "../types";
-import { spacing } from "../styles/theme";
-
-const useStyles = makeStyles({
-  root: {
-    padding: spacing.md,
-  },
-  meta: {
-    color: tokens.colorNeutralForeground3,
-    marginBottom: spacing.sm,
-    fontSize: tokens.fontSizeBase200,
-  },
-  actions: {
-    display: "flex",
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  sectionGap: {
-    marginTop: spacing.md,
-  },
-  noticeContainer: {
-    marginTop: spacing.sm,
-  },
-});
+import { useEditorStyles, editorThemes } from "./editors/editorStyles";
 
 type Editable = Record<number, string>;
 
@@ -60,12 +32,7 @@ interface Props {
   readOnly?: boolean;
 }
 
-interface Label {
-  languageCode: number;
-  label: string;
-}
-
-export default function EntityLabelEditor({
+export default function EntityLabelEditorV2({
   clientUrl,
   entity,
   attribute,
@@ -75,13 +42,13 @@ export default function EntityLabelEditor({
   pendingChanges = [],
   readOnly = false,
 }: Props): JSX.Element {
-  const styles = useStyles();
+  const styles = useEditorStyles();
+  const theme = editorThemes.entity;
   const { langs, error: langsError } = useLanguages(clientUrl);
-  // Derive loading: no langs yet and no error from the hook
   const langsLoading = !langs && !langsError;
 
   const [values, setValues] = useState<Editable>({});
-  const [originalValues, setOriginalValues] = useState<Editable>({}); // Track original for bulk mode
+  const [originalValues, setOriginalValues] = useState<Editable>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,7 +59,6 @@ export default function EntityLabelEditor({
     [langs]
   );
 
-  // Create stable reference for pendingChanges to avoid infinite loops
   const pendingChangesKey = useMemo(
     () => JSON.stringify(pendingChanges),
     [pendingChanges]
@@ -103,7 +69,6 @@ export default function EntityLabelEditor({
     (async () => {
       try {
         setError(null);
-        // Don't show info message - the loading spinner in TranslationsTable is enough
         setLoading(true);
 
         const labels = await getAttributeLabelTranslations(
@@ -121,7 +86,6 @@ export default function EntityLabelEditor({
           map[lcid] = hit?.label ?? "";
         });
 
-        // Apply pending changes on top of D365 values (restore user edits when navigating back)
         const valuesWithPendingChanges = { ...map };
         pendingChanges.forEach((change) => {
           if (change.entity === entity && change.attribute === attribute) {
@@ -131,7 +95,7 @@ export default function EntityLabelEditor({
 
         if (!cancelled) {
           setValues(valuesWithPendingChanges);
-          setOriginalValues(map); // Store original D365 values for comparison (not the edited ones)
+          setOriginalValues(map);
         }
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? String(e));
@@ -142,7 +106,6 @@ export default function EntityLabelEditor({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     clientUrl,
     entity,
@@ -150,26 +113,23 @@ export default function EntityLabelEditor({
     lcids.join(","),
     reloadTrigger,
     pendingChangesKey,
-  ]); // re-run if langs change, reload triggered, or pending changes updated
+  ]);
 
   const onChange = (lcid: number, v: string) => {
     setValues((prev) => ({ ...prev, [lcid]: v }));
   };
 
-  // Immediate save handler (default mode)
   const handleImmediateSave = async () => {
     try {
       setSaving(true);
       setError(null);
       setInfo("Saving…");
 
-      // Only send changed languages for efficiency (consistent with bulk mode)
       const labels: { LanguageCode: number; Label: string }[] = [];
       lcids.forEach((lcid) => {
         const oldValue = originalValues[lcid] ?? "";
         const newValue = values[lcid] ?? "";
 
-        // Only include if value actually changed
         if (oldValue !== newValue) {
           labels.push({
             LanguageCode: lcid,
@@ -178,7 +138,6 @@ export default function EntityLabelEditor({
         }
       });
 
-      // If no changes, don't make the API call
       if (labels.length === 0) {
         setInfo("No changes to save");
         setSaving(false);
@@ -195,7 +154,6 @@ export default function EntityLabelEditor({
       setInfo("Publishing…");
       await publishEntityViaWebApi(clientUrl, entity);
 
-      // Update originalValues to match the new saved state
       setOriginalValues({ ...values });
 
       setInfo(
@@ -208,17 +166,14 @@ export default function EntityLabelEditor({
     }
   };
 
-  // Add to cart handler (bulk mode)
   const handleAddToCart = () => {
     if (!onAddToCart) return;
 
-    // Calculate changes: compare current values with original values
     const changes: PendingChange[] = [];
     lcids.forEach((lcid) => {
       const oldValue = originalValues[lcid] ?? "";
       const newValue = values[lcid] ?? "";
 
-      // Only add if value actually changed
       if (oldValue !== newValue) {
         changes.push({
           entity,
@@ -237,16 +192,8 @@ export default function EntityLabelEditor({
       return;
     }
 
-    // Call the callback with changes
     onAddToCart(changes);
 
-    // DO NOT update originalValues here - keep the D365 values as baseline
-    // This allows user to:
-    // 1. Make changes → add to cart
-    // 2. Clear cart or remove changes
-    // 3. Still see the same diff from D365 (not from last "add to cart")
-
-    // Show success feedback
     setInfo(
       `Added ${changes.length} translation${
         changes.length > 1 ? "s" : ""
@@ -263,27 +210,34 @@ export default function EntityLabelEditor({
     : "Save & Publish";
 
   return (
-    <Card className={styles.root}>
-      <CardHeader
-        header={
-          <Text weight="semibold">DisplayName labels (Entity metadata)</Text>
-        }
-      />
-
-      {error && (
-        <div className={styles.noticeContainer}>
-          <ErrorBox>Error: {error}</ErrorBox>
+    <div
+      className={styles.editorContainer}
+      style={{ borderLeftColor: theme.borderColor }}
+    >
+      {/* Header */}
+      <div className={styles.editorHeader}>
+        <div
+          className={styles.iconWrapper}
+          style={{ backgroundColor: theme.iconWrapperBg }}
+        >
+          <Database24Regular style={{ color: theme.iconColor }} />
         </div>
-      )}
-      {info && !error && (
-        <div className={styles.noticeContainer}>
-          <Info>{info}</Info>
+        <div className={styles.headerTextContainer}>
+          <Text className={styles.headerTitle}>Entity Field Labels</Text>
+          <Text className={styles.headerSubtitle}>
+            DisplayName metadata across all languages
+          </Text>
         </div>
-      )}
+      </div>
 
-      <Divider className={styles.sectionGap} />
+      {/* Notices */}
+      {error && <InlineNotice variant="error">{error}</InlineNotice>}
+      {info && !error && <InlineNotice variant="info">{info}</InlineNotice>}
 
-      <TranslationsTable
+      {/* Content */}
+      <Divider className={styles.contentDivider} />
+
+      <TranslationsTableV2
         lcids={lcids}
         values={values}
         loading={langsLoading || loading}
@@ -292,8 +246,10 @@ export default function EntityLabelEditor({
         onChange={(lcid, v) => onChange(lcid, v)}
       />
 
-      <div className={styles.actions}>
+      {/* Actions */}
+      <div className={styles.editorActions}>
         <Button
+          className={styles.actionButton}
           onClick={handleSave}
           disabled={saving || !langs?.length || readOnly}
           variant="primary"
@@ -301,6 +257,6 @@ export default function EntityLabelEditor({
           {buttonLabel}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
