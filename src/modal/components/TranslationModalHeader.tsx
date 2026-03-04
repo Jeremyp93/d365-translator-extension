@@ -30,6 +30,7 @@ export function TranslationModalHeader({
             icon={<Open20Regular />}
             onClick={onOpenNewTab}
             title="Open in new tab"
+            aria-label="Open in new tab"
           />
         )}
         <Button
@@ -37,6 +38,7 @@ export function TranslationModalHeader({
           icon={<Dismiss20Regular />}
           onClick={onClose}
           title="Close"
+          aria-label="Close"
         />
       </div>
     </div>

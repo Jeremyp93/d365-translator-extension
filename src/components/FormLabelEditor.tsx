@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, type SetStateAction } from "react";
+import { useMemo, useState, useEffect, useCallback, type SetStateAction } from "react";
 import {
   Card,
   CardHeader,
@@ -96,21 +96,10 @@ export default function FormLabelEditor({
   const hasLoadedTable = controlledHasLoadedTable ?? localHasLoadedTable;
   const setHasLoadedTable = controlledSetHasLoadedTable ?? setLocalHasLoadedTable;
 
+  const [loadFailed, setLoadFailed] = useState(false);
   const compositeError = error || langsError || null;
 
-  // Auto-load form labels on mount if autoLoad is enabled
-  useEffect(() => {
-    if (autoLoad && !hasLoadedTable && !busyLoad && langList.length > 0) {
-      onLoadFormLabels();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoLoad, hasLoadedTable, busyLoad, langList.length]);
-
-  const onFormChange = (lcid: number, value: string) => {
-    setFormValues((prev) => ({ ...prev, [lcid]: value }));
-  };
-
-  const onLoadFormLabels = async () => {
+  const onLoadFormLabels = useCallback(async () => {
     try {
       if (!formId) throw new Error("Missing formId.");
       if (!labelId) throw new Error("Missing labelId.");
@@ -118,6 +107,7 @@ export default function FormLabelEditor({
         throw new Error("No provisioned languages loaded yet.");
 
       setBusyLoad(true);
+      setLoadFailed(false);
       setInfo("Reading form labels for all languages…");
       setError(null);
 
@@ -138,9 +128,21 @@ export default function FormLabelEditor({
       setError(e?.message ?? String(e));
       setInfo(null);
       setHasLoadedTable(false);
+      setLoadFailed(true);
     } finally {
       setBusyLoad(false);
     }
+  }, [clientUrl, formId, attribute, labelId, langList, setFormValues, setHasLoadedTable]);
+
+  // Auto-load form labels on mount if autoLoad is enabled
+  useEffect(() => {
+    if (autoLoad && !hasLoadedTable && !busyLoad && !loadFailed && langList.length > 0) {
+      onLoadFormLabels();
+    }
+  }, [autoLoad, hasLoadedTable, busyLoad, loadFailed, langList.length, onLoadFormLabels]);
+
+  const onFormChange = (lcid: number, value: string) => {
+    setFormValues((prev) => ({ ...prev, [lcid]: value }));
   };
 
   const onSaveFormLabels = async () => {

@@ -341,17 +341,22 @@ function EntityAttributeBrowserPageContent(): JSX.Element {
                         size="small"
                         icon={entityTranslationOpen ? <ChevronDown20Regular /> : <ChevronRight20Regular />}
                         onClick={() => setEntityTranslationOpen((prev) => !prev)}
+                        aria-label="Toggle entity translations"
+                        aria-expanded={entityTranslationOpen}
+                        aria-controls="entity-translation-panel"
                       />
                     }
                   >
                     {entityTranslationOpen && (
-                      <EntityTranslationEditor
-                        clientUrl={clientUrl}
-                        entityLogicalName={selectedEntity}
-                        labels={entityLabels}
-                        readOnly={isSaving || isEditingBlocked}
-                        onSaved={reloadEntityLabels}
-                      />
+                      <div id="entity-translation-panel">
+                        <EntityTranslationEditor
+                          clientUrl={clientUrl}
+                          entityLogicalName={selectedEntity}
+                          labels={entityLabels}
+                          readOnly={isSaving || isEditingBlocked}
+                          onSaved={reloadEntityLabels}
+                        />
+                      </div>
                     )}
                   </Section>
                 )}

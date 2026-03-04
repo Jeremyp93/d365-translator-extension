@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogSurface,
@@ -16,15 +16,7 @@ import { useEditingPermission } from "../../hooks/useEditingPermission";
 import { useAttributeType } from "../../hooks/useAttributeType";
 import { isOptionSetType } from "../../services/optionSetService";
 import { useOptionSetTranslations } from "../../hooks/useOptionSetTranslations";
-import {
-  getAttributeLabelTranslations,
-  updateAttributeLabelsViaWebApi,
-} from "../../services/entityLabelService";
-import {
-  readFormFieldLabelsAllLcids,
-  saveFormFieldLabelsAllLcids,
-} from "../../services/formLabelService";
-import { publishEntityViaWebApi } from "../../services/d365Api";
+import { useTranslationModalData } from "../../hooks/useTranslationModalData";
 import { TranslationModalHeader } from "./TranslationModalHeader";
 import { TranslationModalFooter } from "./TranslationModalFooter";
 import { EntityTabContent } from "./EntityTabContent";
@@ -71,118 +63,21 @@ export function TranslationModal({
   // OptionSet translations
   const optionSet = useOptionSetTranslations(clientUrl, entity, attribute, langs ?? undefined, apiVersion);
 
-  // Entity translations
-  const [entityValues, setEntityValues] = useState<Record<number, string>>({});
-  const [entityOriginalValues, setEntityOriginalValues] = useState<Record<number, string>>({});
-  const [entityLoading, setEntityLoading] = useState(false);
-  const [entityError, setEntityError] = useState<string | null>(null);
-
-  // Form translations
-  const [formValues, setFormValues] = useState<Record<number, string>>({});
-  const [formOriginalValues, setFormOriginalValues] = useState<Record<number, string>>({});
-  const [formLoading, setFormLoading] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formLoaded, setFormLoaded] = useState(false);
-
-  // Save state
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-
   const hasFormTab = Boolean(formId && labelId);
   const isDisabled = isEditingBlocked || permissionLoading;
 
-  // Load entity labels on mount
-  useEffect(() => {
-    if (!clientUrl || !entity || !attribute || !langs || langs.length === 0) {
-      return;
-    }
-
-    let cancelled = false;
-    setEntityLoading(true);
-    setEntityError(null);
-
-    (async () => {
-      try {
-        const labels = await getAttributeLabelTranslations(clientUrl, entity, attribute);
-        if (cancelled) return;
-
-        // Convert to Record<lcid, value>
-        const valuesMap: Record<number, string> = {};
-        labels.forEach((l) => {
-          valuesMap[l.languageCode] = l.label;
-        });
-
-        // Fill in missing languages with empty strings
-        langs.forEach((lcid) => {
-          if (!(lcid in valuesMap)) {
-            valuesMap[lcid] = "";
-          }
-        });
-
-        setEntityValues(valuesMap);
-        setEntityOriginalValues({ ...valuesMap });
-      } catch (e: unknown) {
-        if (!cancelled) {
-          setEntityError(e instanceof Error ? e.message : String(e));
-        }
-      } finally {
-        if (!cancelled) {
-          setEntityLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [clientUrl, entity, attribute, langs]);
-
-  // Load form labels when tab is clicked
-  const loadFormLabels = useCallback(async () => {
-    if (!clientUrl || !formId || !labelId || !langs || langs.length === 0 || formLoaded) {
-      return;
-    }
-
-    setFormLoading(true);
-    setFormError(null);
-
-    try {
-      const labelsArray = await readFormFieldLabelsAllLcids(
-        clientUrl,
-        formId,
-        attribute,
-        labelId,
-        langs
-      );
-
-      const valuesMap: Record<number, string> = {};
-      labelsArray.forEach((item) => {
-        valuesMap[item.lcid] = item.label;
-      });
-
-      // Fill in missing languages
-      langs.forEach((lcid) => {
-        if (!(lcid in valuesMap)) {
-          valuesMap[lcid] = "";
-        }
-      });
-
-      setFormValues(valuesMap);
-      setFormOriginalValues({ ...valuesMap });
-      setFormLoaded(true);
-    } catch (e: unknown) {
-      setFormError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setFormLoading(false);
-    }
-  }, [clientUrl, formId, labelId, attribute, langs, formLoaded]);
-
-  // Load form labels when switching to form tab
-  useEffect(() => {
-    if (activeTab === "form" && hasFormTab && !formLoaded) {
-      loadFormLabels();
-    }
-  }, [activeTab, hasFormTab, formLoaded, loadFormLabels]);
+  // Data orchestration hook
+  const modalData = useTranslationModalData({
+    clientUrl,
+    entity,
+    attribute,
+    formId,
+    labelId,
+    apiVersion,
+    langs,
+    activeTab,
+    optionSet,
+  });
 
   // Load optionset data when switching to optionset tab
   useEffect(() => {
@@ -190,84 +85,6 @@ export function TranslationModal({
       optionSet.load();
     }
   }, [activeTab, hasOptionSetTab, optionSet.loaded, optionSet.load]);
-
-  // Change detection
-  const entityChanges = useMemo(() => {
-    return Object.entries(entityValues).filter(
-      ([lcid, val]) => val !== entityOriginalValues[Number(lcid)]
-    );
-  }, [entityValues, entityOriginalValues]);
-
-  const formChanges = useMemo(() => {
-    return Object.entries(formValues).filter(
-      ([lcid, val]) => val !== formOriginalValues[Number(lcid)]
-    );
-  }, [formValues, formOriginalValues]);
-
-  const totalChangeCount = entityChanges.length + formChanges.length + optionSet.changes.length;
-
-  // Handlers
-  const handleEntityValueChange = (lcid: number, value: string) => {
-    setEntityValues((prev) => ({ ...prev, [lcid]: value }));
-  };
-
-  const handleFormValueChange = (lcid: number, value: string) => {
-    setFormValues((prev) => ({ ...prev, [lcid]: value }));
-  };
-
-  const handleDiscard = () => {
-    if (activeTab === "entity") {
-      setEntityValues({ ...entityOriginalValues });
-    } else if (activeTab === "form") {
-      setFormValues({ ...formOriginalValues });
-    } else if (activeTab === "optionset") {
-      optionSet.discard();
-    }
-    setSaveError(null);
-  };
-
-  const handleSave = async () => {
-    if (totalChangeCount === 0) return;
-
-    setSaving(true);
-    setSaveError(null);
-
-    try {
-      // Save entity changes if on entity tab and has changes
-      if (activeTab === "entity" && entityChanges.length > 0) {
-        const labels: { LanguageCode: number; Label: string }[] = Object.entries(entityValues).map(
-          ([lcid, label]) => ({
-            LanguageCode: Number(lcid),
-            Label: label,
-          })
-        );
-
-        await updateAttributeLabelsViaWebApi(clientUrl, entity, attribute, labels);
-        await publishEntityViaWebApi(clientUrl, entity);
-
-        // Update original values
-        setEntityOriginalValues({ ...entityValues });
-      }
-
-      // Save form changes if on form tab and has changes
-      if (activeTab === "form" && formChanges.length > 0 && formId && labelId) {
-        await saveFormFieldLabelsAllLcids(clientUrl, formId, attribute, labelId, formValues);
-        await publishEntityViaWebApi(clientUrl, entity);
-
-        // Update original values
-        setFormOriginalValues({ ...formValues });
-      }
-
-      // Save optionset changes if on optionset tab and has changes
-      if (activeTab === "optionset" && optionSet.changes.length > 0) {
-        await optionSet.save();
-      }
-    } catch (e: unknown) {
-      setSaveError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSaving(false);
-    }
-  };
 
   // Render tab content
   const renderContent = () => {
@@ -285,12 +102,12 @@ export function TranslationModal({
         <EntityTabContent
           langs={langs}
           baseLcid={baseLcid}
-          entityLoading={entityLoading}
-          entityError={entityError}
-          entityValues={entityValues}
-          entityOriginalValues={entityOriginalValues}
+          entityLoading={modalData.entityLoading}
+          entityError={modalData.entityError}
+          entityValues={modalData.entityValues}
+          entityOriginalValues={modalData.entityOriginalValues}
           isDisabled={isDisabled}
-          onValueChange={handleEntityValueChange}
+          onValueChange={modalData.handleEntityValueChange}
         />
       );
     }
@@ -316,13 +133,13 @@ export function TranslationModal({
       <FormTabContent
         langs={langs}
         baseLcid={baseLcid}
-        formLoading={formLoading}
-        formError={formError}
-        formLoaded={formLoaded}
-        formValues={formValues}
-        formOriginalValues={formOriginalValues}
+        formLoading={modalData.formLoading}
+        formError={modalData.formError}
+        formLoaded={modalData.formLoaded}
+        formValues={modalData.formValues}
+        formOriginalValues={modalData.formOriginalValues}
         isDisabled={isDisabled}
-        onValueChange={handleFormValueChange}
+        onValueChange={modalData.handleFormValueChange}
       />
     );
   };
@@ -386,10 +203,10 @@ export function TranslationModal({
 
         <div className={styles.content}>{renderContent()}</div>
 
-        {saveError && (
+        {modalData.saveError && (
           <div className={styles.errorContainer}>
             <MessageBar intent="error">
-              <MessageBarBody>{saveError}</MessageBarBody>
+              <MessageBarBody>{modalData.saveError}</MessageBarBody>
             </MessageBar>
           </div>
         )}
@@ -405,14 +222,14 @@ export function TranslationModal({
         <TranslationModalFooter
           changeCount={
             activeTab === "entity"
-              ? entityChanges.length
+              ? modalData.entityChanges.length
               : activeTab === "form"
-                ? formChanges.length
+                ? modalData.formChanges.length
                 : optionSet.changes.length
           }
-          saving={saving}
-          onSave={handleSave}
-          onDiscard={handleDiscard}
+          saving={modalData.saving}
+          onSave={modalData.handleSave}
+          onDiscard={modalData.handleDiscard}
         />
       </DialogSurface>
     </Dialog>

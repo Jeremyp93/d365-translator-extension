@@ -519,19 +519,23 @@ export async function getEntityLabelTranslations(
   });
   const j = await fetchJson(url);
 
-  const mapLabels = (field: any): Label[] => {
+  const mapLabels = (field: { LocalizedLabels?: { LanguageCode: number; Label: string }[] } | undefined): Label[] => {
     const arr = toArray(field?.LocalizedLabels);
-    return arr.map((l: any) => ({
+    return arr.map((l) => ({
       languageCode: Number(l.LanguageCode),
       label: String(l.Label ?? ''),
     }));
   };
 
+  if (!j?.MetadataId) {
+    throw new Error(`EntityLabelService: missing MetadataId for entity '${entityLogicalName}'`);
+  }
+
   return {
     displayName: mapLabels(j?.DisplayName),
     description: mapLabels(j?.Description),
     displayCollectionName: mapLabels(j?.DisplayCollectionName),
-    metadataId: String(j?.MetadataId ?? ''),
+    metadataId: String(j.MetadataId),
   };
 }
 

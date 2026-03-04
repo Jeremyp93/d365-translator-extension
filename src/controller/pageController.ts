@@ -1205,17 +1205,22 @@ async function getCellLabelIdInHeader(
     }
         
         // Register one-time listener for iframe URL response
+        const requestId = crypto.randomUUID();
+
         const onModalUrl = (ev: MessageEvent) => {
+          if (ev.source !== window) return;
           const d = ev.data;
           if (!d || d.__d365x__ !== true || d.type !== 'FIELD_MODAL_URL') return;
-          
+          if (d.payload?.requestId !== requestId) return;
+          if (typeof d.payload?.url !== 'string' || !/^chrome-extension:\/\/[a-p]{32}\/src\/modal\/modal\.html\?/.test(d.payload.url)) return;
+
           window.removeEventListener('message', onModalUrl);
-          
+
           // Close tooltip and inject modal
           cleanup();
           injectFieldModal(d.payload.url);
         };
-        
+
         window.addEventListener('message', onModalUrl);
 
         // Request iframe URL from relay (content script world)
@@ -1230,9 +1235,10 @@ async function getCellLabelIdInHeader(
               formId,
               labelId,
               apiVersion: getVersion(),
+              requestId,
             },
           },
-          "*"
+          window.location.origin
         );
       });
     }
@@ -1379,12 +1385,14 @@ function isInHeader(el: HTMLElement): boolean {
       setTimeout(() => removeFieldModal(), 200);
     };
 
+    const extensionOrigin = new URL(iframeUrl).origin;
+
     const requestClose = () => {
       // Request close from iframe (allows pending changes check)
       iframe.contentWindow?.postMessage({
         __d365x__: true,
         type: 'REQUEST_CLOSE_FIELD_MODAL'
-      }, '*');
+      }, extensionOrigin);
     };
 
     const onEscape = (e: KeyboardEvent) => {
@@ -1400,6 +1408,7 @@ function isInHeader(el: HTMLElement): boolean {
     };
 
     const onMessage = (e: MessageEvent) => {
+      if (e.source !== iframe.contentWindow) return;
       const d = e.data;
       if (!d || d.__d365x__ !== true) return;
 
@@ -1417,7 +1426,7 @@ function isInHeader(el: HTMLElement): boolean {
           __d365x__: true,
           type: 'OPEN_REPORT',
           payload: d.payload
-        }, '*');
+        }, window.location.origin);
       }
     };
 
@@ -1439,7 +1448,7 @@ function isInHeader(el: HTMLElement): boolean {
           labelId: params.get('labelId') || '',
           apiVersion: params.get('apiVersion') || 'v9.1'
         }
-      }, '*');
+      }, window.location.origin);
     };
 
     backdrop.addEventListener('click', onBackdropClick);

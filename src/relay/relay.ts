@@ -61,8 +61,8 @@
       window.postMessage({
         __d365x__: true,
         type: 'FIELD_MODAL_URL',
-        payload: { url: iframeUrl }
-      }, '*');
+        payload: { url: iframeUrl, requestId: d.payload?.requestId }
+      }, window.location.origin);
     }
   });
 })();

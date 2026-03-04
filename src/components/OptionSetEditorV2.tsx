@@ -82,7 +82,7 @@ export default function OptionSetEditorV2({
           setValues(valuesMap);
           setInfo(null);
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       } finally {
         if (!cancelled) setLoading(false);
@@ -125,7 +125,7 @@ export default function OptionSetEditorV2({
           ? "Saved. Global option set changes are automatically published."
           : "Saved & published. If you still see old text, hard refresh (Ctrl/Cmd+Shift+R)."
       );
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);

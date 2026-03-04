@@ -62,9 +62,16 @@ export default function InlineNotice({
       ? CheckmarkCircle20Regular
       : Info20Regular;
 
+  const isError = variant === "error";
+
   return (
-    <div className={`${styles.notice} ${styles[variant]}`}>
-      <Icon className={styles.icon} />
+    <div
+      className={`${styles.notice} ${styles[variant]}`}
+      role={isError ? "alert" : "status"}
+      aria-live={isError ? "assertive" : "polite"}
+      aria-atomic="true"
+    >
+      <Icon className={styles.icon} aria-hidden="true" />
       <div className={styles.text}>{children}</div>
     </div>
   );

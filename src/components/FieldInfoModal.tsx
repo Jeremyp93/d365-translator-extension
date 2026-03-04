@@ -293,6 +293,7 @@ export default function FieldInfoModal({
                 icon={<Dismiss20Regular />}
                 onClick={handleClose}
                 title="Close"
+                aria-label="Close"
                 size="small"
               />
             </div>
@@ -339,6 +340,7 @@ export default function FieldInfoModal({
                 icon={<Open20Regular />}
                 onClick={onOpenNewTab}
                 title="Open in new tab"
+                aria-label="Open in new tab"
                 size="small"
               />
             )}
@@ -347,6 +349,7 @@ export default function FieldInfoModal({
               icon={<Dismiss20Regular />}
               onClick={handleClose}
               title="Close"
+              aria-label="Close"
               size="small"
             />
           </div>

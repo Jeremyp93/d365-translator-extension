@@ -3,7 +3,7 @@
  * Entry point for the modal iframe, handles URL params and postMessage communication
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FluentProvider } from "@fluentui/react-components";
 
 import { useTheme } from "../context/ThemeContext";
@@ -55,22 +55,10 @@ export default function ModalApp(): JSX.Element {
     return () => window.removeEventListener('beforeunload', handler);
   }, [pendingCount]);
 
-  // Listen for REQUEST_CLOSE_FIELD_MODAL from parent
-  useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      const d = e.data;
-      if (!d || d.__d365x__ !== true) return;
+  // Derive the parent page origin from clientUrl for secure postMessage
+  const parentOrigin = clientUrl ? new URL(clientUrl).origin : '';
 
-      if (d.type === 'REQUEST_CLOSE_FIELD_MODAL') {
-        handleClose();
-      }
-    };
-
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [pendingCount]);
-
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     // Check if there are pending changes
     if (pendingCount > 0) {
       const confirmClose = window.confirm(
@@ -81,7 +69,7 @@ export default function ModalApp(): JSX.Element {
         window.parent.postMessage({
           __d365x__: true,
           type: 'CANCEL_CLOSE_FIELD_MODAL'
-        }, '*');
+        }, parentOrigin);
         return;
       }
     }
@@ -93,8 +81,25 @@ export default function ModalApp(): JSX.Element {
     window.parent.postMessage({
       __d365x__: true,
       type: 'CLOSE_FIELD_MODAL'
-    }, '*');
-  };
+    }, parentOrigin);
+  }, [pendingCount, parentOrigin]);
+
+  // Listen for REQUEST_CLOSE_FIELD_MODAL from parent
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.source !== window.parent) return;
+      if (parentOrigin && e.origin !== parentOrigin) return;
+      const d = e.data;
+      if (!d || d.__d365x__ !== true) return;
+
+      if (d.type === 'REQUEST_CLOSE_FIELD_MODAL') {
+        handleClose();
+      }
+    };
+
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [handleClose, parentOrigin]);
 
   const handleOpenNewTab = () => {
     // Post message to parent to open in new tab
@@ -109,7 +114,7 @@ export default function ModalApp(): JSX.Element {
         labelId,
         apiVersion
       }
-    }, '*');
+    }, parentOrigin);
   };
 
   return (
