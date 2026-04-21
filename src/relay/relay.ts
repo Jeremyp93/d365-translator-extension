@@ -64,5 +64,20 @@
         payload: { url: iframeUrl, requestId: d.payload?.requestId }
       }, window.location.origin);
     }
+    if (d.type === 'OPEN_RECORD_EDITOR_MODAL') {
+      const params = new URLSearchParams({
+        mode: 'record-editor',
+        clientUrl: d.payload.clientUrl || '',
+        entity: d.payload.entity || '',
+        id: d.payload.id || '',
+        apiVersion: d.payload.apiVersion || 'v9.2',
+      });
+      const iframeUrl = chrome.runtime.getURL(`src/modal/modal.html?${params.toString()}`);
+      window.postMessage({
+        __d365x__: true,
+        type: 'FIELD_MODAL_URL',
+        payload: { url: iframeUrl, requestId: d.payload?.requestId }
+      }, window.location.origin);
+    }
   });
 })();
