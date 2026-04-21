@@ -9,6 +9,7 @@ import { FluentProvider } from "@fluentui/react-components";
 import { useTheme } from "../context/ThemeContext";
 import { usePendingChanges } from "../hooks/usePendingChanges";
 import { TranslationModal } from "./components/TranslationModal";
+import { RecordEditorModal } from "./components/RecordEditorModal";
 
 /**
  * Parse URL parameters from window.location.search
@@ -23,9 +24,11 @@ function useModalParams() {
   };
 
   return {
+    mode: (qs.get('mode') === 'record-editor' ? 'record-editor' : 'translation') as 'record-editor' | 'translation',
     clientUrl: (qs.get('clientUrl') || '').replace(/\/+$/, ''),
     entity: qs.get('entity') || undefined,
     attribute: qs.get('attribute') || undefined,
+    recordId: cleanGuid(qs.get('id')),
     formId: cleanGuid(qs.get('formId')),
     labelId: cleanGuid(qs.get('labelId')),
     apiVersion: qs.get('apiVersion') || 'v9.2',
@@ -34,14 +37,18 @@ function useModalParams() {
 
 export default function ModalApp(): JSX.Element {
   const { theme } = useTheme();
-  const { clientUrl, entity, attribute, formId, labelId, apiVersion } = useModalParams();
+  const { mode, clientUrl, entity, attribute, recordId, formId, labelId, apiVersion } = useModalParams();
   const { count: pendingCount } = usePendingChanges();
   const [open, setOpen] = useState(true);
 
+  const isRecordEditor = mode === 'record-editor';
+
   // Set document title
   useEffect(() => {
-    document.title = `${attribute || 'Field'} - D365 Translator`;
-  }, [attribute]);
+    document.title = isRecordEditor
+      ? `Edit ${entity || 'record'} — D365 Translator`
+      : `${attribute || 'Field'} - D365 Translator`;
+  }, [attribute, entity, isRecordEditor]);
 
   // Add beforeunload handler for standalone tab protection
   useEffect(() => {
@@ -101,6 +108,14 @@ export default function ModalApp(): JSX.Element {
     return () => window.removeEventListener('message', handler);
   }, [handleClose, parentOrigin]);
 
+  const handleRecordEditorClose = useCallback((didSave: boolean) => {
+    if (didSave) {
+      window.parent.postMessage({ __d365x__: true, type: 'SAVE_COMPLETE' }, parentOrigin);
+    }
+    setOpen(false);
+    window.parent.postMessage({ __d365x__: true, type: 'CLOSE_FIELD_MODAL' }, parentOrigin);
+  }, [parentOrigin]);
+
   const handleOpenNewTab = () => {
     // Post message to parent to open in new tab
     window.parent.postMessage({
@@ -126,17 +141,28 @@ export default function ModalApp(): JSX.Element {
         height: "100%"
       }}
     >
-      <TranslationModal
-        open={open}
-        onClose={handleClose}
-        clientUrl={clientUrl || ''}
-        entity={entity || ''}
-        attribute={attribute || ''}
-        formId={formId}
-        labelId={labelId}
-        apiVersion={apiVersion}
-        onOpenNewTab={handleOpenNewTab}
-      />
+      {isRecordEditor ? (
+        <RecordEditorModal
+          open={open}
+          onClose={handleRecordEditorClose}
+          clientUrl={clientUrl || ''}
+          entity={entity || ''}
+          recordId={recordId || ''}
+          apiVersion={apiVersion}
+        />
+      ) : (
+        <TranslationModal
+          open={open}
+          onClose={handleClose}
+          clientUrl={clientUrl || ''}
+          entity={entity || ''}
+          attribute={attribute || ''}
+          formId={formId}
+          labelId={labelId}
+          apiVersion={apiVersion}
+          onOpenNewTab={handleOpenNewTab}
+        />
+      )}
     </FluentProvider>
   );
 }
