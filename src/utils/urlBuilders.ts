@@ -159,6 +159,24 @@ export function buildUserSettingsUrl(
 }
 
 /**
+ * Build URL for a specific record (retrieve / patch).
+ */
+export function buildRecordUrl(
+  options: UrlBuilderOptions & {
+    entitySetName: string;
+    recordId: string;
+    select?: string[];
+  }
+): string {
+  const { baseUrl, apiVersion = D365_API_VERSION, entitySetName, recordId, select } = options;
+  const api = buildApiUrl(baseUrl, apiVersion);
+  const guid = normalizeGuid(recordId);
+  let url = `${api}/${entitySetName}(${guid})`;
+  if (select?.length) url += `?$select=${select.join(',')}`;
+  return url;
+}
+
+/**
  * Build batch endpoint URL
  */
 export function buildBatchUrl(baseUrl: string, apiVersion: string = D365_API_VERSION): string {
