@@ -25,4 +25,6 @@ export const BUTTON_TOOLTIPS: ButtonTooltip = {
     'Switch your Dynamics 365 UI language. The page will reload automatically to apply the new language.',
   auditHistory:
     'View audit history for the current record in a side panel',
+  editRecord:
+    'Open the current record in a full-field editor. Save only the fields you change.',
 };

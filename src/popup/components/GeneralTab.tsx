@@ -11,6 +11,7 @@ import {
   Database24Regular,
   Grid24Regular,
   History24Regular,
+  Edit24Regular,
 } from '@fluentui/react-icons';
 
 import { spacing } from '../../styles/theme';
@@ -71,6 +72,7 @@ interface GeneralTabProps {
   onOpenGlobalOptionSets: () => void;
   onOpenEntityBrowser: () => void;
   onOpenAuditHistory: () => void;
+  onEditRecord: () => void;
   onHoverButton: (key: TooltipKey | null) => void;
 }
 
@@ -84,6 +86,7 @@ export function GeneralTab({
   onOpenGlobalOptionSets,
   onOpenEntityBrowser,
   onOpenAuditHistory,
+  onEditRecord,
   onHoverButton,
 }: GeneralTabProps) {
   const styles = useStyles();
@@ -119,6 +122,17 @@ export function GeneralTab({
             tooltipKey="showAllFields"
           >
             Show All Fields
+          </ActionButton>
+
+          <ActionButton
+            icon={<Edit24Regular />}
+            onClick={onEditRecord}
+            disabled={busy || !isValidContext || contextChecking}
+            onMouseEnter={() => onHoverButton('editRecord')}
+            onMouseLeave={() => onHoverButton(null)}
+            tooltipKey="editRecord"
+          >
+            Edit Record
           </ActionButton>
         </div>
       </div>
