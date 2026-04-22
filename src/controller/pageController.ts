@@ -47,6 +47,7 @@ if (!w.__d365Ctl) {
     openGlobalOptionSetsPage: () => Promise<void>;
     openEntityBrowserPage: () => Promise<void>;
     openAuditHistory: () => Promise<void>;
+    openRecordEditor: () => Promise<void>;
   } = {
     enabled: false,
 
@@ -206,6 +207,50 @@ if (!w.__d365Ctl) {
         },
         "*"
       );
+    },
+
+    async openRecordEditor() {
+      const X = (window as any).Xrm;
+      if (!X) { if (__DEV__) console.warn('[ctl] Xrm not found.'); return; }
+
+      const page = await waitFormReady(6000);
+      if (!page) { if (__DEV__) console.warn('[ctl] Form not ready.'); return; }
+
+      const entityLogicalName: string = page.data.entity.getEntityName?.() ?? '';
+      const rawId: string = page.data.entity.getId?.() ?? '';
+      const recordId = rawId.replace(/[{}]/g, '').toLowerCase();
+      const clientUrl: string = X?.Utility?.getGlobalContext?.().getClientUrl?.() || '';
+
+      if (!entityLogicalName) {
+        alert('Open a record first.');
+        return;
+      }
+      if (!recordId) {
+        alert('Save the record before editing its data.');
+        return;
+      }
+
+      const requestId = crypto.randomUUID();
+      const onModalUrl = (ev: MessageEvent) => {
+        if (ev.source !== window) return;
+        const m = ev.data;
+        if (!m || m.__d365x__ !== true || m.type !== 'FIELD_MODAL_URL') return;
+        if (m.payload?.requestId !== requestId) return;
+        if (typeof m.payload?.url !== 'string' ||
+            !/^chrome-extension:\/\/[a-p]{32}\/src\/modal\/modal\.html\?/.test(m.payload.url)) return;
+        window.removeEventListener('message', onModalUrl);
+        injectFieldModal(m.payload.url);
+      };
+      window.addEventListener('message', onModalUrl);
+
+      window.postMessage({
+        __d365x__: true,
+        type: 'OPEN_RECORD_EDITOR_MODAL',
+        payload: {
+          clientUrl, entity: entityLogicalName, id: recordId,
+          apiVersion: getVersion(), requestId,
+        },
+      }, window.location.origin);
     },
 
     async enable() {
@@ -1412,6 +1457,14 @@ function isInHeader(el: HTMLElement): boolean {
       const d = e.data;
       if (!d || d.__d365x__ !== true) return;
 
+      if (d.type === 'SAVE_COMPLETE') {
+        try {
+          const X = (window as any).Xrm;
+          X?.Page?.data?.refresh?.(false);
+        } catch { /* ignore */ }
+        // Close will follow via CLOSE_FIELD_MODAL from the iframe
+        return;
+      }
       if (d.type === 'CLOSE_FIELD_MODAL') {
         closeModal();
       }
