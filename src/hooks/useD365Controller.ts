@@ -180,6 +180,18 @@ export function useD365Controller() {
     setBusy(false);
   };
 
+  const openRecordEditor = async (): Promise<void> => {
+    setBusy(true);
+    setInfo('Opening record editor…');
+    await withGuard(async (tabId, frameId) => {
+      await callController(tabId, frameId, 'openRecordEditor');
+      setInfo('Record editor opened.');
+      // Close popup so the modal is the focused UI
+      window.close();
+    });
+    setBusy(false);
+  };
+
   const handleClearCacheAndHardRefresh = async (): Promise<void> => {
     setBusy(true);
     setInfo('Clearing cache and refreshing…');
@@ -207,6 +219,7 @@ export function useD365Controller() {
     openGlobalOptionSetsPage,
     openEntityBrowserPage,
     openAuditHistoryPage,
+    openRecordEditor,
     setInfo,
   };
 }
