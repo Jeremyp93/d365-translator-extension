@@ -103,6 +103,7 @@ export default function App(): JSX.Element {
     openGlobalOptionSetsPage,
     openEntityBrowserPage,
     openAuditHistoryPage,
+    openRecordEditor,
     setInfo,
   } = useD365Controller();
 
@@ -279,6 +280,7 @@ export default function App(): JSX.Element {
                 onOpenGlobalOptionSets={openGlobalOptionSetsPage}
                 onOpenEntityBrowser={openEntityBrowserPage}
                 onOpenAuditHistory={openAuditHistoryPage}
+                onEditRecord={openRecordEditor}
                 onHoverButton={setHoveredButton}
               />
             )}

@@ -46,6 +46,27 @@ export function buildEntityDefinitionUrl(
 }
 
 /**
+ * Build many-to-one relationships URL for an entity
+ */
+export function buildEntityManyToOneRelationshipsUrl(
+  options: UrlBuilderOptions & {
+    entityLogicalName: string;
+    select?: string[];
+  }
+): string {
+  const { baseUrl, apiVersion = D365_API_VERSION, entityLogicalName, select } = options;
+  const api = buildApiUrl(baseUrl, apiVersion);
+  const encoded = encodeURIComponent(entityLogicalName);
+  let url = `${api}/EntityDefinitions(LogicalName='${encoded}')/ManyToOneRelationships`;
+
+  if (select?.length) {
+    url += `?$select=${select.join(',')}`;
+  }
+
+  return url;
+}
+
+/**
  * Build attribute definition URL
  */
 export function buildAttributeUrl(
@@ -155,6 +176,24 @@ export function buildUserSettingsUrl(
     url += `?$select=${select.join(',')}`;
   }
 
+  return url;
+}
+
+/**
+ * Build URL for a specific record (retrieve / patch).
+ */
+export function buildRecordUrl(
+  options: UrlBuilderOptions & {
+    entitySetName: string;
+    recordId: string;
+    select?: string[];
+  }
+): string {
+  const { baseUrl, apiVersion = D365_API_VERSION, entitySetName, recordId, select } = options;
+  const api = buildApiUrl(baseUrl, apiVersion);
+  const guid = normalizeGuid(recordId);
+  let url = `${api}/${entitySetName}(${guid})`;
+  if (select?.length) url += `?$select=${select.join(',')}`;
   return url;
 }
 

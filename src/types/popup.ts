@@ -17,6 +17,7 @@ export interface ButtonTooltip {
   entityBrowser: string;
   languageSelector: string;
   auditHistory: string;
+  editRecord: string;
 }
 
 export type TooltipKey = keyof ButtonTooltip;

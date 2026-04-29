@@ -22,6 +22,7 @@ export interface D365Controller {
   openGlobalOptionSetsPage: () => void;
   openEntityBrowserPage: () => void;
   openAuditHistory: () => void;
+  openRecordEditor: () => void;
 }
 
 // Window extensions for D365
@@ -44,4 +45,5 @@ export type ControllerMethod =
   | 'openPluginTraceLogsPage'
   | 'openGlobalOptionSetsPage'
   | 'openEntityBrowserPage'
-  | 'openAuditHistory';
+  | 'openAuditHistory'
+  | 'openRecordEditor';
