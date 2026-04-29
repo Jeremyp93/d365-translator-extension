@@ -1,0 +1,4 @@
+include:
+  - privacy-policy.html
+exclude:
+  - "*"
