@@ -38,6 +38,9 @@ export interface UseRecordEditorResult {
   ensureOptions: (logicalName: string) => Promise<void>;
   save: () => Promise<SaveResult>;
   reload: () => Promise<void>;
+  conflicts: ConflictState | null;
+  clearConflict: () => void;
+  resolveConflict: (logicalName: string, choice: 'mine' | 'theirs') => void;
 }
 
 export type SaveResult =
@@ -58,6 +61,7 @@ export function useRecordEditor(input: UseRecordEditorInput): UseRecordEditorRes
   const [fields, setFields] = useState<FieldState[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<{ status?: number; message: string } | null>(null);
+  const [conflicts, setConflicts] = useState<ConflictState | null>(null);
 
   const resolverRef = useRef<ResolverCache>(createResolverCache());
   const entitySetRef = useRef<string>('');
@@ -151,6 +155,7 @@ export function useRecordEditor(input: UseRecordEditorInput): UseRecordEditorRes
         return { ok: true };
       }
       await patchRecord(clientUrl, entitySetRef.current, recordId, body, etagRef.current, apiVersion);
+      setConflicts(null);
       setSaving(false);
       return { ok: true };
     } catch (e) {
@@ -171,6 +176,7 @@ export function useRecordEditor(input: UseRecordEditorInput): UseRecordEditorRes
         } catch { /* swallow — user will see the 412 message */ }
       }
 
+      setConflicts(conflict ?? null);
       setSaveError({ status, message });
       setSaving(false);
       return { ok: false, status, message, conflict };
@@ -182,10 +188,22 @@ export function useRecordEditor(input: UseRecordEditorInput): UseRecordEditorRes
     [fields]
   );
 
+  const clearConflict = useCallback(() => setConflicts(null), []);
+
+  const resolveConflict = useCallback((logicalName: string, choice: 'mine' | 'theirs') => {
+    if (choice === 'mine') {
+      setConflicts((c) => c ? { ...c, conflicts: c.conflicts.filter((x) => x.logicalName !== logicalName) } : c);
+      return;
+    }
+    setFields((prev) => prev.map((f) => f.logicalName === logicalName ? { ...f, currentValue: f.originalValue } : f));
+    setConflicts((c) => c ? { ...c, conflicts: c.conflicts.filter((x) => x.logicalName !== logicalName) } : c);
+  }, []);
+
   return {
     loading, error, fields, dirtyCount, saving, saveError,
     entityLogicalName, recordId,
     updateField, revertField, ensureOptions, save, reload: load,
+    conflicts, clearConflict, resolveConflict,
   };
 }
 

@@ -9,8 +9,16 @@ import { useRecordEditor } from '../../hooks/useRecordEditor';
 import { FieldRow } from './FieldRow';
 
 const useStyles = makeStyles({
-  surface: { maxWidth: '1100px', width: '96vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' },
-  body: { flex: 1, minHeight: 0, overflow: 'auto', paddingRight: tokens.spacingHorizontalS },
+  surface: { maxWidth: '1100px', width: '96vw', height: '90vh' },
+  dialogBody: { height: '100%', minHeight: 0, maxHeight: 'none' },
+  content: {
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+    height: '100%',
+    overflow: 'hidden',
+  },
+  list: { flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', paddingRight: tokens.spacingHorizontalS },
   toolbar: { display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center', paddingBottom: tokens.spacingVerticalS },
   search: { flex: 1 },
 });
@@ -57,13 +65,13 @@ export function RecordEditorModal({ open, onClose, clientUrl, entity, recordId, 
   return (
     <Dialog open={open} modalType="alert">
       <DialogSurface className={s.surface}>
-        <DialogBody>
+        <DialogBody className={s.dialogBody}>
           <DialogTitle>
             Edit record — <code>{entity}</code> ({editor.recordId})
             {editor.dirtyCount > 0 && <Badge appearance="filled" color="warning" style={{ marginLeft: 8 }}>{editor.dirtyCount} changed</Badge>}
           </DialogTitle>
 
-          <DialogContent>
+          <DialogContent className={s.content}>
             {editor.error && (
               <MessageBar intent="error">
                 <MessageBarBody>{editor.error}</MessageBarBody>
@@ -86,12 +94,33 @@ export function RecordEditorModal({ open, onClose, clientUrl, entity, recordId, 
               <Text>{filtered.length} / {editor.fields.length}</Text>
             </div>
 
+            {editor.conflicts && editor.conflicts.conflicts.length > 0 && (
+              <MessageBar intent="warning">
+                <MessageBarBody>
+                  <Text weight="semibold">The record was modified since you opened it.</Text>
+                  <ul>
+                    {editor.conflicts.conflicts.map((c) => {
+                      const mine = editor.fields.find((f) => f.logicalName === c.logicalName)?.currentValue;
+                      return (
+                        <li key={c.logicalName}>
+                          <code>{c.logicalName}</code> — server: {String(c.serverFormatted ?? c.serverValue ?? '∅')} / yours: {String(mine ?? '∅')}{' '}
+                          <Button size="small" onClick={() => editor.resolveConflict(c.logicalName, 'mine')}>Keep mine</Button>{' '}
+                          <Button size="small" onClick={() => editor.resolveConflict(c.logicalName, 'theirs')}>Take theirs</Button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <Text>Resolve each field, then click Save again.</Text>
+                </MessageBarBody>
+              </MessageBar>
+            )}
+
             {editor.loading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
                 <Spinner label="Loading record…" />
               </div>
             ) : (
-              <div className={s.body}>
+              <div className={s.list}>
                 {filtered.map((f) => (
                   <FieldRow
                     key={f.logicalName}

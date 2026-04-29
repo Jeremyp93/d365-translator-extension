@@ -14,13 +14,20 @@ import { LookupEditor } from './editors/LookupEditor';
 const useStyles = makeStyles({
   row: {
     display: 'grid',
-    gridTemplateColumns: '220px 1fr 32px',
-    gap: tokens.spacingHorizontalM,
+    gridTemplateColumns: 'minmax(0, 220px) minmax(0, 1fr) 32px',
+    gap: tokens.spacingHorizontalL,
     alignItems: 'center',
     padding: `${tokens.spacingVerticalS} 0`,
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
-  label: { display: 'flex', flexDirection: 'column' },
+  label: {
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: 0,
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+  },
+  value: { minWidth: 0, '& > *': { width: '100%' } },
   logical: { color: tokens.colorNeutralForeground3, fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase200 },
   dirty: { color: tokens.colorPaletteYellowForeground1, marginLeft: '4px' },
   readOnlyTag: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase100 },
@@ -50,7 +57,7 @@ export function FieldRow({ field, onChange, onRevert, onRequestOptions }: Props)
         </Text>
       </div>
 
-      <div>
+      <div className={s.value}>
         {renderEditor(field, onChange, onRequestOptions)}
       </div>
 
