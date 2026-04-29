@@ -236,38 +236,30 @@ export async function updateAttributeLabelsViaWebApi(
     label: String(l.Label ?? ''),
   }));
 
-  // Get metadata and base language
-  const [baseLcid, { metadataId, soapTypeName }] = await Promise.all([
+  // Fetch base language, attribute metadata, and current labels in parallel.
+  // We must include ALL existing languages (base first) in the request body —
+  // partial PUT bodies can let D365 promote the first LocalizedLabel into the
+  // base-language slot, even with MSCRM.MergeLabels: true.
+  const [baseLcid, { metadataId, soapTypeName }, currentMap] = await Promise.all([
     getOrgBaseLanguageCode(baseUrl),
     getAttributeSoapBasics(baseUrl, entityLogicalName, attributeLogicalName),
+    getCurrentDisplayNameLabelsMap(baseUrl, entityLogicalName, attributeLogicalName),
   ]);
 
-  // Only send changed languages (MSCRM.MergeLabels: true preserves existing)
-  // But ensure base language is non-empty (D365 requirement)
-  const localizedLabels = edited.map((l) => ({
-    Label: l.label,
-    LanguageCode: l.languageCode,
-  }));
+  const merged = mergeLabels(edited, currentMap, {
+    baseLcid,
+    fallbackLabel: attributeLogicalName.replace(/_/g, ' '),
+  });
 
-  // If base language is being updated and is empty, fetch current value or use attribute name
-  const baseLanguageLabel = localizedLabels.find((l) => l.LanguageCode === baseLcid);
-  if (baseLanguageLabel && !baseLanguageLabel.Label.trim()) {
-    // Base language cannot be empty - fetch current or use attribute name as fallback
-    const currentMap = await getCurrentDisplayNameLabelsMap(baseUrl, entityLogicalName, attributeLogicalName);
-    const fallbackLabel = currentMap[baseLcid] || attributeLogicalName.replace(/_/g, ' ');
-    baseLanguageLabel.Label = fallbackLabel.trim();
-  }
-
-  // Build the request body with proper OData types
   const requestBody = {
     '@odata.type': `Microsoft.Dynamics.CRM.${soapTypeName}`,
     MetadataId: metadataId,
     DisplayName: {
       '@odata.type': 'Microsoft.Dynamics.CRM.Label',
-      LocalizedLabels: localizedLabels.map((l) => ({
+      LocalizedLabels: merged.map((l) => ({
         '@odata.type': 'Microsoft.Dynamics.CRM.LocalizedLabel',
-        Label: l.Label,
-        LanguageCode: l.LanguageCode,
+        Label: l.label,
+        LanguageCode: l.languageCode,
       })),
     },
   };
@@ -342,60 +334,57 @@ export async function batchUpdateAttributeLabels(
     // Build batch request body
     const requests: string[] = [];
 
-    // Prepare all attribute updates
+    // Prefetch base LCID + (metadata, current labels) for every attribute in
+    // parallel. We need current labels so we can include ALL existing languages
+    // (base first) in each PUT body — partial bodies can let D365 promote the
+    // first LocalizedLabel into the base-language slot, even with MergeLabels.
+    const groupKeys = Array.from(grouped.keys());
+    const [baseLcid, attributeMeta] = await Promise.all([
+      getOrgBaseLanguageCode(baseUrl),
+      Promise.all(
+        groupKeys.map(async (key) => {
+          const [entity, attribute] = key.split('|');
+          const [basics, currentMap] = await Promise.all([
+            getAttributeSoapBasics(baseUrl, entity, attribute),
+            getCurrentDisplayNameLabelsMap(baseUrl, entity, attribute),
+          ]);
+          return { key, entity, attribute, ...basics, currentMap };
+        })
+      ),
+    ]);
+
     let contentId = 1;
-    const baseLcid = await getOrgBaseLanguageCode(baseUrl);
-
-    for (const [key, changeGroup] of grouped.entries()) {
-      const [entity, attribute] = key.split('|');
-      const labels = changeGroup.map((c) => ({
-        LanguageCode: c.languageCode,
-        Label: c.newValue,
+    for (const meta of attributeMeta) {
+      const changeGroup = grouped.get(meta.key)!;
+      const edited = changeGroup.map((c) => ({
+        languageCode: c.languageCode,
+        label: c.newValue,
       }));
 
-      // Get metadata needed for this attribute
-      const { metadataId, soapTypeName } = await getAttributeSoapBasics(
-        baseUrl,
-        entity,
-        attribute
-      );
-
-      // Only send changed languages (MSCRM.MergeLabels: true preserves existing)
-      // But ensure base language is non-empty (D365 requirement)
-      let mergedLocalized = labels.map((l) => ({
-        Label: l.Label,
-        LanguageCode: l.LanguageCode,
-      }));
-
-      // If base language is in the changes and is empty, fetch current value or use attribute name
-      const baseLanguageChange = mergedLocalized.find((l) => l.LanguageCode === baseLcid);
-      if (baseLanguageChange && !baseLanguageChange.Label.trim()) {
-        // Base language cannot be empty - fetch current or use attribute name as fallback
-        const currentMap = await getCurrentDisplayNameLabelsMap(baseUrl, entity, attribute);
-        const fallbackLabel = currentMap[baseLcid] || attribute.replace(/_/g, ' ');
-        baseLanguageChange.Label = fallbackLabel.trim();
-      }
+      const merged = mergeLabels(edited, meta.currentMap, {
+        baseLcid,
+        fallbackLabel: meta.attribute.replace(/_/g, ' '),
+      });
 
       const requestBody = {
-        '@odata.type': `Microsoft.Dynamics.CRM.${soapTypeName}`,
-        MetadataId: metadataId,
+        '@odata.type': `Microsoft.Dynamics.CRM.${meta.soapTypeName}`,
+        MetadataId: meta.metadataId,
         DisplayName: {
           '@odata.type': 'Microsoft.Dynamics.CRM.Label',
-          LocalizedLabels: mergedLocalized.map((l) => ({
+          LocalizedLabels: merged.map((l) => ({
             '@odata.type': 'Microsoft.Dynamics.CRM.LocalizedLabel',
-            Label: l.Label,
-            LanguageCode: l.LanguageCode,
+            Label: l.label,
+            LanguageCode: l.languageCode,
           })),
         },
       };
 
       const url = buildRelativeAttributeUrl({
         apiVersion: 'v9.2',
-        entityLogicalName: entity,
-        attributeLogicalName: attribute
+        entityLogicalName: meta.entity,
+        attributeLogicalName: meta.attribute
       });
 
-      // Add request to changeset with Content-ID header
       requests.push(
         `${changesetBoundary}`,
         `Content-Type: application/http`,
