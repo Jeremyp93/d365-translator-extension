@@ -6,8 +6,9 @@
   (window as any).__d365RelayInstalled = true;
 
   window.addEventListener('message', (ev: MessageEvent) => {
+    if (ev.origin !== window.location.origin) return;
     const d = ev.data as any;
-    if (!d || d.__d365x__ !== true) return;
+    if (!d || typeof d !== 'object' || d.__d365x__ !== true) return;
 
     if (d.type === 'OPEN_REPORT') {
       chrome.runtime.sendMessage({
@@ -46,6 +47,7 @@
       });
     }
     if (d.type === 'OPEN_FIELD_MODAL') {
+      if (!d.payload || typeof d.payload !== 'object') return;
       // Build iframe URL for field modal
       const params = new URLSearchParams({
         clientUrl: d.payload.clientUrl || '',
@@ -61,10 +63,11 @@
       window.postMessage({
         __d365x__: true,
         type: 'FIELD_MODAL_URL',
-        payload: { url: iframeUrl, requestId: d.payload?.requestId }
+        payload: { url: iframeUrl, requestId: d.payload.requestId }
       }, window.location.origin);
     }
     if (d.type === 'OPEN_RECORD_EDITOR_MODAL') {
+      if (!d.payload || typeof d.payload !== 'object') return;
       const params = new URLSearchParams({
         mode: 'record-editor',
         clientUrl: d.payload.clientUrl || '',
@@ -76,7 +79,7 @@
       window.postMessage({
         __d365x__: true,
         type: 'FIELD_MODAL_URL',
-        payload: { url: iframeUrl, requestId: d.payload?.requestId }
+        payload: { url: iframeUrl, requestId: d.payload.requestId }
       }, window.location.origin);
     }
   });

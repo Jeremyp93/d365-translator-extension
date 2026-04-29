@@ -1,5 +1,5 @@
 import { fetchJson } from './d365Api';
-import { buildEntityDefinitionUrl, buildApiUrl } from '../utils/urlBuilders';
+import { buildEntityDefinitionUrl, buildEntityManyToOneRelationshipsUrl } from '../utils/urlBuilders';
 import { D365_API_VERSION } from '../config/constants';
 
 /** Cache for the lifetime of the caller (passed in). */
@@ -15,8 +15,8 @@ export interface NavigationPropertyInfo {
   referencingEntityNavigationPropertyName: string;
   /** Target entity logical name (e.g., "contact"). */
   referencedEntity: string;
-  /** Target entity's entity set name (e.g., "contacts"). */
-  referencedEntitySet: string;
+  /** Target entity's entity set name (e.g., "contacts"). Undefined if resolution failed. */
+  referencedEntitySet: string | undefined;
 }
 
 export function createResolverCache(): ResolverCache {
@@ -59,29 +59,51 @@ export async function resolveManyToOneNavProps(
   const cached = cache.navProps.get(entityLogicalName);
   if (cached) return cached;
 
-  const api = buildApiUrl(baseUrl, apiVersion);
-  const url =
-    `${api}/EntityDefinitions(LogicalName='${encodeURIComponent(entityLogicalName)}')` +
-    `/ManyToOneRelationships?$select=ReferencingAttribute,ReferencingEntityNavigationPropertyName,ReferencedEntity`;
-  const j = await fetchJson(url) as { value: Array<{
+  type RelationshipRow = {
     ReferencingAttribute: string;
     ReferencingEntityNavigationPropertyName: string;
     ReferencedEntity: string;
-  }> };
+  };
+  type Page = { value: RelationshipRow[]; '@odata.nextLink'?: string };
 
-  // Hydrate target entity sets in parallel (so lookup PATCH has everything ready).
-  const targets = Array.from(new Set((j.value || []).map((r) => r.ReferencedEntity)));
-  await Promise.all(
-    targets.map((t) =>
-      resolveEntitySet(baseUrl, t, cache, apiVersion).catch(() => undefined)
-    )
-  );
+  const rows: RelationshipRow[] = [];
+  let nextUrl: string | undefined = buildEntityManyToOneRelationshipsUrl({
+    baseUrl,
+    apiVersion,
+    entityLogicalName,
+    select: ['ReferencingAttribute', 'ReferencingEntityNavigationPropertyName', 'ReferencedEntity'],
+  });
+  while (nextUrl) {
+    const page = (await fetchJson(nextUrl)) as Page;
+    if (page?.value?.length) rows.push(...page.value);
+    nextUrl = page?.['@odata.nextLink'];
+  }
 
-  const result: NavigationPropertyInfo[] = (j.value || []).map((r) => ({
+  // Hydrate target entity sets in bounded batches (so lookup PATCH has everything ready).
+  const targets = Array.from(new Set(rows.map((r) => r.ReferencedEntity)));
+  const BATCH_SIZE = 50;
+  const failures: Array<{ target: string; error: unknown }> = [];
+  for (let i = 0; i < targets.length; i += BATCH_SIZE) {
+    const chunk = targets.slice(i, i + BATCH_SIZE);
+    const settled = await Promise.allSettled(
+      chunk.map((t) => resolveEntitySet(baseUrl, t, cache, apiVersion))
+    );
+    settled.forEach((s, idx) => {
+      if (s.status === 'rejected') failures.push({ target: chunk[idx], error: s.reason });
+    });
+  }
+  if (failures.length) {
+    console.warn(
+      `[entitySetResolver] Failed to resolve ${failures.length} target entity set(s) for ${entityLogicalName}:`,
+      failures
+    );
+  }
+
+  const result: NavigationPropertyInfo[] = rows.map((r) => ({
     referencingAttribute: r.ReferencingAttribute,
     referencingEntityNavigationPropertyName: r.ReferencingEntityNavigationPropertyName,
     referencedEntity: r.ReferencedEntity,
-    referencedEntitySet: cache.entitySet.get(r.ReferencedEntity) || '',
+    referencedEntitySet: cache.entitySet.get(r.ReferencedEntity),
   }));
   cache.navProps.set(entityLogicalName, result);
   return result;

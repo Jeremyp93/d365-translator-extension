@@ -68,9 +68,9 @@ export function useRecordEditor(input: UseRecordEditorInput): UseRecordEditorRes
   const navPropsRef = useRef<NavigationPropertyInfo[]>([]);
   const attributesRef = useRef<AttributeSummary[]>([]);
   const etagRef = useRef<string>('');
-  const pkLogicalNameRef = useRef<string>(`${entityLogicalName}id`);
 
   const load = useCallback(async () => {
+    const pkLogicalName = `${entityLogicalName}id`;
     setLoading(true);
     setError(null);
     try {
@@ -87,7 +87,17 @@ export function useRecordEditor(input: UseRecordEditorInput): UseRecordEditorRes
       navPropsRef.current = navProps;
       etagRef.current = record.etag;
 
-      setFields(mergeFieldStates(attributes, record.data, { pkLogicalName: pkLogicalNameRef.current }));
+      const merged = mergeFieldStates(attributes, record.data, { pkLogicalName });
+      const writableLookupAttrs = new Set(
+        navProps.filter((n) => n.referencedEntitySet).map((n) => n.referencingAttribute)
+      );
+      setFields(
+        merged.map((f) =>
+          f.kind === 'lookup' && !f.isReadOnly && !writableLookupAttrs.has(f.logicalName)
+            ? { ...f, isReadOnly: true, readOnlyReason: 'no-nav-prop' }
+            : f
+        )
+      );
     } catch (e) {
       const msg = e instanceof RecordApiError
         ? friendlyFetchError(e.status, e.body)

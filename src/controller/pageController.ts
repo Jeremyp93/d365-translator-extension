@@ -231,6 +231,10 @@ if (!w.__d365Ctl) {
       }
 
       const requestId = crypto.randomUUID();
+      const timeoutId = window.setTimeout(() => {
+        window.removeEventListener('message', onModalUrl);
+        if (__DEV__) console.warn('[ctl] FIELD_MODAL_URL reply timed out for', requestId);
+      }, 3000);
       const onModalUrl = (ev: MessageEvent) => {
         if (ev.source !== window) return;
         const m = ev.data;
@@ -238,6 +242,7 @@ if (!w.__d365Ctl) {
         if (m.payload?.requestId !== requestId) return;
         if (typeof m.payload?.url !== 'string' ||
             !/^chrome-extension:\/\/[a-p]{32}\/src\/modal\/modal\.html\?/.test(m.payload.url)) return;
+        window.clearTimeout(timeoutId);
         window.removeEventListener('message', onModalUrl);
         injectFieldModal(m.payload.url);
       };

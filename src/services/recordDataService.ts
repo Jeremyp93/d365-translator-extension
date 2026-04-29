@@ -21,6 +21,13 @@ export class RecordApiError extends Error {
   }
 }
 
+export class MissingETagError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MissingETagError';
+  }
+}
+
 const ANNOTATIONS = 'OData.Community.Display.V1.FormattedValue,Microsoft.Dynamics.CRM.*';
 
 export async function retrieveRecord(
@@ -40,8 +47,15 @@ export async function retrieveRecord(
     },
   });
   if (!r.ok) throw new RecordApiError(r.status, await safeText(r));
+  const headerEtag = r.headers.get('ETag') ?? r.headers.get('etag');
   const json = await r.json() as Record<string, unknown>;
-  const etag = String(json['@odata.etag'] || '');
+  const bodyEtag = typeof json['@odata.etag'] === 'string' ? json['@odata.etag'] as string : undefined;
+  const etag = bodyEtag || headerEtag;
+  if (!etag) {
+    throw new MissingETagError(
+      `No ETag returned for ${entitySetName}(${recordId}); cannot enable optimistic concurrency.`
+    );
+  }
   return { etag, data: json };
 }
 
@@ -53,6 +67,9 @@ export async function patchRecord(
   etag: string,
   apiVersion: string = D365_API_VERSION
 ): Promise<void> {
+  if (!etag) {
+    throw new MissingETagError('Refusing to PATCH without an If-Match ETag.');
+  }
   const url = buildRecordUrl({ baseUrl, apiVersion, entitySetName, recordId });
   const r = await fetch(url, {
     method: 'PATCH',
@@ -62,7 +79,7 @@ export async function patchRecord(
       'OData-MaxVersion': '4.0',
       'OData-Version': '4.0',
       'Content-Type': 'application/json; charset=utf-8',
-      ...(etag ? { 'If-Match': etag } : {}),
+      'If-Match': etag,
     },
     body: JSON.stringify(body),
   });

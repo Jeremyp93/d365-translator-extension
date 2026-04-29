@@ -46,6 +46,27 @@ export function buildEntityDefinitionUrl(
 }
 
 /**
+ * Build many-to-one relationships URL for an entity
+ */
+export function buildEntityManyToOneRelationshipsUrl(
+  options: UrlBuilderOptions & {
+    entityLogicalName: string;
+    select?: string[];
+  }
+): string {
+  const { baseUrl, apiVersion = D365_API_VERSION, entityLogicalName, select } = options;
+  const api = buildApiUrl(baseUrl, apiVersion);
+  const encoded = encodeURIComponent(entityLogicalName);
+  let url = `${api}/EntityDefinitions(LogicalName='${encoded}')/ManyToOneRelationships`;
+
+  if (select?.length) {
+    url += `?$select=${select.join(',')}`;
+  }
+
+  return url;
+}
+
+/**
  * Build attribute definition URL
  */
 export function buildAttributeUrl(
