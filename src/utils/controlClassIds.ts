@@ -9,7 +9,7 @@ const controlClassIds: Record<string, string> = {
   '{E0DECE4B-6FC8-4A8F-A065-082708572369}': 'Multiple Lines of Text',
   '{5546F871-39F4-4F90-B2A8-277A2D166DC0}': 'Timeline',
   '{06375649-C143-495E-A496-C962E5B4488E}': 'Map',
-  '{F9A8A302-114E-466A-B582-6771B2AE0D92}': 'Toggle',
+  '{F9A8A302-114E-466A-B582-6771B2AE0D92}': 'SubGrid',
   '{B0C6723A-8503-4FD7-BB28-C8A06AC933C2}': 'Multi-line Text',
   '{533B9E00-756B-4312-95A0-DC888637AC78}': 'Currency',
   '{AA987274-CE4E-4271-A803-66164311A958}': 'Date Time Picker',
@@ -23,7 +23,7 @@ const controlClassIds: Record<string, string> = {
   '{67FCF3CD-5004-488B-8A06-7E7BEB08FD84}': 'Toggle',
   '{4AA28AB7-9C13-4F57-A73D-AD894D048B5F}': 'MultiSelect Option Set',
   '{FD2A7985-3187-444E-908D-6624B4F99995}': 'Action Cards',
-  '{E7A81278-8635-4D9E-8D4D-59480B391C5B}': 'Knowledge Base Search',
+  '{E7A81278-8635-4D9E-8D4D-59480B391C5B}': 'SubGrid',
   '{5C5600E0-1D6E-4205-A272-BE80DA87FD42}': 'Quick View Form',
   '{3EF39988-22BB-4f0b-BBBE-64B5A3748AEE}': 'Option Set',
   '{C6D124CA-7EDA-4a60-AEA9-7FB8D318B68F}': 'Whole Number',
@@ -54,7 +54,6 @@ const nonEditableControlTypes = new Set([
   '{5546F871-39F4-4F90-B2A8-277A2D166DC0}', // Timeline
   '{06375649-C143-495E-A496-C962E5B4488E}', // Map
   '{FD2A7985-3187-444E-908D-6624B4F99995}', // Action Cards
-  '{E7A81278-8635-4D9E-8D4D-59480B391C5B}', // Knowledge Base Search
 ]);
 
 /**
