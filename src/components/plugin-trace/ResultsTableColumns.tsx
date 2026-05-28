@@ -86,6 +86,15 @@ export function createResultsTableColumns(
       ),
     }),
     createTableColumn<PluginTraceLog>({
+      columnId: "primaryentity",
+      compare: (a, b) =>
+        (a.primaryentity || "").localeCompare(b.primaryentity || ""),
+      renderHeaderCell: () => "Entity",
+      renderCell: (log) => (
+        <TableCellLayout>{log.primaryentity || "—"}</TableCellLayout>
+      ),
+    }),
+    createTableColumn<PluginTraceLog>({
       columnId: "mode",
       compare: (a, b) => a.mode - b.mode,
       renderHeaderCell: () => "Mode",

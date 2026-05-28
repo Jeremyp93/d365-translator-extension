@@ -23,6 +23,27 @@ if (!w.__d365Ctl) {
     5146: 'Bosnian (Bosnia and Herzegovina)',
   };
 
+  // Keep in sync with nonEditableControlTypes in src/utils/controlClassIds.ts
+  // (inlined for content script compatibility — pageController is injected as a
+  // classic script via chrome.scripting.executeScript with world: 'MAIN').
+  const NON_EDITABLE_CLASSIDS = new Set<string>([
+    '{71716b6c-711e-476c-8ab8-5d11542bfb47}', // Sub-grid
+    '{5c5600e0-1d6e-4205-a272-be80da87fd42}', // Quick View Form
+    '{5546f871-39f4-4f90-b2a8-277a2d166dc0}', // Timeline
+    '{06375649-c143-495e-a496-c962e5b4488e}', // Map
+    '{fd2a7985-3187-444e-908d-6624b4f99995}', // Action Cards
+  ]);
+
+  function pickFieldControl(matches: Element[]): Element | null {
+    if (!matches.length) return null;
+    return (
+      matches.find((c) => {
+        const cid = (c.getAttribute('classid') || '').toLowerCase();
+        return !NON_EDITABLE_CLASSIDS.has(cid);
+      }) ?? null
+    );
+  }
+
   interface Field {
     attribute: string;
     controlName: string;
@@ -1006,7 +1027,7 @@ async function getCellLabelIdInHeader(
   if (!header) return null;
 
   const sel = `cell > control[datafieldname="${cssEscapeAttr(attributeLogicalName)}"]`;
-  const ctrl = header.querySelector(sel) as Element | null;
+  const ctrl = pickFieldControl(Array.from(header.querySelectorAll(sel)));
   if (!ctrl) return null;
 
   const cell = ctrl.closest('cell') as Element | null;
@@ -1052,7 +1073,7 @@ async function getCellLabelIdInHeader(
     const sel = `cell > control[datafieldname="${cssEscapeAttr(
       attributeLogicalName
     )}"]`;
-    const control = tabEl.querySelector(sel) as Element | null;
+    const control = pickFieldControl(Array.from(tabEl.querySelectorAll(sel)));
     if (!control) return null;
 
     const cell = control.closest("cell") as Element | null;

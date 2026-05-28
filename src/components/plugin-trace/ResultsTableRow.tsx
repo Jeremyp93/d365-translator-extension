@@ -21,6 +21,15 @@ const useStyles = makeStyles({
   tableRow: {
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
     backgroundColor: tokens.colorNeutralBackground1,
+    cursor: "pointer",
+  },
+  tableRowSelected: {
+    backgroundColor: tokens.colorBrandBackground2Hover,
+    "& > td": {
+      backgroundColor: tokens.colorBrandBackground2Hover,
+      borderTop: `1px solid ${tokens.colorBrandStroke1}`,
+      borderBottom: `1px solid ${tokens.colorBrandStroke1}`,
+    },
   },
   tableCell: {
     padding: spacing.sm,
@@ -71,6 +80,11 @@ interface ResultsTableRowProps {
   typeNameWidth: number;
   onToggleRow: (rowId: string) => void;
   onViewFlow?: (correlationId: string, rowId: string) => void;
+  isSelected?: boolean;
+  onRowClick?: (
+    rowId: string,
+    modifiers: { shiftKey: boolean; ctrlOrMeta: boolean }
+  ) => void;
 }
 
 function ResultsTableRow({
@@ -80,6 +94,8 @@ function ResultsTableRow({
   typeNameWidth,
   onToggleRow,
   onViewFlow,
+  isSelected,
+  onRowClick,
 }: ResultsTableRowProps) {
   const styles = useStyles();
 
@@ -93,12 +109,61 @@ function ResultsTableRow({
     ? getCorrelationColor(log.correlationid)
     : "transparent";
 
+  const isInteractiveTarget = (target: HTMLElement) =>
+    !!target.closest('button, a, input, [role="button"]');
+
+  // Browsers shift-click-select text by default; suppress that on rows so shift-click can extend the row range.
+  const handleMouseDown = (e: React.MouseEvent<HTMLTableRowElement>) => {
+    if (!onRowClick) return;
+    if (isInteractiveTarget(e.target as HTMLElement)) return;
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLTableRowElement>) => {
+    if (!onRowClick) return;
+    const target = e.target as HTMLElement;
+    if (isInteractiveTarget(target)) return;
+
+    const hasModifier = e.shiftKey || e.ctrlKey || e.metaKey;
+    if (!hasModifier) {
+      // Plain click: don't hijack if the user is actively selecting text inside this row.
+      const sel = window.getSelection();
+      if (sel && sel.toString().length > 0) {
+        const rowElement = e.currentTarget;
+        const anchorInRow = sel.anchorNode ? rowElement.contains(sel.anchorNode) : false;
+        const focusInRow = sel.focusNode ? rowElement.contains(sel.focusNode) : false;
+        if (anchorInRow || focusInRow) return;
+      }
+    } else {
+      // Modifier click: clear any stray text selection from the click so highlights stay clean.
+      window.getSelection()?.removeAllRanges();
+    }
+
+    onRowClick(log.plugintracelogid, {
+      shiftKey: e.shiftKey,
+      ctrlOrMeta: e.ctrlKey || e.metaKey,
+    });
+  };
+
+  const rowClassName = [
+    styles.tableRow,
+    isSelected ? styles.tableRowSelected : "",
+    isLastInGroup ? styles.groupSeparator : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <Fragment>
       <tr
         data-row-id={log.plugintracelogid}
-        className={`${styles.tableRow}${isLastInGroup ? ` ${styles.groupSeparator}` : ''}`}
+        className={rowClassName}
         style={{ borderLeft: `4px solid ${borderColor}` }}
+        onMouseDown={handleMouseDown}
+        onClick={handleClick}
+        aria-selected={isSelected}
       >
         <td className={styles.tableCellCenter}>
           {hasDetails && (
@@ -152,6 +217,9 @@ function ResultsTableRow({
           {log.typename || "N/A"}
         </td>
         <td className={styles.tableCell}>{log.messagename || "N/A"}</td>
+        <td className={styles.tableCell} title={log.primaryentity}>
+          {log.primaryentity || "—"}
+        </td>
         <td className={styles.tableCell}>{getModeLabel(log.mode)}</td>
         <td className={styles.tableCell}>
           {getOperationTypeLabel(log.operationtype)}
@@ -183,7 +251,7 @@ function ResultsTableRow({
       </tr>
       {isExpanded && (
         <tr>
-          <td colSpan={10} className={styles.expandedRow}>
+          <td colSpan={11} className={styles.expandedRow}>
             <ResultsTableExpandedRow log={log} />
           </td>
         </tr>
