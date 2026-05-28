@@ -40,7 +40,7 @@ if (!w.__d365Ctl) {
       matches.find((c) => {
         const cid = (c.getAttribute('classid') || '').toLowerCase();
         return !NON_EDITABLE_CLASSIDS.has(cid);
-      }) ?? matches[0]
+      }) ?? null
     );
   }
 

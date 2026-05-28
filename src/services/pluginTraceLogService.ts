@@ -198,7 +198,7 @@ export async function getLogsForCorrelation(
   correlationId: string,
   apiVersion: string = 'v9.2'
 ): Promise<PluginTraceLog[]> {
-  const selectQuery = '$select=plugintracelogid, correlationid,typename,messagename,primaryentity,mode,depth,performanceexecutionduration,operationtype,exceptiondetails,messageblock,createdon,correlationid';
+  const selectQuery = '$select=plugintracelogid,correlationid,typename,messagename,primaryentity,mode,depth,performanceexecutionduration,operationtype,exceptiondetails,messageblock,createdon';
   const filterQuery = `$filter=correlationid eq '${correlationId}'`;
   const orderQuery = '$orderby=createdon asc,plugintracelogid asc'; // Chronological order for flow diagram
   

@@ -128,9 +128,14 @@ function ResultsTableRow({
 
     const hasModifier = e.shiftKey || e.ctrlKey || e.metaKey;
     if (!hasModifier) {
-      // Plain click: don't hijack if the user is actively selecting text in a cell.
+      // Plain click: don't hijack if the user is actively selecting text inside this row.
       const sel = window.getSelection();
-      if (sel && sel.toString().length > 0) return;
+      if (sel && sel.toString().length > 0) {
+        const rowElement = e.currentTarget;
+        const anchorInRow = sel.anchorNode ? rowElement.contains(sel.anchorNode) : false;
+        const focusInRow = sel.focusNode ? rowElement.contains(sel.focusNode) : false;
+        if (anchorInRow || focusInRow) return;
+      }
     } else {
       // Modifier click: clear any stray text selection from the click so highlights stay clean.
       window.getSelection()?.removeAllRanges();

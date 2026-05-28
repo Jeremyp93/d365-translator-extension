@@ -109,6 +109,10 @@ export default function PluginTraceLogPage(): JSX.Element {
 
   const handleRowClick = useCallback(
     (rowId: string, modifiers: { shiftKey: boolean; ctrlOrMeta: boolean }) => {
+      // First shift-click with no prior anchor: treat this row as the anchor so the range is well-defined.
+      if (modifiers.shiftKey && !selectionAnchorRef.current) {
+        selectionAnchorRef.current = rowId;
+      }
       setSelectedRowIds((prev) => {
         // Shift+click: range from anchor to this row, added to the current selection.
         if (modifiers.shiftKey && selectionAnchorRef.current) {
