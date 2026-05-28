@@ -6,6 +6,7 @@
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useState,
@@ -93,6 +94,9 @@ const useStyles = makeStyles({
   headerMessageName: {
     minWidth: "150px",
   },
+  headerEntity: {
+    minWidth: "140px",
+  },
   headerMode: {
     minWidth: "120px",
   },
@@ -123,6 +127,12 @@ export interface ResultsTableProps {
   expandedRows: Set<string>;
   onToggleRow: (rowId: string) => void;
   isGrouped?: boolean;
+  selectedRowIds?: Set<string>;
+  onRowClick?: (
+    rowId: string,
+    modifiers: { shiftKey: boolean; ctrlOrMeta: boolean }
+  ) => void;
+  onVisibleOrderChange?: (order: string[]) => void;
 }
 
 export interface ResultsTableHandle {
@@ -130,7 +140,20 @@ export interface ResultsTableHandle {
 }
 
 const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
-  ({ logs, onSortChange, onViewFlow, expandedRows, onToggleRow, isGrouped }, ref) => {
+  (
+    {
+      logs,
+      onSortChange,
+      onViewFlow,
+      expandedRows,
+      onToggleRow,
+      isGrouped,
+      selectedRowIds,
+      onRowClick,
+      onVisibleOrderChange,
+    },
+    ref
+  ) => {
     const styles = useStyles();
     const [typeNameWidth, setTypeNameWidth] = useState<number>(350);
     const [isResizing, setIsResizing] = useState<boolean>(false);
@@ -210,6 +233,11 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
       [resetSort]
     );
 
+    useEffect(() => {
+      if (!onVisibleOrderChange) return;
+      onVisibleOrderChange(sortedLogs.map((log) => log.plugintracelogid));
+    }, [sortedLogs, onVisibleOrderChange]);
+
     return (
       <div className={styles.tableContainer}>
         <table className={styles.responsiveTable}>
@@ -270,6 +298,24 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
               >
                 Message{" "}
                 {sortState.sortColumn === "messagename" &&
+                  (sortState.sortDirection === "ascending" ? "↑" : "↓")}
+              </th>
+              <th
+                className={`${styles.tableHeaderCellSortable} ${styles.headerEntity}`}
+                onClick={isGrouped ? undefined : () =>
+                  handleSortChange({
+                    sortColumn: "primaryentity",
+                    sortDirection:
+                      sortState.sortColumn === "primaryentity" &&
+                      sortState.sortDirection === "ascending"
+                        ? "descending"
+                        : "ascending",
+                  })
+                }
+                style={isGrouped ? { cursor: "default" } : undefined}
+              >
+                Entity{" "}
+                {sortState.sortColumn === "primaryentity" &&
                   (sortState.sortDirection === "ascending" ? "↑" : "↓")}
               </th>
               <th
@@ -347,6 +393,8 @@ const ResultsTable = forwardRef<ResultsTableHandle, ResultsTableProps>(
                   onToggleRow={toggleRow}
                   onViewFlow={onViewFlow}
                   isLastInGroup={isLastInGroup}
+                  isSelected={selectedRowIds?.has(log.plugintracelogid) ?? false}
+                  onRowClick={onRowClick}
                 />
               );
             })}

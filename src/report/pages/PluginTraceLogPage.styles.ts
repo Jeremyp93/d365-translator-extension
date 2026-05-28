@@ -228,6 +228,16 @@ export const usePluginTraceLogPageStyles = makeStyles({
   clickableIcon: {
     cursor: "pointer",
   },
+  selectionInline: {
+    display: "flex",
+    alignItems: "center",
+    gap: spacing.xs,
+    padding: `2px ${spacing.sm}`,
+    backgroundColor: tokens.colorBrandBackground2,
+    color: tokens.colorBrandForeground2,
+    border: `1px solid ${tokens.colorBrandStroke2}`,
+    borderRadius: tokens.borderRadiusMedium,
+  },
   sortNotice: {
     padding: `${spacing.md} ${spacing.lg}`,
     marginBottom: spacing.md,

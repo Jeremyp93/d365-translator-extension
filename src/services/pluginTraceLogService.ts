@@ -5,6 +5,7 @@ export interface PluginTraceLog {
   plugintracelogid: string;
   typename: string;
   messagename: string;
+  primaryentity?: string;
   mode: number;
   depth: number;
   performanceexecutionduration?: number;
@@ -76,7 +77,7 @@ export async function getPluginTraceLogs(
   }
 
   const filterQuery = filterParts.length > 0 ? `$filter=${filterParts.join(' and ')}` : '';
-  const selectQuery = '$select=plugintracelogid,typename,messagename,mode,depth,performanceexecutionduration,operationtype,exceptiondetails,messageblock,createdon,correlationid';
+  const selectQuery = '$select=plugintracelogid,typename,messagename,primaryentity,mode,depth,performanceexecutionduration,operationtype,exceptiondetails,messageblock,createdon,correlationid';
   const orderQuery = '$orderby=createdon desc,plugintracelogid desc';
 
   const queryParts = [selectQuery, orderQuery, filterQuery].filter(Boolean);
@@ -197,7 +198,7 @@ export async function getLogsForCorrelation(
   correlationId: string,
   apiVersion: string = 'v9.2'
 ): Promise<PluginTraceLog[]> {
-  const selectQuery = '$select=plugintracelogid, correlationid,typename,messagename,mode,depth,performanceexecutionduration,operationtype,exceptiondetails,messageblock,createdon,correlationid';
+  const selectQuery = '$select=plugintracelogid, correlationid,typename,messagename,primaryentity,mode,depth,performanceexecutionduration,operationtype,exceptiondetails,messageblock,createdon,correlationid';
   const filterQuery = `$filter=correlationid eq '${correlationId}'`;
   const orderQuery = '$orderby=createdon asc,plugintracelogid asc'; // Chronological order for flow diagram
   

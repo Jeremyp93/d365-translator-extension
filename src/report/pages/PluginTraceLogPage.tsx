@@ -15,6 +15,7 @@ import {
   Dismiss20Regular,
   DocumentText24Regular,
   GroupListRegular,
+  CheckmarkCircle20Regular,
 } from "@fluentui/react-icons";
 
 import { useOrgContext } from "../../hooks/useOrgContext";
@@ -99,6 +100,68 @@ export default function PluginTraceLogPage(): JSX.Element {
   );
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  // Highlighted-row selection (multi-select with click/ctrl/shift)
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
+  const selectionAnchorRef = useRef<string | null>(null);
+  // Mirror the on-screen sorted/grouped order so shift-click ranges follow what the user sees.
+  const visibleRowOrderRef = useRef<string[]>([]);
+
+  const handleRowClick = useCallback(
+    (rowId: string, modifiers: { shiftKey: boolean; ctrlOrMeta: boolean }) => {
+      setSelectedRowIds((prev) => {
+        // Shift+click: range from anchor to this row, added to the current selection.
+        if (modifiers.shiftKey && selectionAnchorRef.current) {
+          const order = visibleRowOrderRef.current;
+          const anchorIndex = order.indexOf(selectionAnchorRef.current);
+          const targetIndex = order.indexOf(rowId);
+          if (anchorIndex >= 0 && targetIndex >= 0) {
+            const next = new Set(prev);
+            const [from, to] =
+              anchorIndex < targetIndex
+                ? [anchorIndex, targetIndex]
+                : [targetIndex, anchorIndex];
+            for (let i = from; i <= to; i++) next.add(order[i]);
+            return next;
+          }
+        }
+        // Ctrl/Cmd+click: toggle this row in the current selection.
+        if (modifiers.ctrlOrMeta) {
+          const next = new Set(prev);
+          if (next.has(rowId)) next.delete(rowId);
+          else next.add(rowId);
+          return next;
+        }
+        // Plain click: select only this row — or deselect it if it was the only one selected.
+        if (prev.size === 1 && prev.has(rowId)) return new Set();
+        return new Set([rowId]);
+      });
+      // Shift extends from the existing anchor; everything else moves the anchor here.
+      if (!modifiers.shiftKey) {
+        selectionAnchorRef.current = rowId;
+      }
+    },
+    []
+  );
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedRowIds(new Set());
+    selectionAnchorRef.current = null;
+  }, []);
+
+  const handleApplyFilters = useCallback(() => {
+    handleClearSelection();
+    applyServerFilters();
+  }, [applyServerFilters, handleClearSelection]);
+
+  const handleClearFilters = useCallback(() => {
+    handleClearSelection();
+    clearServerFilters();
+  }, [clearServerFilters, handleClearSelection]);
+
+  const handleVisibleOrderChange = useCallback((order: string[]) => {
+    visibleRowOrderRef.current = order;
+  }, []);
 
   // Handle row toggle
   const handleToggleRow = useCallback((rowId: string) => {
@@ -237,8 +300,8 @@ export default function PluginTraceLogPage(): JSX.Element {
           <FilterSection
             filters={serverFilters}
             onFiltersChange={setServerFilters}
-            onApply={applyServerFilters}
-            onClear={clearServerFilters}
+            onApply={handleApplyFilters}
+            onClear={handleClearFilters}
             loading={loading}
             pageSize={pageSize}
             onPageSizeChange={handlePageSizeChange}
@@ -284,6 +347,22 @@ export default function PluginTraceLogPage(): JSX.Element {
                   } ${hasMore ? "" : "(all)"})`}
             </Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {selectedRowIds.size > 0 && (
+                <div className={styles.selectionInline}>
+                  <CheckmarkCircle20Regular />
+                  <Text weight="semibold">
+                    {selectedRowIds.size} selected
+                  </Text>
+                  <Button
+                    appearance="subtle"
+                    size="small"
+                    icon={<Dismiss20Regular />}
+                    onClick={handleClearSelection}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
               <ToggleButton
                 appearance="subtle"
                 icon={<GroupListRegular />}
@@ -375,6 +454,9 @@ export default function PluginTraceLogPage(): JSX.Element {
               expandedRows={expandedRows}
               onToggleRow={handleToggleRow}
               isGrouped={groupByCorrelation}
+              selectedRowIds={selectedRowIds}
+              onRowClick={handleRowClick}
+              onVisibleOrderChange={handleVisibleOrderChange}
             />
           )}
 
