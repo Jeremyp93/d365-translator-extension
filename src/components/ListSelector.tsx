@@ -91,6 +91,8 @@ interface ListSelectorProps<T> {
   getMetaText: (item: T) => string;
   /** Function to check if search matches */
   filterItem?: (item: T, searchTerm: string) => boolean;
+  /** Optional override for the scrollable list max-height (default "70vh") */
+  maxHeight?: string;
 }
 
 /**
@@ -108,6 +110,7 @@ export default function ListSelector<T>({
   getDisplayName,
   getMetaText,
   filterItem,
+  maxHeight,
 }: ListSelectorProps<T>): JSX.Element {
   const styles = useStyles();
   const [searchTerm, setSearchTerm] = useState("");
@@ -149,7 +152,7 @@ export default function ListSelector<T>({
           <Text>No {title.toLowerCase()} found</Text>
         </div>
       ) : (
-        <div className={styles.entityList}>
+        <div className={styles.entityList} style={maxHeight ? { maxHeight } : undefined}>
           {filteredItems.map((item) => {
             const itemKey = getItemKey(item);
             return (

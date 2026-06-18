@@ -17,6 +17,7 @@ interface UseViewTranslationsResult {
   loaded: boolean;
   saving: boolean;
   saveError: string | null;
+  saveSuccess: boolean;
   hasChanges: boolean;
   load: () => Promise<void>;
   onChange: (field: ViewField, lcid: number, value: string) => void;
@@ -47,12 +48,15 @@ export function useViewTranslations(
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const load = useCallback(async () => {
     if (!clientUrl || !savedQueryId || !langs?.length) return;
     setLoading(true);
     setError(null);
     setLoaded(false);
+    setSaveSuccess(false);
+    setSaveError(null);
     try {
       const [nameLabels, descLabels] = await Promise.all([
         getViewLocalizedLabels(clientUrl, savedQueryId, 'name', apiVersion),
@@ -73,6 +77,7 @@ export function useViewTranslations(
   }, [clientUrl, savedQueryId, langs, apiVersion]);
 
   const onChange = useCallback((field: ViewField, lcid: number, value: string) => {
+    setSaveSuccess(false);
     setValues((prev) => ({ ...prev, [field]: { ...prev[field], [lcid]: value } }));
   }, []);
 
@@ -93,9 +98,11 @@ export function useViewTranslations(
     if (!savedQueryId || !hasChanges) return;
     setSaving(true);
     setSaveError(null);
+    setSaveSuccess(false);
     try {
       await saveViewTranslations(clientUrl, entity, savedQueryId, changedEdits, apiVersion);
       setOriginal(structuredClone(values));
+      setSaveSuccess(true);
     } catch (e: unknown) {
       setSaveError(e instanceof Error ? e.message : String(e));
       throw e;
@@ -110,7 +117,8 @@ export function useViewTranslations(
     setLoaded(false);
     setError(null);
     setSaveError(null);
+    setSaveSuccess(false);
   }, []);
 
-  return { values, loading, error, loaded, saving, saveError, hasChanges, load, onChange, save, reset };
+  return { values, loading, error, loaded, saving, saveError, saveSuccess, hasChanges, load, onChange, save, reset };
 }

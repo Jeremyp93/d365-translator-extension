@@ -1,4 +1,21 @@
-import { makeStyles, Text, Spinner, Badge, Card, CardHeader, Divider, tokens } from '@fluentui/react-components';
+import { useState } from 'react';
+import {
+  makeStyles,
+  Text,
+  Spinner,
+  Badge,
+  Card,
+  CardHeader,
+  Divider,
+  TabList,
+  Tab,
+  ProgressBar,
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
+  tokens,
+} from '@fluentui/react-components';
+import type { SelectTabData, SelectTabEvent } from '@fluentui/react-components';
 import { Grid24Regular, Code24Regular } from '@fluentui/react-icons';
 
 import Section from '../ui/Section';
@@ -8,15 +25,26 @@ import { queryTypeLabel, type SavedQuerySummary } from '../../services/savedQuer
 import type { ViewFieldValues, ViewField } from '../../hooks/useViewTranslations';
 import { spacing } from '../../styles/theme';
 
+const TAB_CONFIG: { key: ViewField; label: string }[] = [
+  { key: 'name', label: 'Name' },
+  { key: 'description', label: 'Description' },
+];
+
 const useStyles = makeStyles({
   emptyState: { textAlign: 'center', padding: spacing.xl, color: tokens.colorNeutralForeground3 },
   spinner: { textAlign: 'center', padding: spacing.xl },
   cardPadding: { padding: spacing.md },
   dividerMargin: { margin: `${spacing.md} 0` },
-  fieldBlock: { marginBottom: '24px' },
-  fieldLabel: { fontWeight: tokens.fontWeightSemibold, marginBottom: spacing.sm, display: 'block' },
+  tabPanel: { marginTop: spacing.md },
   badges: { display: 'flex', alignItems: 'center', gap: spacing.sm },
   actions: { display: 'flex', gap: spacing.sm, marginTop: spacing.md },
+  statusRibbon: { marginTop: spacing.md },
+  progressBlock: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing.xs,
+    marginTop: spacing.md,
+  },
 });
 
 interface ViewLabelEditorProps {
@@ -28,14 +56,22 @@ interface ViewLabelEditorProps {
   onChange: (field: ViewField, lcid: number, value: string) => void;
   onSave: () => void;
   saving: boolean;
+  saveError?: string | null;
+  saveSuccess?: boolean;
   hasChanges: boolean;
   readOnly?: boolean;
 }
 
 export default function ViewLabelEditor({
-  view, lcids, langs, loading, values, onChange, onSave, saving, hasChanges, readOnly = false,
+  view, lcids, langs, loading, values, onChange, onSave, saving,
+  saveError = null, saveSuccess = false, hasChanges, readOnly = false,
 }: ViewLabelEditorProps): JSX.Element {
   const styles = useStyles();
+  const [activeTab, setActiveTab] = useState<ViewField>('name');
+
+  const handleTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
+    setActiveTab(data.value as ViewField);
+  };
 
   if (!view) {
     return (
@@ -69,27 +105,22 @@ export default function ViewLabelEditor({
         />
         <Divider className={styles.dividerMargin} />
 
-        <div className={styles.fieldBlock}>
-          <Text className={styles.fieldLabel}>Name</Text>
-          <TranslationsTable
-            lcids={lcids}
-            values={values.name}
-            loading={false}
-            disabled={disabled}
-            placeholder="(empty)"
-            onChange={(lcid, v) => onChange('name', lcid, v)}
-          />
-        </div>
+        <TabList appearance="subtle" size="small" selectedValue={activeTab} onTabSelect={handleTabSelect}>
+          {TAB_CONFIG.map((tab) => (
+            <Tab key={tab.key} value={tab.key}>
+              {tab.label}
+            </Tab>
+          ))}
+        </TabList>
 
-        <div className={styles.fieldBlock}>
-          <Text className={styles.fieldLabel}>Description</Text>
+        <div className={styles.tabPanel}>
           <TranslationsTable
             lcids={lcids}
-            values={values.description}
+            values={values[activeTab]}
             loading={false}
             disabled={disabled}
             placeholder="(empty)"
-            onChange={(lcid, v) => onChange('description', lcid, v)}
+            onChange={(lcid, v) => onChange(activeTab, lcid, v)}
           />
         </div>
 
@@ -98,6 +129,31 @@ export default function ViewLabelEditor({
             {saving ? 'Saving…' : 'Save Changes'}
           </CustomButton>
         </div>
+
+        {saving && (
+          <div className={styles.progressBlock}>
+            <Text size={200}>Saving translations and publishing the entity…</Text>
+            <ProgressBar shape="rounded" thickness="large" />
+          </div>
+        )}
+
+        {!saving && saveError && (
+          <MessageBar intent="error" className={styles.statusRibbon}>
+            <MessageBarBody>
+              <MessageBarTitle>Save failed</MessageBarTitle>
+              {saveError}
+            </MessageBarBody>
+          </MessageBar>
+        )}
+
+        {!saving && !saveError && saveSuccess && (
+          <MessageBar intent="success" className={styles.statusRibbon}>
+            <MessageBarBody>
+              <MessageBarTitle>Saved</MessageBarTitle>
+              Translations saved and the entity was published.
+            </MessageBarBody>
+          </MessageBar>
+        )}
       </Card>
     </Section>
   );

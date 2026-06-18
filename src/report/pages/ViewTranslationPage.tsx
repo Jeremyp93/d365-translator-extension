@@ -163,7 +163,6 @@ export default function ViewTranslationPage(): JSX.Element {
 
         {viewsError && <ErrorBox>Error: {viewsError}</ErrorBox>}
         {tx.error && <ErrorBox>Error: {tx.error}</ErrorBox>}
-        {tx.saveError && <ErrorBox>Save failed: {tx.saveError}</ErrorBox>}
 
         <div className={styles.splitLayout}>
           <aside className={styles.sidebar}>
@@ -181,7 +180,9 @@ export default function ViewTranslationPage(): JSX.Element {
               getDisplayName={getEntityDisplayName}
               getMetaText={(e) => e.LogicalName}
             />
+          </aside>
 
+          <section className={styles.detailPanel}>
             <div className={styles.toggleRow}>
               <Switch
                 checked={publicOnly}
@@ -200,10 +201,9 @@ export default function ViewTranslationPage(): JSX.Element {
               getItemKey={(v) => v.savedQueryId}
               getDisplayName={(v) => v.name}
               getMetaText={(v) => queryTypeLabel(v.queryType)}
+              maxHeight="240px"
             />
-          </aside>
 
-          <section className={styles.detailPanel}>
             <ViewLabelEditor
               view={selectedView}
               lcids={lcids}
@@ -213,6 +213,8 @@ export default function ViewTranslationPage(): JSX.Element {
               onChange={tx.onChange}
               onSave={tx.save}
               saving={tx.saving}
+              saveError={tx.saveError}
+              saveSuccess={tx.saveSuccess}
               hasChanges={tx.hasChanges}
               readOnly={isEditingBlocked}
             />
