@@ -15,6 +15,7 @@ const FormReportPage = lazy(() => import('./pages/FormReportPage'));
 const GlobalOptionSetPage = lazy(() => import('./pages/GlobalOptionSetPage'));
 const EntityAttributeBrowserPage = lazy(() => import('./pages/EntityAttributeBrowserPage'));
 const PluginTraceLogPage = lazy(() => import('./pages/PluginTraceLogPage'));
+const ViewTranslationPage = lazy(() => import('./pages/ViewTranslationPage'));
 
 function KeepSearchNavigate({ to }: { to: string }) {
   const { search } = useLocation();
@@ -50,6 +51,7 @@ export default function AppRouter(): JSX.Element {
               <Route path="/plugin-trace-logs" element={<PluginTraceLogPage />} />
               <Route path="/global-optionsets" element={<GlobalOptionSetPage />} />
               <Route path="/entity-browser" element={<EntityAttributeBrowserPage />} />
+              <Route path="/view-translations" element={<ViewTranslationPage />} />
               {/* default → field, but keep query params */}
               <Route path="*" element={<KeepSearchNavigate to="/field" />} />
             </Routes>
