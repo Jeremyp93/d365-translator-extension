@@ -13,6 +13,7 @@ export interface ButtonTooltip {
   removeHighlight: string;
   formTranslations: string;
   globalOptionSets: string;
+  viewTranslations: string;
   pluginTraceLogs: string;
   entityBrowser: string;
   languageSelector: string;

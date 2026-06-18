@@ -10,6 +10,7 @@ import {
   DocumentTable24Regular,
   Database24Regular,
   Grid24Regular,
+  Table24Regular,
   History24Regular,
   Edit24Regular,
 } from '@fluentui/react-icons';
@@ -70,6 +71,7 @@ interface GeneralTabProps {
   onDeactivate: () => void;
   onOpenFormReport: () => void;
   onOpenGlobalOptionSets: () => void;
+  onOpenViewTranslations: () => void;
   onOpenEntityBrowser: () => void;
   onOpenAuditHistory: () => void;
   onEditRecord: () => void;
@@ -84,6 +86,7 @@ export function GeneralTab({
   onDeactivate,
   onOpenFormReport,
   onOpenGlobalOptionSets,
+  onOpenViewTranslations,
   onOpenEntityBrowser,
   onOpenAuditHistory,
   onEditRecord,
@@ -187,6 +190,17 @@ export function GeneralTab({
             tooltipKey="globalOptionSets"
           >
             Global OptionSets
+          </ActionButton>
+
+          <ActionButton
+            icon={<Table24Regular />}
+            onClick={onOpenViewTranslations}
+            disabled={busy || !isDynamicsEnv || contextChecking}
+            onMouseEnter={() => onHoverButton('viewTranslations')}
+            onMouseLeave={() => onHoverButton(null)}
+            tooltipKey="viewTranslations"
+          >
+            View Translations
           </ActionButton>
 
           <ActionButton

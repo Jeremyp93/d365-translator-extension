@@ -66,6 +66,7 @@ if (!w.__d365Ctl) {
     openFormReportPage: () => Promise<void>;
     openPluginTraceLogsPage: () => Promise<void>;
     openGlobalOptionSetsPage: () => Promise<void>;
+    openViewTranslationsPage: () => Promise<void>;
     openEntityBrowserPage: () => Promise<void>;
     openAuditHistory: () => Promise<void>;
     openRecordEditor: () => Promise<void>;
@@ -115,6 +116,29 @@ if (!w.__d365Ctl) {
           },
         },
         "*"
+      );
+    },
+
+    async openViewTranslationsPage() {
+      const X = (window as any).Xrm;
+      if (!X) {
+        if (__DEV__) console.warn("[ctl] Xrm not found in this frame.");
+        return;
+      }
+
+      const clientUrl =
+        (window as any).Xrm?.Utility?.getGlobalContext?.().getClientUrl?.() || "";
+
+      window.postMessage(
+        {
+          __d365x__: true,
+          type: "OPEN_VIEW_TRANSLATIONS",
+          payload: {
+            clientUrl,
+            apiVersion: getVersion(),
+          },
+        },
+        window.location.origin
       );
     },
 

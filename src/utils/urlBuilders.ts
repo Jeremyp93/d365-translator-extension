@@ -267,6 +267,34 @@ export function buildRelativeAttributeUrl(
 }
 
 /**
+ * Build a RetrieveLocLabels function URL for a record attribute.
+ * Uses parameter aliases with an @odata.id entity moniker.
+ */
+export function buildRetrieveLocLabelsUrl(
+  options: UrlBuilderOptions & {
+    entitySetName: string; // e.g. 'savedqueries'
+    recordId: string;
+    attributeName: string;
+    includeUnpublished?: boolean;
+  }
+): string {
+  const {
+    baseUrl,
+    apiVersion = D365_API_VERSION,
+    entitySetName,
+    recordId,
+    attributeName,
+    includeUnpublished = true,
+  } = options;
+  const api = buildApiUrl(baseUrl, apiVersion);
+  const guid = normalizeGuid(recordId);
+  const moniker = encodeURIComponent(JSON.stringify({ '@odata.id': `${entitySetName}(${guid})` }));
+  const attr = encodeURIComponent(`'${attributeName}'`);
+  return `${api}/RetrieveLocLabels(EntityMoniker=@p1,AttributeName=@p2,IncludeUnpublished=@p3)` +
+    `?@p1=${moniker}&@p2=${attr}&@p3=${includeUnpublished}`;
+}
+
+/**
  * Build OData query string from filters, select, orderby, etc.
  */
 export interface ODataQueryOptions {
