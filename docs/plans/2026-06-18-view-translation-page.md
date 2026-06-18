@@ -9,9 +9,9 @@
 **Tech Stack:** React 18, TypeScript (strict), Fluent UI, Vite, Chrome MV3, D365 Web API v9.2.
 
 > **No test framework is configured in this repo** (per CLAUDE.md — manual testing only). "TDD" here means: each task ends with a **verification gate** (`npx tsc --noEmit` + `npm run lint`, and `npm run build` where relevant), and a **manual D365 check** at the end. Do not fabricate a test harness.
-
+>
 > **Branch:** Work continues on `feature/enhancements` (current branch). Commit after every task.
-
+>
 > **Reference templates to read before starting:** `src/services/optionSetService.ts`, `src/report/pages/GlobalOptionSetPage.tsx`, `src/hooks/useOptionSetTranslations.ts`, `src/components/TranslationsTable.tsx`, `src/components/ListSelector.tsx`.
 
 ---
@@ -31,7 +31,7 @@
 Returns `204 No Content`.
 
 **RetrieveLocLabels** (Function, GET):
-```
+```text
 /api/data/v9.2/RetrieveLocLabels(EntityMoniker=@p1,AttributeName=@p2,IncludeUnpublished=@p3)?@p1={"@odata.id":"savedqueries(<guid>)"}&@p2='name'&@p3=true
 ```
 Response shape to confirm at runtime (Task 3, Step 3): expected `{ "Label": { "LocalizedLabels": [ { "Label": "...", "LanguageCode": 1036 } ] } }`. Parse defensively via `toArray(j?.Label?.LocalizedLabels)`.

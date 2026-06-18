@@ -16,7 +16,7 @@ Add a report page that translates the **name** and **description** of D365 **sys
 
 Entity-first, three zones reusing the existing `splitLayout` grid pattern:
 
-```
+```text
 [ Entity list ]  →  [ View list for entity ]  →  [ Name + Description editor (one input per language) ]
 ```
 

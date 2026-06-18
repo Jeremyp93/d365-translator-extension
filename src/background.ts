@@ -51,8 +51,10 @@ chrome.runtime.onMessage.addListener((msg: any, sender, _sendResponse) => {
     const url = `${base}#/report/global-optionsets${qs}`;
     chrome.tabs.create({ url }).catch(() => {});
   } else if (msg?.type === "OPEN_VIEW_TRANSLATIONS") {
+    if (sender.id !== chrome.runtime.id) return;
     const { clientUrl, apiVersion } = msg.payload ?? {};
-    if (!clientUrl) return;
+    if (typeof clientUrl !== "string") return;
+    if (apiVersion != null && typeof apiVersion !== "string") return;
 
     const base = chrome.runtime.getURL("src/report/report.html");
     const qs = `?clientUrl=${encodeURIComponent(clientUrl)}${

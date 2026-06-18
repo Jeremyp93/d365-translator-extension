@@ -159,10 +159,9 @@ export async function saveHighlightState(
  * Unified Interface caches labels/metadata in IndexedDB + service worker caches.
  */
 export async function clearSiteDataAndReload(tabId: number, origin: string): Promise<void> {
-  // 1) Clear global HTTP cache
-  await chrome.browsingData.remove({ since: 0 }, { cache: true });
-
-  // 2) Clear site-scoped data for the origin (IndexedDB, SW caches, etc.)
+  // 1) Clear site-scoped data for the origin (IndexedDB, SW caches, etc.).
+  //    The HTTP cache for the reloaded origin is handled by bypassCache below;
+  //    a global cache wipe would needlessly evict every other site's cache.
   await chrome.browsingData.remove(
     { since: 0, origins: [origin] },
     {
@@ -174,7 +173,7 @@ export async function clearSiteDataAndReload(tabId: number, origin: string): Pro
     }
   );
 
-  // 3) Clear per-tab storage (best-effort; the origin filter above already covers it)
+  // 2) Clear per-tab storage (best-effort; the origin filter above already covers it)
   try {
     await chrome.scripting.executeScript({
       target: { tabId },
@@ -190,7 +189,7 @@ export async function clearSiteDataAndReload(tabId: number, origin: string): Pro
     });
   } catch {}
 
-  // 4) Hard reload bypassing cache
+  // 3) Hard reload bypassing cache
   await chrome.tabs.reload(tabId, { bypassCache: true });
 }
 

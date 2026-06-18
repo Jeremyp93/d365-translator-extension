@@ -106,21 +106,19 @@ export default function ViewTranslationPage(): JSX.Element {
 
   const [savedQueryId, setSavedQueryId] = useState<string | null>(null);
   const selectedView = useMemo(
-    () => views.find((v) => v.savedQueryId === savedQueryId) ?? null,
-    [views, savedQueryId]
+    () => shownViews.find((v) => v.savedQueryId === savedQueryId) ?? null,
+    [shownViews, savedQueryId]
   );
 
   const tx = useViewTranslations(clientUrl ?? "", entity ?? "", savedQueryId, langs ?? undefined, apiVersion);
 
   useEffect(() => {
     tx.reset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedQueryId, entity]);
+  }, [savedQueryId, entity, tx.reset]);
 
   useEffect(() => {
     if (savedQueryId) tx.load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedQueryId, langs]);
+  }, [savedQueryId, langs, tx.load]);
 
   useEffect(() => {
     document.title = "View Translations - D365 Translator";

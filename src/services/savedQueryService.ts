@@ -1,6 +1,7 @@
 import { fetchJson, toArray, publishEntityViaWebApi } from './d365Api';
-import { buildApiUrl, buildRetrieveLocLabelsUrl } from '../utils/urlBuilders';
+import { buildApiUrl, buildODataQuery, buildRetrieveLocLabelsUrl } from '../utils/urlBuilders';
 import { buildBatchRequest, executeBatchRequest, BatchOperation } from '../utils/batchBuilder';
+import { D365_API_VERSION } from '../config/constants';
 import type { Label } from '../types';
 
 export interface SavedQuerySummary {
@@ -35,26 +36,45 @@ export function queryTypeLabel(queryType: number): string {
   return QUERY_TYPE_LABELS[queryType] ?? `Type ${queryType}`;
 }
 
+/** Raw savedquery row shape returned by the Web API. */
+interface SavedQueryRow {
+  savedqueryid?: string;
+  name?: string;
+  description?: string;
+  querytype?: number;
+  isdefault?: boolean;
+  iscustomizable?: { Value?: boolean };
+}
+
 /** List all views for an entity, public views (querytype 0) first, then by name. */
 export async function listSystemViews(
   baseUrl: string,
   entityLogicalName: string,
-  apiVersion: string = 'v9.2'
+  apiVersion?: string
 ): Promise<SavedQuerySummary[]> {
   const api = buildApiUrl(baseUrl, apiVersion);
-  const select = '$select=name,description,savedqueryid,querytype,isdefault,iscustomizable';
-  const filter = `$filter=returnedtypecode eq '${entityLogicalName}'`;
-  const url = `${api}/savedqueries?${select}&${filter}&$orderby=name`;
-
-  const j = await fetchJson(url);
-  const rows = toArray(j?.value).map((r: any): SavedQuerySummary => ({
-    savedQueryId: String(r.savedqueryid ?? ''),
-    name: String(r.name ?? ''),
-    description: String(r.description ?? ''),
-    queryType: Number(r.querytype ?? -1),
-    isDefault: Boolean(r.isdefault),
-    isCustomizable: Boolean(r.iscustomizable?.Value ?? true),
-  }));
+  const query = buildODataQuery({
+    select: ['name', 'description', 'savedqueryid', 'querytype', 'isdefault', 'iscustomizable'],
+    filter: `returnedtypecode eq '${entityLogicalName}'`,
+    orderby: 'name',
+  });
+  type Page = { value?: SavedQueryRow[]; '@odata.nextLink'?: string };
+  const rows: SavedQuerySummary[] = [];
+  let nextUrl: string | undefined = `${api}/savedqueries?${query}`;
+  while (nextUrl) {
+    const page = (await fetchJson(nextUrl)) as Page;
+    for (const r of toArray(page?.value) as SavedQueryRow[]) {
+      rows.push({
+        savedQueryId: String(r.savedqueryid ?? ''),
+        name: String(r.name ?? ''),
+        description: String(r.description ?? ''),
+        queryType: Number(r.querytype ?? -1),
+        isDefault: Boolean(r.isdefault),
+        isCustomizable: Boolean(r.iscustomizable?.Value ?? true),
+      });
+    }
+    nextUrl = page?.['@odata.nextLink'];
+  }
 
   return rows.sort((a, b) => {
     const ap = a.queryType === PUBLIC_VIEW_QUERY_TYPE ? 0 : 1;
@@ -62,6 +82,12 @@ export async function listSystemViews(
     if (ap !== bp) return ap - bp;
     return a.name.localeCompare(b.name);
   });
+}
+
+/** Raw localized label row returned by RetrieveLocLabels. */
+interface LocalizedLabelRow {
+  Label?: string;
+  LanguageCode?: number;
 }
 
 /**
@@ -72,7 +98,7 @@ export async function getViewLocalizedLabels(
   baseUrl: string,
   savedQueryId: string,
   attributeName: string,
-  apiVersion: string = 'v9.2'
+  apiVersion?: string
 ): Promise<Label[]> {
   const url = buildRetrieveLocLabelsUrl({
     baseUrl,
@@ -83,7 +109,7 @@ export async function getViewLocalizedLabels(
     includeUnpublished: true,
   });
   const j = await fetchJson(url);
-  return toArray(j?.Label?.LocalizedLabels).map((l: any) => ({
+  return (toArray(j?.Label?.LocalizedLabels) as LocalizedLabelRow[]).map((l) => ({
     languageCode: Number(l.LanguageCode),
     label: String(l.Label ?? ''),
   }));
@@ -100,7 +126,7 @@ export async function saveViewTranslations(
   entityLogicalName: string,
   savedQueryId: string,
   edits: ViewLabelEdit[],
-  apiVersion: string = 'v9.2'
+  apiVersion: string = D365_API_VERSION
 ): Promise<void> {
   const operations: BatchOperation[] = edits
     .filter((e) => e.labels.length > 0)

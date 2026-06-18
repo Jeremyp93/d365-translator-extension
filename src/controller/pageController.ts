@@ -138,7 +138,7 @@ if (!w.__d365Ctl) {
             apiVersion: getVersion(),
           },
         },
-        "*"
+        window.location.origin
       );
     },
 

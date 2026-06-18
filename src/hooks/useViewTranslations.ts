@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   getViewLocalizedLabels,
   saveViewTranslations,
@@ -49,9 +49,11 @@ export function useViewTranslations(
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const loadVersionRef = useRef(0);
 
   const load = useCallback(async () => {
     if (!clientUrl || !savedQueryId || !langs?.length) return;
+    const version = ++loadVersionRef.current;
     setLoading(true);
     setError(null);
     setLoaded(false);
@@ -62,6 +64,7 @@ export function useViewTranslations(
         getViewLocalizedLabels(clientUrl, savedQueryId, 'name', apiVersion),
         getViewLocalizedLabels(clientUrl, savedQueryId, 'description', apiVersion),
       ]);
+      if (loadVersionRef.current !== version) return;
       const next: ViewFieldValues = {
         name: seed(langs, nameLabels),
         description: seed(langs, descLabels),
@@ -70,9 +73,10 @@ export function useViewTranslations(
       setOriginal(structuredClone(next));
       setLoaded(true);
     } catch (e: unknown) {
+      if (loadVersionRef.current !== version) return;
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setLoading(false);
+      if (loadVersionRef.current === version) setLoading(false);
     }
   }, [clientUrl, savedQueryId, langs, apiVersion]);
 
@@ -105,7 +109,6 @@ export function useViewTranslations(
       setSaveSuccess(true);
     } catch (e: unknown) {
       setSaveError(e instanceof Error ? e.message : String(e));
-      throw e;
     } finally {
       setSaving(false);
     }

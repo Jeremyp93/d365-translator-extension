@@ -35,6 +35,12 @@
       });
     }
     if (d.type === 'OPEN_VIEW_TRANSLATIONS') {
+      const p = d.payload;
+      if (!p || typeof p !== 'object' || typeof p.clientUrl !== 'string' ||
+          (p.apiVersion != null && typeof p.apiVersion !== 'string')) {
+        console.error('[relay] Invalid OPEN_VIEW_TRANSLATIONS payload');
+        return;
+      }
       chrome.runtime.sendMessage({
         type: 'OPEN_VIEW_TRANSLATIONS',
         payload: d.payload

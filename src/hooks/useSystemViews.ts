@@ -21,6 +21,8 @@ export function useSystemViews(
   useEffect(() => {
     if (!clientUrl || !entity) {
       setViews([]);
+      setError(null);
+      setLoading(false);
       return;
     }
     let cancelled = false;
