@@ -16,6 +16,7 @@ import {
   DocumentText24Regular,
   GroupListRegular,
   CheckmarkCircle20Regular,
+  ChevronDown20Regular,
 } from "@fluentui/react-icons";
 
 import { useOrgContext } from "../../hooks/useOrgContext";
@@ -152,6 +153,14 @@ export default function PluginTraceLogPage(): JSX.Element {
     setSelectedRowIds(new Set());
     selectionAnchorRef.current = null;
   }, []);
+
+  const handleExpandSelected = useCallback(() => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      selectedRowIds.forEach((rowId) => next.add(rowId));
+      return next;
+    });
+  }, [selectedRowIds]);
 
   const handleApplyFilters = useCallback(() => {
     handleClearSelection();
@@ -357,6 +366,14 @@ export default function PluginTraceLogPage(): JSX.Element {
                   <Text weight="semibold">
                     {selectedRowIds.size} selected
                   </Text>
+                  <Button
+                    appearance="subtle"
+                    size="small"
+                    icon={<ChevronDown20Regular />}
+                    onClick={handleExpandSelected}
+                  >
+                    Expand selected
+                  </Button>
                   <Button
                     appearance="subtle"
                     size="small"

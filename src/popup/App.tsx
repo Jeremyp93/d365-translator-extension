@@ -21,7 +21,7 @@ import { useEditingPermission } from '../hooks/useEditingPermission';
 import { usePopupTab } from '../hooks/usePopupTab';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import { useLanguages } from '../hooks/useLanguages';
-import { getActiveTab } from '../services/chromeTabService';
+import { getActiveTab, clearSiteDataAndReload } from '../services/chromeTabService';
 import { getLanguageDisplayName } from '../utils/languageNames';
 import { PopupHeader } from './components/PopupHeader';
 import { ContextWarning } from './components/ContextWarning';
@@ -204,16 +204,24 @@ export default function App(): JSX.Element {
       }
 
       const targetTabId = currentTab.id; // Capture the tab ID
+      // Capture the origin so we can clear its cached metadata/labels before reload
+      const targetOrigin = currentTab.url ? new URL(currentTab.url).origin : null;
 
       try {
         await switchUserUiLanguage(targetLcid);
         setCurrentUserLcid(targetLcid); // Update local state to reflect the change
         setInfo(`Language changed to ${langName}. Reloading page...`);
 
-        // Hard reload the captured D365 tab after a short delay (bypass cache)
+        // After a short delay, clear the D365 origin's cached state (IndexedDB,
+        // service worker caches, localStorage) then hard reload. Without this the
+        // Unified Interface rehydrates stale labels in the previous language.
         languageSwitchTimerRef.current = setTimeout(async () => {
           try {
-            await chrome.tabs.reload(targetTabId, { bypassCache: true });
+            if (targetOrigin) {
+              await clearSiteDataAndReload(targetTabId, targetOrigin);
+            } else {
+              await chrome.tabs.reload(targetTabId, { bypassCache: true });
+            }
             // Re-enable dropdown after reload is triggered
             setSwitchingLanguage(false);
           } catch (e) {

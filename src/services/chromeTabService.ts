@@ -151,33 +151,31 @@ export async function saveHighlightState(
 }
 
 /**
- * Clear all cache and perform hard refresh for the current tab
- * Equivalent to DevTools "Empty Cache and Hard Reload"
+ * Clear all cached/site data for the given tab's origin, then hard reload.
+ * Equivalent to DevTools "Empty Cache and Hard Reload".
+ *
+ * Use this (rather than a bare `tabs.reload`) whenever stale client-side state
+ * must not survive the reload — e.g. after a D365 UI language change, where the
+ * Unified Interface caches labels/metadata in IndexedDB + service worker caches.
  */
-export async function clearCacheAndHardRefresh(): Promise<void> {
-  const tab = await getActiveTab();
-  if (!tab?.id || !tab.url) return;
+export async function clearSiteDataAndReload(tabId: number, origin: string): Promise<void> {
+  // 1) Clear global HTTP cache
+  await chrome.browsingData.remove({ since: 0 }, { cache: true });
 
-  const tabId = tab.id;
-  const origin = new URL(tab.url).origin;
+  // 2) Clear site-scoped data for the origin (IndexedDB, SW caches, etc.)
+  await chrome.browsingData.remove(
+    { since: 0, origins: [origin] },
+    {
+      cacheStorage: true,
+      indexedDB: true,
+      localStorage: true,
+      serviceWorkers: true,
+      webSQL: true,
+    }
+  );
 
+  // 3) Clear per-tab storage (best-effort; the origin filter above already covers it)
   try {
-    // 1) Clear global HTTP cache
-    await chrome.browsingData.remove({ since: 0 }, { cache: true });
-
-    // 2) Clear site-scoped data for current origin
-    await chrome.browsingData.remove(
-      { since: 0, origins: [origin] },
-      {
-        cacheStorage: true,
-        indexedDB: true,
-        localStorage: true,
-        serviceWorkers: true,
-        webSQL: true,
-      }
-    );
-
-    // 3) Clear per-tab storage
     await chrome.scripting.executeScript({
       target: { tabId },
       world: 'MAIN',
@@ -190,9 +188,21 @@ export async function clearCacheAndHardRefresh(): Promise<void> {
         } catch {}
       },
     });
+  } catch {}
 
-    // 4) Hard reload bypassing cache
-    await chrome.tabs.reload(tabId, { bypassCache: true });
+  // 4) Hard reload bypassing cache
+  await chrome.tabs.reload(tabId, { bypassCache: true });
+}
+
+/**
+ * Clear all cache and perform hard refresh for the current tab.
+ */
+export async function clearCacheAndHardRefresh(): Promise<void> {
+  const tab = await getActiveTab();
+  if (!tab?.id || !tab.url) return;
+
+  try {
+    await clearSiteDataAndReload(tab.id, new URL(tab.url).origin);
   } catch (e) {
     console.warn('[chromeTabService] clearCacheAndHardRefresh failed:', e);
     throw e;
