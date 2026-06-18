@@ -34,6 +34,12 @@
         payload: d.payload
       });
     }
+    if (d.type === 'OPEN_VIEW_TRANSLATIONS') {
+      chrome.runtime.sendMessage({
+        type: 'OPEN_VIEW_TRANSLATIONS',
+        payload: d.payload
+      });
+    }
     if (d.type === 'OPEN_ENTITY_BROWSER') {
       chrome.runtime.sendMessage({
         type: 'OPEN_ENTITY_BROWSER',

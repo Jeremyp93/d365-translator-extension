@@ -20,6 +20,7 @@ export interface D365Controller {
   openFormReportPage: () => void;
   openPluginTraceLogsPage: () => void;
   openGlobalOptionSetsPage: () => void;
+  openViewTranslationsPage: () => void;
   openEntityBrowserPage: () => void;
   openAuditHistory: () => void;
   openRecordEditor: () => void;
@@ -44,6 +45,7 @@ export type ControllerMethod =
   | 'openFormReportPage'
   | 'openPluginTraceLogsPage'
   | 'openGlobalOptionSetsPage'
+  | 'openViewTranslationsPage'
   | 'openEntityBrowserPage'
   | 'openAuditHistory'
   | 'openRecordEditor';

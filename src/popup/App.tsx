@@ -101,6 +101,7 @@ export default function App(): JSX.Element {
     openFormReportPage,
     openPluginTraceLogsPage,
     openGlobalOptionSetsPage,
+    openViewTranslationsPage,
     openEntityBrowserPage,
     openAuditHistoryPage,
     openRecordEditor,
@@ -286,6 +287,7 @@ export default function App(): JSX.Element {
                 onDeactivate={deactivate}
                 onOpenFormReport={openFormReportPage}
                 onOpenGlobalOptionSets={openGlobalOptionSetsPage}
+                onOpenViewTranslations={openViewTranslationsPage}
                 onOpenEntityBrowser={openEntityBrowserPage}
                 onOpenAuditHistory={openAuditHistoryPage}
                 onEditRecord={openRecordEditor}

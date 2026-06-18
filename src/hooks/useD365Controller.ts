@@ -146,6 +146,16 @@ export function useD365Controller() {
     setBusy(false);
   };
 
+  const openViewTranslationsPage = async (): Promise<void> => {
+    setBusy(true);
+    setInfo('Opening view translations manager…');
+    await withGuard(async (tabId, frameId) => {
+      await callController(tabId, frameId, 'openViewTranslationsPage');
+      setInfo('View translations page opened.');
+    });
+    setBusy(false);
+  };
+
   const openEntityBrowserPage = async (): Promise<void> => {
     setBusy(true);
     setInfo('Opening entity browser…');
@@ -217,6 +227,7 @@ export function useD365Controller() {
     openFormReportPage,
     openPluginTraceLogsPage,
     openGlobalOptionSetsPage,
+    openViewTranslationsPage,
     openEntityBrowserPage,
     openAuditHistoryPage,
     openRecordEditor,

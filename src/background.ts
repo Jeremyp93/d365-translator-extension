@@ -50,6 +50,17 @@ chrome.runtime.onMessage.addListener((msg: any, sender, _sendResponse) => {
 
     const url = `${base}#/report/global-optionsets${qs}`;
     chrome.tabs.create({ url }).catch(() => {});
+  } else if (msg?.type === "OPEN_VIEW_TRANSLATIONS") {
+    const { clientUrl, apiVersion } = msg.payload ?? {};
+    if (!clientUrl) return;
+
+    const base = chrome.runtime.getURL("src/report/report.html");
+    const qs = `?clientUrl=${encodeURIComponent(clientUrl)}${
+      apiVersion ? `&apiVersion=${encodeURIComponent(apiVersion)}` : ""
+    }`;
+
+    const url = `${base}#/report/view-translations${qs}`;
+    chrome.tabs.create({ url }).catch(() => {});
   } else if (msg?.type === "OPEN_ENTITY_BROWSER") {
     const { clientUrl, apiVersion } = msg.payload ?? {};
     if (!clientUrl) return;

@@ -17,6 +17,8 @@ export const BUTTON_TOOLTIPS: ButtonTooltip = {
     'Open the comprehensive form translations editor in a new tab',
   globalOptionSets:
     'Manage translations for global option sets shared across entities',
+  viewTranslations:
+    'Translate system view names and descriptions across languages',
   pluginTraceLogs:
     'View plugin execution trace logs with filtering options',
   entityBrowser:
